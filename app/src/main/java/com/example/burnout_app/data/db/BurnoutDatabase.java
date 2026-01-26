@@ -1,4 +1,4 @@
-package com.example.burnout_app.data.room;
+package com.example.burnout_app.data.db;
 
 import android.content.Context;
 
@@ -8,9 +8,28 @@ import androidx.room.InvalidationTracker;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
+import com.example.burnout_app.data.dao.UserActivityDAO;
+import com.example.burnout_app.data.entity.AppEntity;
+import com.example.burnout_app.data.entity.AppUsageEventEntity;
+import com.example.burnout_app.data.entity.DailyAppMetricsEntity;
+import com.example.burnout_app.data.entity.DailyCommMetricsEntity;
+import com.example.burnout_app.data.entity.DailyMetricsEntity;
+import com.example.burnout_app.data.entity.HourlyCommMetricsEntity;
+import com.example.burnout_app.data.entity.HourlyMetricsEntity;
+import com.example.burnout_app.data.entity.NotificationEventEntity;
 import com.example.burnout_app.data.entity.ScreenEventEntity;
 
-@Database(entities =  { ScreenEventEntity.class }, version = 1)
+@Database(entities =  {
+        AppEntity.class,
+        AppUsageEventEntity.class,
+        DailyAppMetricsEntity.class,
+        DailyCommMetricsEntity.class,
+        DailyMetricsEntity.class,
+        HourlyCommMetricsEntity.class,
+        HourlyMetricsEntity.class,
+        NotificationEventEntity.class,
+        ScreenEventEntity.class },
+        version = 1)
 
 public abstract class BurnoutDatabase extends RoomDatabase {
 
@@ -30,6 +49,8 @@ public abstract class BurnoutDatabase extends RoomDatabase {
         }
         return INSTANCE;
     }
+
+    public abstract UserActivityDAO userActivityDao();
     @NonNull
     @Override
     protected InvalidationTracker createInvalidationTracker() {

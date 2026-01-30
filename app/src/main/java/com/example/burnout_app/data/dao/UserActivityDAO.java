@@ -13,8 +13,7 @@ import java.util.List;
 @Dao
 public interface UserActivityDAO {
 
-    // screen_event
-
+    // SCREEN_EVENT
     @Insert
     void insertScreenEvent(ScreenEventEntity event);
 
@@ -30,8 +29,7 @@ public interface UserActivityDAO {
     @Query("DELETE FROM screen_event WHERE date < :cutoffDate")
     int deleteScreenEventsOlderThanDate(int cutoffDate);
 
-    // daily_metrics
-
+    // DAILY_METRIC
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertDailyIfMissing(DailyMetricsEntity dailyMetrics);
 

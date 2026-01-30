@@ -12,13 +12,16 @@ import com.example.burnout_app.collectors.UsageStatsProvider;
 import com.example.burnout_app.data.db.BurnoutDatabase;
 import com.example.burnout_app.data.entity.AppEntity;
 import com.example.burnout_app.data.entity.AppUsageEventEntity;
+import com.example.burnout_app.data.entity.DailyAppMetricsEntity;
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
 import com.example.burnout_app.helpers.RetentionPolicy;
 import com.example.burnout_app.helpers.TimeKey;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 public class DailyAggregationWorker extends Worker {
 
@@ -59,7 +62,6 @@ public class DailyAggregationWorker extends Worker {
         long start = (lastTs > 0)
                 ? Math.max(0L, lastTs - OVERLAP_MS)
                 : Math.max(0L, now - FIRST_LOOKBACK_MS);
-
         long end = now;
 
         List<UsageStatsProvider.RawUsageEvent> raw =
@@ -93,11 +95,17 @@ public class DailyAggregationWorker extends Worker {
         // 3) Agregación MVP hoy -> daily_metrics
         List<AppUsageEventEntity> events = db.usageDao().getUsageEventsByDate(today);
 
+        // Global
         long foregroundMs = 0L;
         int sessionCount = 0;
         int appSwitchCount = 0;
         HashSet<Long> uniqueApps = new HashSet<>();
 
+        //Por app
+        Map<Long,Long> fgMsByApp = new HashMap<>();
+        Map<Long, Integer> openCountByApp = new HashMap<>();
+
+        Long currentFgAppId = null;
         long openFgTs = -1L;
         Long lastFgAppId = null;
 
@@ -105,25 +113,47 @@ public class DailyAggregationWorker extends Worker {
             uniqueApps.add(e.app_id);
 
             if (e.event_type == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                sessionCount++;
 
-                if (lastFgAppId != null && e.app_id != lastFgAppId) {
+                // Si había una app en FG abierta, cerramos su intervalo cuando entra otra FG
+                if(currentFgAppId != null && openFgTs > 0 && e.timestamp > openFgTs){
+                    long delta = e.timestamp - openFgTs;
+
+                    foregroundMs += delta;
+                    fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+                }
+
+                // App switch (si cambia la app en FG)
+                if(currentFgAppId != null && e.app_id != currentFgAppId){
                     appSwitchCount++;
                 }
 
-                lastFgAppId = e.app_id;
+                sessionCount++;
+                openCountByApp.put(e.app_id, openCountByApp.getOrDefault(e.app_id, 0)+1);
+
+                // Abrir nuevo intervalo
+                currentFgAppId = e.app_id;
                 openFgTs = e.timestamp;
 
             } else if (e.event_type == android.app.usage.UsageEvents.Event.MOVE_TO_BACKGROUND) {
-                if (openFgTs > 0 && e.timestamp > openFgTs) {
-                    foregroundMs += (e.timestamp - openFgTs);
+                // Cerrar solo si coincide con la app actualmente en FG
+                if(currentFgAppId != null && e.app_id == currentFgAppId && openFgTs > 0 && e.timestamp > openFgTs){
+                    long delta = e.timestamp - openFgTs;
+
+                    foregroundMs += delta;
+                    fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId,0L) + delta);
+
+                    currentFgAppId = null;
+                    openFgTs = -1L;
                 }
-                openFgTs = -1L;
             }
         }
 
-        if (openFgTs > 0 && now > openFgTs) {
-            foregroundMs += (now - openFgTs);
+        // Si queda un FG abierto, lo cerramos con "now"
+        if (currentFgAppId != null && openFgTs > 0 && now > openFgTs) {
+            long delta = now - openFgTs;
+
+            foregroundMs += delta;
+            fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
         }
 
         // asegurar fila diaria
@@ -146,7 +176,23 @@ public class DailyAggregationWorker extends Worker {
                 " app_switch_count=" + appSwitchCount +
                 " unique_apps_count=" + uniqueApps.size());
 
-        // 4) Retención (7 días)
+        // Guardar daily_app_metric (por app)
+        ArrayList<DailyAppMetricsEntity> rows = new ArrayList<>();
+        for(Map.Entry<Long, Long> entry : fgMsByApp.entrySet()){
+            long appId = entry.getKey();
+            long fg = entry.getValue();
+            int openCount = openCountByApp.getOrDefault(appId,0);
+
+            rows.add(new DailyAppMetricsEntity(today, appId, fg, openCount,0));
+        }
+
+        if(!rows.isEmpty()){
+            db.usageDao().upsertDailyAppMetrics(rows);
+        }
+
+        Log.d(TAG, "Aggregate(today): daily_app_metric rows=" + rows.size());
+
+        // Retención (7 días)
         int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
         int delScreen = db.userActivityDao().deleteScreenEventsOlderThanDate(cutoffDate);
         int delNotif = db.notificationDao().deleteNotificationEventsOlderThanDate(cutoffDate);

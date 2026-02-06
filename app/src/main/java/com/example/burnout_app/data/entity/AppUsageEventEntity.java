@@ -2,18 +2,23 @@ package com.example.burnout_app.data.entity;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 import java.util.Date;
 
-@Entity(tableName = "app_usage_event")
+@Entity(tableName = "app_usage_event",
+        indices = {@Index(value = {"app_id", "event_type", "timestamp"}, unique = true)}
+)
 public class AppUsageEventEntity {
 
     @PrimaryKey(autoGenerate = true)
     public long usage_id;
     @NonNull
     public long app_id;
+    @NonNull
     public int event_type;
+    @NonNull
     public long timestamp;
     public String source;
     public int date;

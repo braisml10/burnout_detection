@@ -1,6 +1,7 @@
 package com.example.burnout_app;
 
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
@@ -10,6 +11,7 @@ import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
+import com.example.burnout_app.collectors.ScreenStateReceiver;
 import com.example.burnout_app.collectors.UsageStatsProvider;
 import com.example.burnout_app.worker.DailyAggregationWorker;
 
@@ -17,10 +19,23 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
 
+    private ScreenStateReceiver screenReceiver;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
+
+        // Registrar receiver de pantalla (dinámico, sin BootReceiver)
+        screenReceiver = new ScreenStateReceiver();
+        IntentFilter f = new IntentFilter();
+        f.addAction(Intent.ACTION_SCREEN_ON);
+        f.addAction(Intent.ACTION_SCREEN_OFF);
+        f.addAction(Intent.ACTION_USER_PRESENT);
+        registerReceiver(screenReceiver, f);
+
+        Log.d(TAG, "ScreenStateReceiver registered.");
 
         // 1) Comprobar permiso Usage Access
         if (!UsageStatsProvider.hasUsageAccess(this)) {
@@ -41,5 +56,18 @@ public class MainActivity extends AppCompatActivity {
         );
 
         Log.d(TAG, "Enqueued daily_aggregation_test (OneTimeWork).");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (screenReceiver != null) {
+            try {
+                unregisterReceiver(screenReceiver);
+                Log.d(TAG, "ScreenStateReceiver unregistered.");
+            } catch (Exception ignored) {
+                // por seguridad si ya estaba desregistrado
+            }
+        }
     }
 }

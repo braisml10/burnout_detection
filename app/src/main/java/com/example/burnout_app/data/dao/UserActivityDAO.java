@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
+import com.example.burnout_app.data.entity.HourlyMetricsEntity;
 import com.example.burnout_app.data.entity.ScreenEventEntity;
 
 import java.util.List;
@@ -45,6 +46,16 @@ public interface UserActivityDAO {
     @Query("SELECT * FROM daily_metrics WHERE date = :date LIMIT 1")
     DailyMetricsEntity getDailyMetricsByDate(int date);
 
+
+    // HOURLY_METRIC
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void upsertHourlyMetrics(List<HourlyMetricsEntity> rows);
+
+    @Query("SELECT * FROM hourly_metric WHERE date = :date ORDER BY hour ASC")
+    List<HourlyMetricsEntity> getHourlyMetricsByDate(int date);
+
+    @Query("DELETE FROM hourly_metric WHERE date < :cutoffDate")
+    int deleteHourlyMetricsOlderThanDate(int cutoffDate);
 
 
 

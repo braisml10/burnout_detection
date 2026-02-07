@@ -27,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
+
         // Registrar receiver de pantalla (dinámico, sin BootReceiver)
         screenReceiver = new ScreenStateReceiver();
         IntentFilter f = new IntentFilter();

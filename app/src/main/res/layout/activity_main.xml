@@ -79,7 +79,7 @@
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
 
-    <!-- Card 1: Screen time -->
+    <!-- Card 1: Screen time (CLICKABLE) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardScreenTime"
         android:layout_width="0dp"
@@ -91,6 +91,10 @@
         app:cardBackgroundColor="#111B2E"
         app:strokeColor="#1E2A44"
         app:strokeWidth="1dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:contentDescription="Abrir Tiempo en pantalla"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/guidelineMid"
         app:layout_constraintTop_toBottomOf="@id/tvTitle">
@@ -155,7 +159,7 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Card 2: Notifications -->
+    <!-- Card 2: Notifications (CLICKABLE) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardNotifications"
         android:layout_width="0dp"
@@ -167,6 +171,10 @@
         app:cardBackgroundColor="#111B2E"
         app:strokeColor="#1E2A44"
         app:strokeWidth="1dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:contentDescription="Abrir Notificaciones"
         app:layout_constraintStart_toStartOf="@id/guidelineMid"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvTitle">
@@ -231,7 +239,7 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Card 3: Multitask -->
+    <!-- Card 3: Multitask (CLICKABLE) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardMultitask"
         android:layout_width="0dp"
@@ -243,6 +251,10 @@
         app:cardBackgroundColor="#111B2E"
         app:strokeColor="#1E2A44"
         app:strokeWidth="1dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:contentDescription="Abrir Multitarea"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/guidelineMid"
         app:layout_constraintTop_toBottomOf="@id/cardScreenTime">
@@ -307,7 +319,7 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Card 4: Communication -->
+    <!-- Card 4: Communication (CLICKABLE) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardCommunication"
         android:layout_width="0dp"
@@ -319,6 +331,10 @@
         app:cardBackgroundColor="#111B2E"
         app:strokeColor="#1E2A44"
         app:strokeWidth="1dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:contentDescription="Abrir Comunicación"
         app:layout_constraintStart_toStartOf="@id/guidelineMid"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/cardNotifications">
@@ -397,7 +413,7 @@
         app:layout_constraintStart_toStartOf="parent"
         tools:ignore="HardcodedText" />
 
-    <!-- CHART PLACEHOLDER -->
+    <!-- CHART PLACEHOLDER (CLICKABLE, opcional) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardChart"
         android:layout_width="0dp"
@@ -408,6 +424,10 @@
         app:cardBackgroundColor="#0E1729"
         app:strokeColor="#1E2A44"
         app:strokeWidth="1dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:contentDescription="Abrir Actividad por hora"
         app:layout_constraintTop_toBottomOf="@id/tvHourlyTitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">

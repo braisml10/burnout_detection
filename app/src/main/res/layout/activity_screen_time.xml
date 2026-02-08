@@ -9,22 +9,35 @@
     android:background="@color/bg_app"
     tools:context=".MainActivity">
 
-    <!-- Top bar -->
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbarScreenTime"
+    <!-- Header (igual estilo Multitarea): back + título centrado -->
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/back"
+        app:srcCompat="@drawable/ic_chevron_left"
+        app:tint="@android:color/white"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tvTitle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@android:color/transparent"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        app:title="Tiempo en pantalla"
-        app:titleCentered="true"
-        app:titleTextColor="@android:color/white"
-        app:navigationIcon="@drawable/ic_arrow_back"
-        app:navigationIconTint="@android:color/white"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:layout_marginEnd="16dp"
+        android:gravity="center"
+        android:text="Tiempo en pantalla"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        app:layout_constraintStart_toEndOf="@id/btnBack"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/btnBack"
+        app:layout_constraintBottom_toBottomOf="@id/btnBack"
+        tools:ignore="HardcodedText" />
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/scrollScreenTime"
@@ -32,7 +45,7 @@
         android:layout_height="0dp"
         android:fillViewport="true"
         android:overScrollMode="never"
-        app:layout_constraintTop_toBottomOf="@id/toolbarScreenTime"
+        app:layout_constraintTop_toBottomOf="@id/btnBack"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -51,7 +64,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@android:color/transparent"
-                android:contentDescription="@string/cd_prev_day"
+                android:contentDescription="@string/previous_day"
                 app:srcCompat="@drawable/ic_chevron_left"
                 app:tint="@color/text_muted"
                 app:layout_constraintStart_toStartOf="parent"
@@ -76,7 +89,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@android:color/transparent"
-                android:contentDescription="@string/cd_next_day"
+                android:contentDescription="@string/next_day"
                 app:srcCompat="@drawable/ic_chevron_right"
                 app:tint="@color/text_muted"
                 app:layout_constraintEnd_toEndOf="parent"

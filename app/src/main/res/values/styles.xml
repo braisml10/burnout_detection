@@ -1,20 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- styles.xml -->
 <resources>
 
+    <!-- Card reutilizable para KPIs -->
     <style name="BurnoutCard" parent="Widget.MaterialComponents.CardView">
-        <item name="cardCornerRadius">18dp</item>
-        <item name="cardElevation">0dp</item>
-        <item name="strokeColor">@color/card_stroke</item>
-        <item name="strokeWidth">1dp</item>
-        <item name="cardBackgroundColor">@color/card_bg</item>
+        <item name="cardUseCompatPadding">true</item>
+        <item name="cardPreventCornerOverlap">true</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <!-- Ripple nativo al pulsar -->
+        <item name="android:foreground">?attr/selectableItemBackground</item>
     </style>
 
-    <style name="BurnoutIconBg" parent="Widget.MaterialComponents.CardView">
-        <item name="cardCornerRadius">14dp</item>
-        <item name="cardElevation">0dp</item>
-        <item name="android:layout_width">42dp</item>
-        <item name="android:layout_height">42dp</item>
+    <!-- Fondo circular/rounded para iconos dentro de cards -->
+    <style name="BurnoutIconBg">
+        <item name="android:shape">rectangle</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:background">@drawable/bg_icon_round</item>
     </style>
 
 </resources>
-

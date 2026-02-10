@@ -9,7 +9,8 @@
     android:background="@color/bg_app"
     tools:context=".MainActivity">
 
-    <!-- Header (igual estilo Multitarea): back + título centrado -->
+    <!-- Header (igual estilo Multitarea): back + título centrado
+        android:contentDescription="@string/back"-->
     <ImageButton
         android:id="@+id/btnBack"
         android:layout_width="40dp"
@@ -17,7 +18,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="12dp"
         android:background="@android:color/transparent"
-        android:contentDescription="@string/back"
+
         app:srcCompat="@drawable/ic_chevron_left"
         app:tint="@android:color/white"
         app:layout_constraintStart_toStartOf="parent"
@@ -58,13 +59,14 @@
             android:paddingEnd="16dp"
             android:paddingBottom="20dp">
 
-            <!-- Day selector row ( <  Hoy  > ) -->
+            <!-- Day selector row ( <  Hoy  > )
+                android:contentDescription="@string/previous_day"-->
             <ImageButton
                 android:id="@+id/btnPrevDay"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@android:color/transparent"
-                android:contentDescription="@string/previous_day"
+
                 app:srcCompat="@drawable/ic_chevron_left"
                 app:tint="@color/text_muted"
                 app:layout_constraintStart_toStartOf="parent"
@@ -84,12 +86,13 @@
                 app:layout_constraintTop_toTopOf="@id/btnPrevDay"
                 app:layout_constraintBottom_toBottomOf="@id/btnPrevDay"/>
 
+            <!-- android:contentDescription="@string/next_day" -->
             <ImageButton
                 android:id="@+id/btnNextDay"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@android:color/transparent"
-                android:contentDescription="@string/next_day"
+
                 app:srcCompat="@drawable/ic_chevron_right"
                 app:tint="@color/text_muted"
                 app:layout_constraintEnd_toEndOf="parent"

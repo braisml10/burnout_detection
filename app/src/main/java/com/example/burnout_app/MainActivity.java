@@ -5,15 +5,23 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
 import com.example.burnout_app.collectors.ScreenStateReceiver;
 import com.example.burnout_app.collectors.UsageStatsProvider;
+import com.example.burnout_app.helpers.TimeKey;
+import com.example.burnout_app.viewmodel.DashboardViewModel;
 import com.example.burnout_app.worker.DailyAggregationWorker;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,6 +35,23 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
+        TextView tvDate = findViewById(R.id.tvDate);
+        tvDate.setText("| " + TimeKey.dateLabelFromTimestamp(System.currentTimeMillis()));
+
+        // 0) Bind KPI TextViews (estos IDs salen de tu XML)
+        TextView value1 = findViewById(R.id.value1);
+        TextView value2 = findViewById(R.id.value2);
+        TextView value3 = findViewById(R.id.value3);
+        TextView value4 = findViewById(R.id.value4);
+
+        // 0.1) ViewModel + observer
+        DashboardViewModel vm = new ViewModelProvider(this).get(DashboardViewModel.class);
+        vm.getUiState().observe(this, s -> {
+            value1.setText(s.screenTime);
+            value2.setText(s.notifications);
+            value3.setText(s.multitask);
+            value4.setText(s.communication);
+        });
 
         // Registrar receiver de pantalla (dinámico, sin BootReceiver)
         screenReceiver = new ScreenStateReceiver();
@@ -46,13 +71,13 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "Usage Access granted.");
         }
 
-        // 2) Lanzar worker 1 vez para test (debe salir log del worker)
+        // 2) Lanzar worker 1 vez para test
         OneTimeWorkRequest req =
                 new OneTimeWorkRequest.Builder(DailyAggregationWorker.class).build();
 
         WorkManager.getInstance(this).enqueueUniqueWork(
                 "daily_aggregation_test",
-                ExistingWorkPolicy.REPLACE,
+                ExistingWorkPolicy.KEEP,
                 req
         );
 
@@ -67,7 +92,6 @@ public class MainActivity extends AppCompatActivity {
                 unregisterReceiver(screenReceiver);
                 Log.d(TAG, "ScreenStateReceiver unregistered.");
             } catch (Exception ignored) {
-                // por seguridad si ya estaba desregistrado
             }
         }
     }

@@ -14,13 +14,14 @@
     android:layout_height="wrap_content"
     android:padding="16dp">
 
-    <!-- Top bar: back + title -->
+    <!-- Top bar: back + title
+    android:contentDescription="@string/back"-->
     <ImageButton
         android:id="@+id/btnBack"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:background="@android:color/transparent"
-        android:contentDescription="@string/back"
+
         app:srcCompat="@drawable/ic_chevron_left"
         app:tint="@android:color/white"
         app:layout_constraintStart_toStartOf="parent"
@@ -41,14 +42,15 @@
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
         tools:ignore="HardcodedText" />
 
-    <!-- Day selector row: <  Hoy  > -->
+    <!-- Day selector row: <  Hoy  >
+        android:contentDescription="@string/previous_day"-->
     <ImageButton
         android:id="@+id/btnPrevDay"
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:layout_marginTop="10dp"
         android:background="@android:color/transparent"
-        android:contentDescription="@string/previous_day"
+
         app:srcCompat="@drawable/ic_chevron_left"
         app:tint="#94A3B8"
         app:layout_constraintTop_toBottomOf="@id/btnBack"
@@ -69,13 +71,14 @@
         app:layout_constraintHorizontal_bias="0.5"
         tools:ignore="HardcodedText" />
 
+    <!-- android:contentDescription="@string/next_day" -->
     <ImageButton
         android:id="@+id/btnNextDay"
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:layout_marginTop="10dp"
         android:background="@android:color/transparent"
-        android:contentDescription="@string/next_day"
+
         app:srcCompat="@drawable/ic_chevron_right"
         app:tint="#94A3B8"
         app:layout_constraintTop_toBottomOf="@id/btnBack"
@@ -607,12 +610,13 @@
                 android:orientation="horizontal"
                 android:paddingVertical="10dp">
 
-                <!-- Aquí luego cargas el icono real del package (PackageManager) -->
+                <!-- Aquí luego cargas el icono real del package (PackageManager)
+                 app:srcCompat="@drawable/ic_app_placeholder"-->
                 <ImageView
                     android:id="@+id/imgApp1"
                     android:layout_width="30dp"
                     android:layout_height="30dp"
-                    app:srcCompat="@drawable/ic_app_placeholder"
+
                     app:tint="#94A3B8" />
 
                 <TextView
@@ -653,7 +657,8 @@
                 android:layout_height="1dp"
                 android:background="#1E2A44" />
 
-            <!-- App 2 -->
+            <!-- App 2
+            app:srcCompat="@drawable/ic_app_placeholder"-->
             <LinearLayout
                 android:id="@+id/rowApp2"
                 android:layout_width="match_parent"
@@ -666,7 +671,8 @@
                     android:id="@+id/imgApp2"
                     android:layout_width="30dp"
                     android:layout_height="30dp"
-                    app:srcCompat="@drawable/ic_app_placeholder"
+
+
                     app:tint="#94A3B8" />
 
                 <TextView
@@ -707,7 +713,8 @@
                 android:layout_height="1dp"
                 android:background="#1E2A44" />
 
-            <!-- App 3 -->
+            <!-- App 3
+            app:srcCompat="@drawable/ic_app_placeholder"-->
             <LinearLayout
                 android:id="@+id/rowApp3"
                 android:layout_width="match_parent"
@@ -720,7 +727,7 @@
                     android:id="@+id/imgApp3"
                     android:layout_width="30dp"
                     android:layout_height="30dp"
-                    app:srcCompat="@drawable/ic_app_placeholder"
+
                     app:tint="#94A3B8" />
 
                 <TextView

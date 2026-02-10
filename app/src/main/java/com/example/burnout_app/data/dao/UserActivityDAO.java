@@ -1,5 +1,6 @@
 package com.example.burnout_app.data.dao;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -24,7 +25,7 @@ public interface UserActivityDAO {
     @Query("SELECT COUNT(*) FROM screen_event WHERE date = :date")
     int countScreenEventsByDate(int date);
 
-    @Query("SELECT * FROM screen_event WHERE date = :date ORDER BY timestamp")
+    @Query("SELECT * FROM screen_event WHERE date = :date ORDER BY timestamp ASC")
     List<ScreenEventEntity> getScreenEventsByDate(int date);
 
     @Query("DELETE FROM screen_event WHERE date < :cutoffDate")
@@ -46,6 +47,8 @@ public interface UserActivityDAO {
     @Query("SELECT * FROM daily_metrics WHERE date = :date LIMIT 1")
     DailyMetricsEntity getDailyMetricsByDate(int date);
 
+    @Query("SELECT * FROM daily_metrics WHERE date = :epochDay LIMIT 1")
+    LiveData<DailyMetricsEntity> observeDailyMetrics(int epochDay);
 
     // HOURLY_METRIC
     @Insert(onConflict = OnConflictStrategy.REPLACE)

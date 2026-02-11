@@ -18,9 +18,9 @@ public class DailyMetricsEntity {
 
     public int notification_count;
 
-    public long night_timestamp; // si en tu MERE es timestamp (ms)
+    public long night_ms;
 
-    public DailyMetricsEntity(int date, long screen_ms, int unlock_count, long foreground_ms, int app_switch_count, int unique_apps_count, int session_count, int notification_count, long night_timestamp) {
+    public DailyMetricsEntity(int date, long screen_ms, int unlock_count, long foreground_ms, int app_switch_count, int unique_apps_count, int session_count, int notification_count, long night_ms) {
         this.date = date;
         this.screen_ms = screen_ms;
         this.unlock_count = unlock_count;
@@ -29,6 +29,6 @@ public class DailyMetricsEntity {
         this.unique_apps_count = unique_apps_count;
         this.session_count = session_count;
         this.notification_count = notification_count;
-        this.night_timestamp = night_timestamp;
+        this.night_ms = night_ms;
     }
 }

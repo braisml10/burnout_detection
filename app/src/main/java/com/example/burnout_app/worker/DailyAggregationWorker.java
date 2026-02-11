@@ -32,10 +32,9 @@ public class DailyAggregationWorker extends Worker {
     private static final String PREFS = "burnout_runtime";
     private static final String KEY_LAST_USAGE_CAPTURE_TS = "last_usage_capture_ts";
 
-    private static final long OVERLAP_MS = 60_000L;                 // 1 min
     private static final long FIRST_LOOKBACK_MS = 2 * 60 * 60_000L; // 2h
 
-    // Anti-doble-evento FG (algunos dispositivos duplican)
+    // Anti doble-evento FG inmediato (algunos dispositivos duplican)
     private static final long FG_DEBOUNCE_MS = 500L;
 
     // Screen state (tu entity: 1=ON, 0=OFF)
@@ -69,12 +68,12 @@ public class DailyAggregationWorker extends Worker {
                 new DailyMetricsEntity(today, 0L, 0, 0L, 0, 0, 0, 0, 0L)
         );
 
-        // 1) Captura incremental de UsageStats (FG/BG)
+        // 1) Captura incremental de UsageStats (FG/BG) SIN OVERLAP para evitar duplicados
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         long lastTs = prefs.getLong(KEY_LAST_USAGE_CAPTURE_TS, -1L);
 
         long start = (lastTs > 0)
-                ? Math.max(0L, lastTs - OVERLAP_MS)
+                ? (lastTs + 1)                        // <- evita re-leer el último evento
                 : Math.max(0L, now - FIRST_LOOKBACK_MS);
         long end = now;
 
@@ -82,10 +81,16 @@ public class DailyAggregationWorker extends Worker {
                 UsageStatsProvider.collectFgBgEvents(ctx, start, end);
 
         // 2) Raw -> Entity(app_id)
+        // Nota: esto quita duplicados dentro del MISMO batch (por seguridad)
+        HashSet<String> seen = new HashSet<>();
         List<AppUsageEventEntity> toInsert = new ArrayList<>(raw.size());
+
         for (UsageStatsProvider.RawUsageEvent r : raw) {
             long appId = resolveAppId(db, r.pkg);
             if (appId <= 0) continue;
+
+            String key = appId + "|" + r.type + "|" + r.ts;
+            if (!seen.add(key)) continue;
 
             toInsert.add(new AppUsageEventEntity(
                     appId,
@@ -110,66 +115,57 @@ public class DailyAggregationWorker extends Worker {
 
         long foregroundMs = 0L;
         int sessionCount = 0;
-        int appSwitchCount = 0;
-        HashSet<Long> uniqueApps = new HashSet<>();
 
         Map<Long, Long> fgMsByApp = new HashMap<>();
         Map<Long, Integer> openCountByApp = new HashMap<>();
 
         Long currentFgAppId = null;
         long openFgTs = -1L;
-
-        // NUEVO: para contar switches correctamente
-        Long lastForegroundAppId = null;
-
-        // NUEVO: para evitar duplicados de foreground
         long lastFgTs = -1L;
 
         for (AppUsageEventEntity e : events) {
-            uniqueApps.add(e.app_id);
 
             if (e.event_type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
 
-                // Debounce: si es el mismo appId y llega casi seguido, ignóralo
-                if (lastForegroundAppId != null
-                        && lastForegroundAppId.equals(e.app_id)
+                // Debounce SOLO si es el mismo app que ya estaba en fg y llegan pegados
+                if (currentFgAppId != null
+                        && currentFgAppId.equals(e.app_id)
                         && lastFgTs > 0
                         && (e.timestamp - lastFgTs) < FG_DEBOUNCE_MS) {
                     lastFgTs = e.timestamp;
                     continue;
                 }
 
-                // cerrar tramo anterior si había una app en fg (cuando entra otra a fg)
+                // cerrar tramo anterior si había una app en fg (cambio de app)
                 if (currentFgAppId != null && openFgTs > 0 && e.timestamp > openFgTs) {
                     long delta = e.timestamp - openFgTs;
                     foregroundMs += delta;
-                    fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+                    fgMsByApp.put(currentFgAppId,
+                            fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
                 }
 
-                // SWITCH: solo si es una app distinta a la última que estuvo en foreground
-                if (lastForegroundAppId != null && !lastForegroundAppId.equals(e.app_id)) {
-                    appSwitchCount++;
-                }
-
-                // sesión / open count
+                // sesión / apertura
                 sessionCount++;
-                openCountByApp.put(e.app_id, openCountByApp.getOrDefault(e.app_id, 0) + 1);
+                openCountByApp.put(e.app_id,
+                        openCountByApp.getOrDefault(e.app_id, 0) + 1);
 
+                // abrir nuevo tramo
                 currentFgAppId = e.app_id;
                 openFgTs = e.timestamp;
-
-                lastForegroundAppId = e.app_id;
                 lastFgTs = e.timestamp;
 
             } else if (e.event_type == UsageEvents.Event.MOVE_TO_BACKGROUND) {
 
                 // cerrar tramo si coincide con la app actual
-                if (currentFgAppId != null && e.app_id == currentFgAppId &&
-                        openFgTs > 0 && e.timestamp > openFgTs) {
+                if (currentFgAppId != null
+                        && e.app_id == currentFgAppId
+                        && openFgTs > 0
+                        && e.timestamp > openFgTs) {
 
                     long delta = e.timestamp - openFgTs;
                     foregroundMs += delta;
-                    fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+                    fgMsByApp.put(currentFgAppId,
+                            fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
 
                     currentFgAppId = null;
                     openFgTs = -1L;
@@ -181,7 +177,14 @@ public class DailyAggregationWorker extends Worker {
         if (currentFgAppId != null && openFgTs > 0 && now > openFgTs) {
             long delta = now - openFgTs;
             foregroundMs += delta;
-            fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+            fgMsByApp.put(currentFgAppId,
+                    fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+        }
+
+        // ✅ KPI: nº de apps diferentes usadas = apps con tiempo real en FG (>0 ms)
+        int uniqueAppsWithRealFg = 0;
+        for (long ms : fgMsByApp.values()) {
+            if (ms > 0) uniqueAppsWithRealFg++;
         }
 
         // 4) Screen aggregation: calcular screen_ms desde screen_event (ORDER BY timestamp ASC)
@@ -231,8 +234,9 @@ public class DailyAggregationWorker extends Worker {
             cur.screen_ms = screenMs;
             cur.foreground_ms = foregroundMs;
             cur.session_count = sessionCount;
-            cur.app_switch_count = appSwitchCount;
-            cur.unique_apps_count = uniqueApps.size();
+
+            // KPI cambiado:
+            cur.unique_apps_count = uniqueAppsWithRealFg;
 
             db.userActivityDao().upsertDailyMetrics(cur);
         }
@@ -240,8 +244,7 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Aggregate(today): screen_ms=" + screenMs +
                 " foreground_ms=" + foregroundMs +
                 " session_count=" + sessionCount +
-                " app_switch_count=" + appSwitchCount +
-                " unique_apps_count=" + uniqueApps.size() +
+                " unique_apps_count=" + uniqueAppsWithRealFg +
                 " screenEvents=" + screenEvents.size());
 
         // 6) Guardar daily_app_metric (por app)
@@ -251,7 +254,9 @@ public class DailyAggregationWorker extends Worker {
             long fg = entry.getValue();
             int openCount = openCountByApp.getOrDefault(appId, 0);
 
-            rows.add(new DailyAppMetricsEntity(today, appId, fg, openCount, 0));
+            if (fg > 0) { // solo apps con FG real
+                rows.add(new DailyAppMetricsEntity(today, appId, fg, openCount, 0));
+            }
         }
 
         if (!rows.isEmpty()) {

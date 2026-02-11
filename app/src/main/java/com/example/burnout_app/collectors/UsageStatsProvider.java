@@ -49,24 +49,42 @@ public class UsageStatsProvider {
             return out;
         }
 
-        UsageEvents events = usm.queryEvents(start, end);
-        UsageEvents.Event e = new UsageEvents.Event();
-
-        while (events.hasNextEvent()) {
-            events.getNextEvent(e);
-
-            int type = e.getEventType();
-            if (type != UsageEvents.Event.MOVE_TO_FOREGROUND &&
-                    type != UsageEvents.Event.MOVE_TO_BACKGROUND) {
-                continue;
+        UsageEvents events = null;
+        try {
+            events = usm.queryEvents(start, end);
+            if (events == null) {
+                Log.w(TAG, "queryEvents returned null");
+                return out;
             }
 
-            long ts = e.getTimeStamp();
-            String pkg = e.getPackageName();
-            if (pkg == null) pkg = "unknown";
+            UsageEvents.Event e = new UsageEvents.Event();
 
-            int date = TimeKey.epochDayLocal(ts);
-            out.add(new RawUsageEvent(ts, type, pkg, date));
+            while (events.hasNextEvent()) {
+                events.getNextEvent(e);
+
+                int type = e.getEventType();
+                if (type != UsageEvents.Event.MOVE_TO_FOREGROUND &&
+                        type != UsageEvents.Event.MOVE_TO_BACKGROUND) {
+                    continue;
+                }
+
+                long ts = e.getTimeStamp();
+                String pkg = e.getPackageName();
+                if (pkg == null) pkg = "unknown";
+
+                int date = TimeKey.epochDayLocal(ts);
+                out.add(new RawUsageEvent(ts, type, pkg, date));
+            }
+
+        } catch (Exception ex) {
+            Log.e(TAG, "collectFgBgEvents failed", ex);
+        } finally {
+            if (events != null) {
+                try {
+                    java.lang.reflect.Method m = events.getClass().getMethod("close");
+                    m.invoke(events);
+                } catch (Throwable ignored) {}
+            }
         }
 
         Log.d(TAG, "collectFgBgEvents: start=" + start + " end=" + end + " -> " + out.size());

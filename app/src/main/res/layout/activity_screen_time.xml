@@ -1,406 +1,434 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/screenTimeRoot"
+    android:id="@+id/screenTimeScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_app"
-    tools:context=".MainActivity">
+    android:background="#0B1220"
+    android:fillViewport="true">
 
-    <!-- Header (igual estilo Multitarea): back + título centrado
-        android:contentDescription="@string/back"-->
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="12dp"
-        android:background="@android:color/transparent"
-
-        app:srcCompat="@drawable/ic_chevron_left"
-        app:tint="@android:color/white"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="0dp"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/screenTimeRoot"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:gravity="center"
-        android:text="Tiempo en pantalla"
-        android:textColor="@android:color/white"
-        android:textStyle="bold"
-        android:textSize="16sp"
-        app:layout_constraintStart_toEndOf="@id/btnBack"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/btnBack"
-        app:layout_constraintBottom_toBottomOf="@id/btnBack"
-        tools:ignore="HardcodedText" />
+        android:padding="16dp">
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/scrollScreenTime"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        android:overScrollMode="never"
-        app:layout_constraintTop_toBottomOf="@id/btnBack"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        <!-- Top bar: back + title -->
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            app:srcCompat="@drawable/ic_chevron_left"
+            app:tint="@android:color/white"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/content"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="20dp">
+            android:gravity="center"
+            android:text="Tiempo en pantalla"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            app:layout_constraintStart_toEndOf="@id/btnBack"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/btnBack"
+            app:layout_constraintBottom_toBottomOf="@id/btnBack"
+            tools:ignore="HardcodedText" />
 
-            <!-- Day selector row ( <  Hoy  > )
-                android:contentDescription="@string/previous_day"-->
-            <ImageButton
-                android:id="@+id/btnPrevDay"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@android:color/transparent"
+        <!-- Day selector row: <  Hoy  > -->
+        <ImageButton
+            android:id="@+id/btnPrevDay"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginTop="10dp"
+            android:background="@android:color/transparent"
+            app:srcCompat="@drawable/ic_chevron_left"
+            app:tint="#94A3B8"
+            app:layout_constraintTop_toBottomOf="@id/btnBack"
+            app:layout_constraintStart_toStartOf="parent" />
 
-                app:srcCompat="@drawable/ic_chevron_left"
-                app:tint="@color/text_muted"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginTop="8dp"/>
+        <TextView
+            android:id="@+id/tvDayLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hoy"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            app:layout_constraintTop_toTopOf="@id/btnPrevDay"
+            app:layout_constraintBottom_toBottomOf="@id/btnPrevDay"
+            app:layout_constraintStart_toEndOf="@id/btnPrevDay"
+            app:layout_constraintEnd_toStartOf="@id/btnNextDay"
+            app:layout_constraintHorizontal_bias="0.5"
+            tools:ignore="HardcodedText" />
+
+        <ImageButton
+            android:id="@+id/btnNextDay"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginTop="10dp"
+            android:background="@android:color/transparent"
+            app:srcCompat="@drawable/ic_chevron_right"
+            app:tint="#94A3B8"
+            app:layout_constraintTop_toBottomOf="@id/btnBack"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- KPI row: 3 cards (CENTERED STACK: icon -> title -> value -> unit) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardKpiTotal"
+            android:layout_width="0dp"
+            android:layout_height="150dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="8dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#1E2A44"
+            app:cardBackgroundColor="#111B2E"
+            app:layout_constraintTop_toBottomOf="@id/btnPrevDay"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/cardKpiSessions"
+            app:layout_constraintHorizontal_chainStyle="spread"
+            app:layout_constraintHorizontal_weight="1">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="14dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/iconBgTotal"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="#0A2A3A"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="10dp"
+                        app:srcCompat="@drawable/ic_phone"
+                        app:tint="#22D3EE" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/tvTotalLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Tiempo total"
+                    android:textColor="#94A3B8"
+                    android:textSize="12sp"
+                    app:layout_constraintTop_toBottomOf="@id/iconBgTotal"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvTotalValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="0"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="30sp"
+                    app:layout_constraintTop_toBottomOf="@id/tvTotalLabel"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    tools:ignore="HardcodedText" />
+
+                <TextView
+                    android:id="@+id/tvTotalUnit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:gravity="center"
+                    android:text="min"
+                    android:textColor="#94A3B8"
+                    android:textSize="12sp"
+                    app:layout_constraintTop_toBottomOf="@id/tvTotalValue"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    tools:ignore="HardcodedText" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardKpiSessions"
+            android:layout_width="0dp"
+            android:layout_height="150dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#1E2A44"
+            app:cardBackgroundColor="#111B2E"
+            app:layout_constraintTop_toBottomOf="@id/btnPrevDay"
+            app:layout_constraintStart_toEndOf="@id/cardKpiTotal"
+            app:layout_constraintEnd_toStartOf="@id/cardKpiNight"
+            app:layout_constraintHorizontal_weight="1">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="14dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/iconBgSessions"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="#2A1430"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="10dp"
+                        app:srcCompat="@drawable/ic_sync"
+                        app:tint="#F472B6" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/tvSessionsLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Nº de sesiones"
+                    android:textColor="#94A3B8"
+                    android:textSize="12sp"
+                    app:layout_constraintTop_toBottomOf="@id/iconBgSessions"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvSessionsValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="0"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="30sp"
+                    app:layout_constraintTop_toBottomOf="@id/tvSessionsLabel"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    tools:ignore="HardcodedText" />
+
+                <TextView
+                    android:id="@+id/tvSessionsUnit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:gravity="center"
+                    android:text="aperturas"
+                    android:textColor="#94A3B8"
+                    android:textSize="12sp"
+                    app:layout_constraintTop_toBottomOf="@id/tvSessionsValue"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    tools:ignore="HardcodedText" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardKpiNight"
+            android:layout_width="0dp"
+            android:layout_height="150dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginStart="8dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#1E2A44"
+            app:cardBackgroundColor="#111B2E"
+            app:layout_constraintTop_toBottomOf="@id/btnPrevDay"
+            app:layout_constraintStart_toEndOf="@id/cardKpiSessions"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_weight="1">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="14dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/iconBgNight"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="#2A240F"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="10dp"
+                        app:srcCompat="@drawable/ic_moon"
+                        app:tint="#FBBF24" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/tvNightLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Uso nocturno"
+                    android:textColor="#94A3B8"
+                    android:textSize="12sp"
+                    app:layout_constraintTop_toBottomOf="@id/iconBgNight"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvNightValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="0"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="30sp"
+                    app:layout_constraintTop_toBottomOf="@id/tvNightLabel"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    tools:ignore="HardcodedText" />
+
+                <TextView
+                    android:id="@+id/tvNightUnit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:gravity="center"
+                    android:text="min"
+                    android:textColor="#94A3B8"
+                    android:textSize="12sp"
+                    app:layout_constraintTop_toBottomOf="@id/tvNightValue"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    tools:ignore="HardcodedText" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Chart 1 title -->
+        <TextView
+            android:id="@+id/tvDailyScreenTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Tiempo de pantalla diario"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            app:layout_constraintTop_toBottomOf="@id/cardKpiTotal"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:ignore="HardcodedText" />
+
+        <!-- Chart 1 card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardDailyLine"
+            android:layout_width="0dp"
+            android:layout_height="220dp"
+            android:layout_marginTop="10dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#1E2A44"
+            app:cardBackgroundColor="#0E1729"
+            app:layout_constraintTop_toBottomOf="@id/tvDailyScreenTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
             <TextView
-                android:id="@+id/tvDayLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Hoy"
-                android:textColor="@android:color/white"
-                android:textStyle="bold"
+                android:id="@+id/tvLinePlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="(Gráfico lineal pendiente)"
+                android:textColor="#64748B"
                 android:textSize="14sp"
-                app:layout_constraintStart_toEndOf="@id/btnPrevDay"
-                app:layout_constraintEnd_toStartOf="@id/btnNextDay"
-                app:layout_constraintTop_toTopOf="@id/btnPrevDay"
-                app:layout_constraintBottom_toBottomOf="@id/btnPrevDay"/>
+                tools:ignore="HardcodedText" />
+        </com.google.android.material.card.MaterialCardView>
 
-            <!-- android:contentDescription="@string/next_day" -->
-            <ImageButton
-                android:id="@+id/btnNextDay"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@android:color/transparent"
+        <!-- Chart 2 title -->
+        <TextView
+            android:id="@+id/tvNightActivityTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Actividad nocturna (22h–06h)"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            app:layout_constraintTop_toBottomOf="@id/cardDailyLine"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:ignore="HardcodedText" />
 
-                app:srcCompat="@drawable/ic_chevron_right"
-                app:tint="@color/text_muted"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/btnPrevDay"/>
+        <!-- Chart 2 card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardNightBars"
+            android:layout_width="0dp"
+            android:layout_height="220dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#1E2A44"
+            app:cardBackgroundColor="#0E1729"
+            app:layout_constraintTop_toBottomOf="@id/tvNightActivityTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
 
-            <!-- KPI cards row (3 cards) -->
-            <androidx.constraintlayout.widget.Guideline
-                android:id="@+id/g1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                app:layout_constraintGuide_percent="0.3333"/>
-
-            <androidx.constraintlayout.widget.Guideline
-                android:id="@+id/g2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                app:layout_constraintGuide_percent="0.6666"/>
-
-            <!-- Card: Tiempo total -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardTotal"
-                style="@style/BurnoutCard"
-                android:layout_width="0dp"
-                android:layout_height="110dp"
-                android:layout_marginTop="14dp"
-                android:layout_marginEnd="8dp"
-                app:layout_constraintTop_toBottomOf="@id/btnPrevDay"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/g1">
-
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="14dp">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/iconBgTotal"
-                        style="@style/BurnoutIconBg"
-                        app:cardBackgroundColor="@color/icon_bg_blue"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent">
-
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            app:srcCompat="@drawable/ic_phone"
-                            app:tint="@color/icon_blue"/>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:id="@+id/tvTotalLabel"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:text="Tiempo total"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp"
-                        app:layout_constraintTop_toBottomOf="@id/iconBgTotal"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        android:layout_marginTop="10dp"/>
-
-                    <TextView
-                        android:id="@+id/tvTotalValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="--"
-                        android:textColor="@android:color/white"
-                        android:textStyle="bold"
-                        android:textSize="20sp"
-                        app:layout_constraintTop_toBottomOf="@id/tvTotalLabel"
-                        app:layout_constraintStart_toStartOf="parent"
-                        android:layout_marginTop="4dp"/>
-
-                    <TextView
-                        android:id="@+id/tvTotalUnit"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="min"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp"
-                        app:layout_constraintBaseline_toBaselineOf="@id/tvTotalValue"
-                        app:layout_constraintStart_toEndOf="@id/tvTotalValue"
-                        android:layout_marginStart="6dp"/>
-                </androidx.constraintlayout.widget.ConstraintLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Card: Nº de sesiones -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardSessions"
-                style="@style/BurnoutCard"
-                android:layout_width="0dp"
-                android:layout_height="110dp"
-                android:layout_marginTop="14dp"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                app:layout_constraintTop_toBottomOf="@id/btnPrevDay"
-                app:layout_constraintStart_toStartOf="@id/g1"
-                app:layout_constraintEnd_toStartOf="@id/g2">
-
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="14dp">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/iconBgSessions"
-                        style="@style/BurnoutIconBg"
-                        app:cardBackgroundColor="@color/icon_bg_purple"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent">
-
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            app:srcCompat="@drawable/ic_sync"
-                            app:tint="@color/icon_purple"/>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:id="@+id/tvSessionsLabel"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:text="Nº de sesiones"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp"
-                        app:layout_constraintTop_toBottomOf="@id/iconBgSessions"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        android:layout_marginTop="10dp"/>
-
-                    <TextView
-                        android:id="@+id/tvSessionsValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="--"
-                        android:textColor="@android:color/white"
-                        android:textStyle="bold"
-                        android:textSize="20sp"
-                        app:layout_constraintTop_toBottomOf="@id/tvSessionsLabel"
-                        app:layout_constraintStart_toStartOf="parent"
-                        android:layout_marginTop="4dp"/>
-
-                    <TextView
-                        android:id="@+id/tvSessionsUnit"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="aperturas"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp"
-                        app:layout_constraintTop_toBottomOf="@id/tvSessionsValue"
-                        app:layout_constraintStart_toStartOf="parent"
-                        android:layout_marginTop="2dp"/>
-                </androidx.constraintlayout.widget.ConstraintLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Card: Uso nocturno -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardNight"
-                style="@style/BurnoutCard"
-                android:layout_width="0dp"
-                android:layout_height="110dp"
-                android:layout_marginTop="14dp"
-                android:layout_marginStart="8dp"
-                app:layout_constraintTop_toBottomOf="@id/btnPrevDay"
-                app:layout_constraintStart_toStartOf="@id/g2"
-                app:layout_constraintEnd_toEndOf="parent">
-
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="14dp">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/iconBgNight"
-                        style="@style/BurnoutIconBg"
-                        app:cardBackgroundColor="@color/icon_bg_amber"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent">
-
-                        <ImageView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:padding="10dp"
-                            app:srcCompat="@drawable/ic_moon"
-                            app:tint="@color/icon_amber"/>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:id="@+id/tvNightLabel"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:text="Uso nocturno"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp"
-                        app:layout_constraintTop_toBottomOf="@id/iconBgNight"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        android:layout_marginTop="10dp"/>
-
-                    <TextView
-                        android:id="@+id/tvNightValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="--"
-                        android:textColor="@android:color/white"
-                        android:textStyle="bold"
-                        android:textSize="20sp"
-                        app:layout_constraintTop_toBottomOf="@id/tvNightLabel"
-                        app:layout_constraintStart_toStartOf="parent"
-                        android:layout_marginTop="4dp"/>
-
-                    <TextView
-                        android:id="@+id/tvNightUnit"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="min"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp"
-                        app:layout_constraintBaseline_toBaselineOf="@id/tvNightValue"
-                        app:layout_constraintStart_toEndOf="@id/tvNightValue"
-                        android:layout_marginStart="6dp"/>
-                </androidx.constraintlayout.widget.ConstraintLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Section: Tiempo de pantalla diario -->
             <TextView
-                android:id="@+id/tvDailyChartTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tiempo de pantalla diario"
-                android:textColor="@android:color/white"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:layout_marginTop="18dp"
-                app:layout_constraintTop_toBottomOf="@id/cardTotal"
-                app:layout_constraintStart_toStartOf="parent"/>
+                android:id="@+id/tvBarsPlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="(Gráfico de barras pendiente)"
+                android:textColor="#64748B"
+                android:textSize="14sp"
+                tools:ignore="HardcodedText" />
+        </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardDailyChart"
-                style="@style/BurnoutCard"
-                android:layout_width="0dp"
-                android:layout_height="190dp"
-                android:layout_marginTop="10dp"
-                app:layout_constraintTop_toBottomOf="@id/tvDailyChartTitle"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
-
-                <FrameLayout
-                    android:id="@+id/dailyChartContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:id="@+id/tvDailyChartPlaceholder"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(Gráfico pendiente)"
-                        android:textColor="@color/text_muted"
-                        android:textSize="14sp"/>
-                </FrameLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Section: Actividad nocturna -->
-            <TextView
-                android:id="@+id/tvNightChartTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Actividad nocturna (22h-06h)"
-                android:textColor="@android:color/white"
-                android:textStyle="bold"
-                android:textSize="16sp"
-                android:layout_marginTop="18dp"
-                app:layout_constraintTop_toBottomOf="@id/cardDailyChart"
-                app:layout_constraintStart_toStartOf="parent"/>
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardNightChart"
-                style="@style/BurnoutCard"
-                android:layout_width="0dp"
-                android:layout_height="190dp"
-                android:layout_marginTop="10dp"
-                app:layout_constraintTop_toBottomOf="@id/tvNightChartTitle"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent">
-
-                <FrameLayout
-                    android:id="@+id/nightChartContainer"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:id="@+id/tvNightChartPlaceholder"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="(Gráfico pendiente)"
-                        android:textColor="@color/text_muted"
-                        android:textSize="14sp"/>
-                </FrameLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </androidx.core.widget.NestedScrollView>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.core.widget.NestedScrollView>

@@ -39,6 +39,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".ActivityScreenTime" />
+        <activity android:name=".ActivityMultitask" />
 
         <!-- Declaración de los servicios -->
 

@@ -35,6 +35,10 @@ public interface UsageDAO {
     @Query("DELETE FROM app_usage_event WHERE date < :cutoffDate")
     int deleteUsageEventsOlderThanDate(int cutoffDate);
 
+    @Query("SELECT package_name FROM app WHERE app_id = :appId LIMIT 1")
+    String getPackageNameByAppId(long appId);
+
+
     // DAILY_APP_METRIC
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDailyAppMetrics(List<DailyAppMetricsEntity> rows);

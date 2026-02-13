@@ -31,6 +31,15 @@ public interface UserActivityDAO {
     @Query("DELETE FROM screen_event WHERE date < :cutoffDate")
     int deleteScreenEventsOlderThanDate(int cutoffDate);
 
+    @Query("SELECT * FROM screen_event WHERE timestamp >= :start AND timestamp < :end ORDER BY timestamp ASC")
+    List<ScreenEventEntity> getScreenEventsBetween(long start, long end);
+
+    @Query("SELECT * FROM screen_event WHERE timestamp < :ts ORDER BY timestamp DESC LIMIT 1")
+    ScreenEventEntity getLastScreenEventBefore(long ts);
+
+    @Query("SELECT COUNT(*) FROM screen_event WHERE timestamp >= :start AND timestamp < :end AND state = :type")
+    int countScreenEventsOfType(long start, long end, int type);
+
     // DAILY_METRIC
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertDailyIfMissing(DailyMetricsEntity dailyMetrics);
@@ -47,7 +56,7 @@ public interface UserActivityDAO {
     @Query("SELECT * FROM daily_metrics WHERE date = :date LIMIT 1")
     DailyMetricsEntity getDailyMetricsByDate(int date);
 
-    @Query("SELECT * FROM daily_metrics WHERE date = :epochDay LIMIT 1")
+    @Query("SELECT * FROM daily_metrics WHERE date = :epochDay")
     LiveData<DailyMetricsEntity> observeDailyMetrics(int epochDay);
 
     // HOURLY_METRIC
@@ -59,8 +68,6 @@ public interface UserActivityDAO {
 
     @Query("DELETE FROM hourly_metric WHERE date < :cutoffDate")
     int deleteHourlyMetricsOlderThanDate(int cutoffDate);
-
-
 
 
 }

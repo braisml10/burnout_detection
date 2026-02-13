@@ -31,5 +31,4 @@ public class ActivityScreenTime extends AppCompatActivity {
 
     }
 
-
 }

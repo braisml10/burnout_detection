@@ -9,69 +9,43 @@ import com.example.burnout_app.data.db.BurnoutDatabase;
 import com.example.burnout_app.data.entity.ScreenEventEntity;
 import com.example.burnout_app.helpers.TimeKey;
 
-import java.sql.Time;
-import java.util.Collections;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ScreenStateReceiver extends BroadcastReceiver {
 
     private static final String TAG = "ScreenStateReceiver";
-    private static final ExecutorService IO = Executors.newSingleThreadExecutor();
+
+    public static final int STATE_OFF = 0;
+    public static final int STATE_ON = 1;
+    public static final int STATE_UNLOCK = 2; // ACTION_USER_PRESENT
 
     @Override
-    public void onReceive(Context context, Intent intent){
-        String action = intent.getAction();
-        if(action == null) return;
+    public void onReceive(Context context, Intent intent) {
+        if (intent == null || intent.getAction() == null) return;
+
+        final String action = intent.getAction();
+        final long ts = System.currentTimeMillis();
+        final int day = TimeKey.epochDayLocal(ts);
+        final int hour = TimeKey.hourOfDayLocal(ts);
 
         final int state;
-
         if (Intent.ACTION_SCREEN_ON.equals(action)) {
-            state = 1;
-        }
-        else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
-            state = 0;
-        }
-        // unlock_count
-        else if (Intent.ACTION_USER_PRESENT.equals(action)) {
-
-            final long ts = System.currentTimeMillis();
-            final int date = TimeKey.epochDayLocal(ts);
-
-            IO.execute(() -> {
-                try {
-                    BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
-                    // asegurar fila diaria (por si aún no existe)
-                    db.userActivityDao().insertDailyIfMissing(
-                            new com.example.burnout_app.data.entity.DailyMetricsEntity(date, 0L, 0, 0L, 0, 0, 0, 0, 0L)
-                    );
-                    db.userActivityDao().incDailyUnlocks(date, 1);
-                    Log.d(TAG, "incDailyUnlocks date=" + date);
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed incDailyUnlocks", e);
-                }
-            });
-            return;
-        }
-        else {
+            state = STATE_ON;
+        } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+            state = STATE_OFF;
+        } else if (Intent.ACTION_USER_PRESENT.equals(action)) {
+            state = STATE_UNLOCK;
+        } else {
             return;
         }
 
-        long ts = System.currentTimeMillis();
-        int date = TimeKey.epochDayLocal(ts);
-        int hour = TimeKey.hourOfDayLocal(ts);
+        Log.d(TAG, "onReceive action=" + action + " state=" + state + " ts=" + ts);
 
-        IO.execute(() -> {
-            try {
-                BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
-                ScreenEventEntity e = new ScreenEventEntity(ts, state, "broadcast", date, hour);
-                db.userActivityDao().insertScreenEvent(e);
-                Log.d(TAG, "Inserted screen_event state=" + state + " date=" + date + " hour=" + hour);
-            } catch (Exception ex) {
-                Log.e(TAG, "Failed inserting screen_event", ex);
-            }
+        Executors.newSingleThreadExecutor().execute(() -> {
+            BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
+            db.userActivityDao().insertScreenEvent(
+                    new ScreenEventEntity(ts, state, "broadcast", day, hour)
+            );
         });
-
     }
-
 }

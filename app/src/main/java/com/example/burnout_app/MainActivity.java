@@ -1,7 +1,6 @@
 package com.example.burnout_app;
 
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
@@ -15,7 +14,6 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
-import com.example.burnout_app.collectors.ScreenStateReceiver;
 import com.example.burnout_app.collectors.UsageStatsProvider;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DashboardViewModel;
@@ -31,16 +29,11 @@ public class MainActivity extends AppCompatActivity {
     private static final String UNIQUE_HOURLY = "daily_aggregation_hourly";
     private static final String UNIQUE_KICKOFF = "daily_aggregation_kickoff";
 
-    private ScreenStateReceiver screenReceiver;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
-
-        MaterialCardView cardScreenTime = findViewById(R.id.cardScreenTime);
-        MaterialCardView cardMultitask = findViewById(R.id.cardMultitask);
 
         setupCardNavigation(R.id.cardScreenTime, ActivityScreenTime.class, "cardScreenTime");
         setupCardNavigation(R.id.cardMultitask, ActivityMultitask.class, "cardMultitask");
@@ -61,15 +54,6 @@ public class MainActivity extends AppCompatActivity {
             value4.setText(s.communication);
         });
 
-        // Receiver pantalla (solo mientras la app vive)
-        screenReceiver = new ScreenStateReceiver();
-        IntentFilter f = new IntentFilter();
-        f.addAction(Intent.ACTION_SCREEN_ON);
-        f.addAction(Intent.ACTION_SCREEN_OFF);
-        f.addAction(Intent.ACTION_USER_PRESENT);
-        registerReceiver(screenReceiver, f);
-        Log.d(TAG, "ScreenStateReceiver registered.");
-
         // Permiso Usage Access
         if (!UsageStatsProvider.hasUsageAccess(this)) {
             Log.d(TAG, "Usage Access NOT granted -> opening settings");
@@ -80,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
 
         WorkManager wm = WorkManager.getInstance(this);
 
-        // 1) Programación HORARIA: idempotente (WorkManager manda)
+        // 1) Programación HORARIA: idempotente
         PeriodicWorkRequest hourlyReq =
                 new PeriodicWorkRequest.Builder(DailyAggregationWorker.class, 1, TimeUnit.HOURS)
                         .build();
@@ -92,8 +76,7 @@ public class MainActivity extends AppCompatActivity {
         );
         Log.d(TAG, "enqueueUniquePeriodicWork(" + UNIQUE_HOURLY + ", KEEP) called.");
 
-        // 2) (Opcional) Disparo inmediato 1 vez para test / primer arranque.
-        //    No spamea porque es unique + KEEP.
+        // 2) Disparo inmediato 1 vez
         OneTimeWorkRequest kickoff =
                 new OneTimeWorkRequest.Builder(DailyAggregationWorker.class).build();
 
@@ -103,17 +86,6 @@ public class MainActivity extends AppCompatActivity {
                 kickoff
         );
         Log.d(TAG, "enqueueUniqueWork(" + UNIQUE_KICKOFF + ", KEEP) called.");
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (screenReceiver != null) {
-            try {
-                unregisterReceiver(screenReceiver);
-                Log.d(TAG, "ScreenStateReceiver unregistered.");
-            } catch (Exception ignored) {}
-        }
     }
 
     private void setupCardNavigation(int cardId, Class<?> targetActivity, String labelForLogs) {

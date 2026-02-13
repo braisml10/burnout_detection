@@ -41,6 +41,10 @@ public class DailyAggregationWorker extends Worker {
     private static final long FIRST_LOOKBACK_MS = 2 * 60 * 60_000L; // 2h
     private static final long FG_DEBOUNCE_MS = 500L;
 
+    // Ventana para detectar "A->B" cuando el sistema emite BG(A) y luego FG(B)
+    // (ajústalo si quieres, 1000-2000ms suele ir bien)
+    private static final long SWITCH_GAP_MS = 1500L;
+
     public DailyAggregationWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
     }
@@ -118,7 +122,7 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Usage insert: inserted=" + toInsert.size()
                 + " todayCount=" + db.usageDao().countUsageEventsByDate(today));
 
-        // 3) agregación foreground por apps (hoy)
+        // 3) agregación foreground por apps (hoy) + app_switch_count
         List<AppUsageEventEntity> eventsToday = db.usageDao().getUsageEventsByDate(today);
 
         long foregroundMs = 0L;
@@ -131,10 +135,22 @@ public class DailyAggregationWorker extends Worker {
         long openFgTs = -1L;
         long lastFgTs = -1L;
 
+        // ---- KPI switches robusto (BG->FG cercano) + fallback FG->FG ----
+        int appSwitchCount = 0;
+        long lastSwitchTs = -1L;
+
+        Long pendingBgAppId = null;
+        long pendingBgTs = -1L;
+
+        final int SWITCH_DEBUG_LIMIT = 15;
+        ArrayList<String> switchDebug = new ArrayList<>();
+        // ---------------------------------------------------------------
+
         for (AppUsageEventEntity e : eventsToday) {
 
             if (e.event_type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
 
+                // anti-duplicado para la misma app muy seguido (tu lógica)
                 if (currentFgAppId != null
                         && currentFgAppId.equals(e.app_id)
                         && lastFgTs > 0
@@ -143,6 +159,51 @@ public class DailyAggregationWorker extends Worker {
                     continue;
                 }
 
+                // ========== SWITCH COUNT ==========
+                // Caso típico: BG(A) -> (gap pequeño) -> FG(B)
+                Long fromApp = null;
+                long fromTs = -1L;
+
+                boolean hasPending = (pendingBgAppId != null && pendingBgTs > 0
+                        && (e.timestamp - pendingBgTs) <= SWITCH_GAP_MS);
+
+                if (hasPending) {
+                    fromApp = pendingBgAppId;
+                    fromTs = pendingBgTs;
+                } else if (currentFgAppId != null) {
+                    // fallback: algunos dispositivos pueden hacer FG(B) sin BG(A) antes
+                    fromApp = currentFgAppId;
+                    fromTs = lastFgTs;
+                }
+
+                if (fromApp != null && !fromApp.equals(e.app_id)) {
+
+                    String fromPkg = safePkg(db, fromApp);
+                    String toPkg = safePkg(db, e.app_id);
+
+                    // filtrar “cerrar/ir a home”: launcher y systemui (y similares)
+                    boolean noise = isNoisePackage(fromPkg) || isNoisePackage(toPkg);
+
+                    if (!noise) {
+                        if (lastSwitchTs <= 0 || (e.timestamp - lastSwitchTs) >= FG_DEBOUNCE_MS) {
+                            appSwitchCount++;
+                            lastSwitchTs = e.timestamp;
+
+                            if (switchDebug.size() < SWITCH_DEBUG_LIMIT) {
+                                String how = hasPending ? "BG->FG" : "FG->FG";
+                                switchDebug.add(how + " " + fromPkg + " -> " + toPkg
+                                        + " @ " + e.timestamp + " (gap=" + (e.timestamp - fromTs) + "ms)");
+                            }
+                        }
+                    }
+                }
+
+                // consumimos el pending (si lo había); si era viejo, lo limpiamos igual
+                pendingBgAppId = null;
+                pendingBgTs = -1L;
+                // =================================
+
+                // cerrar segmento anterior (tu lógica)
                 if (currentFgAppId != null && openFgTs > 0 && e.timestamp > openFgTs) {
                     long delta = e.timestamp - openFgTs;
                     foregroundMs += delta;
@@ -167,6 +228,10 @@ public class DailyAggregationWorker extends Worker {
                     foregroundMs += delta;
                     fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
 
+                    // marcar “posible switch” (si a continuación viene FG de otra app, lo contamos)
+                    pendingBgAppId = currentFgAppId;
+                    pendingBgTs = e.timestamp;
+
                     currentFgAppId = null;
                     openFgTs = -1L;
                 }
@@ -187,9 +252,10 @@ public class DailyAggregationWorker extends Worker {
                 + " uniqueAppsWithRealFg=" + uniqueAppsWithRealFg
                 + " eventsToday=" + eventsToday.size());
 
+        Log.d(TAG, "SWITCH agg (A->B, no-home): appSwitchCount=" + appSwitchCount
+                + " debugSeq=" + switchDebug);
+
         // 4) ventanas nocturnas (ATRIBUCIÓN A DÍA DE FIN)
-        // - night ending TODAY: [yesterday 22:00, today 06:00] -> se guarda en TODAY
-        // - night ending TOMORROW: [today 22:00, tomorrow 06:00] -> se guarda en TOMORROW
         long nightStartEndingToday = atLocalHourMs(yesterday, 22, 0);
         long nightEndEndingToday   = atLocalHourMs(today, 6, 0);
 
@@ -345,6 +411,7 @@ public class DailyAggregationWorker extends Worker {
 
             cur.foreground_ms = foregroundMs;
             cur.unique_apps_count = uniqueAppsWithRealFg;
+            cur.app_switch_count = appSwitchCount;
 
             cur.night_ms = Math.max(0L, cur.night_ms + nightDeltaToday);
 
@@ -354,6 +421,7 @@ public class DailyAggregationWorker extends Worker {
                     + " unlock_count=" + cur.unlock_count
                     + " session_count=" + cur.session_count
                     + " foreground_ms=" + cur.foreground_ms
+                    + " app_switch_count=" + cur.app_switch_count
                     + " unique_apps=" + cur.unique_apps_count
                     + " night_ms(today)=" + cur.night_ms);
         }
@@ -400,6 +468,35 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "================ doWork END ================");
 
         return Result.success();
+    }
+
+    private String safePkg(BurnoutDatabase db, long appId) {
+        try {
+            String pkg = db.usageDao().getPackageNameByAppId(appId);
+            return (pkg != null) ? pkg : ("appId=" + appId);
+        } catch (Exception ex) {
+            return ("appId=" + appId);
+        }
+    }
+
+    /**
+     * Filtra "no-apps" típicas: launcher/home, system ui, etc.
+     * (puedes ampliar esta lista según tu móvil)
+     */
+    private boolean isNoisePackage(String pkg) {
+        if (pkg == null) return true;
+
+        // launcher/home (varía por fabricante)
+        if (pkg.contains("launcher")) return true;
+        if (pkg.contains("quickstep")) return true;
+
+        // system UI
+        if (pkg.equals("com.android.systemui")) return true;
+
+        // si quieres ser aún más estricto:
+        // if (pkg.startsWith("com.android.")) return true;
+
+        return false;
     }
 
     /**

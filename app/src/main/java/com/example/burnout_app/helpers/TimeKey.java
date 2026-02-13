@@ -103,6 +103,16 @@ public final class TimeKey {
         return cal.getTimeInMillis();
     }
 
+    public static int epochDayFromTimestamp(long ts) {
+        // días desde 1970-01-01
+        return (int) (ts / 86400000L);
+    }
+
+    public static String dateLabelFromEpochDay(int epochDay) {
+        long ts = epochDay * 86400000L;
+        return dateLabelFromTimestamp(ts); // reutiliza tu método existente
+    }
+
 
 
 }

@@ -126,7 +126,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:text="Tiempo total"
+                    android:text="Tiempo total en apps"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
                     app:layout_constraintTop_toBottomOf="@id/iconBgKpi1"
@@ -135,7 +135,7 @@
                     tools:ignore="HardcodedText" />
 
                 <TextView
-                    android:id="@+id/tvKpi1Value"
+                    android:id="@+id/tvAppsTimeValue"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
@@ -161,7 +161,7 @@
                     android:text="min"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
-                    app:layout_constraintTop_toBottomOf="@id/tvKpi1Value"
+                    app:layout_constraintTop_toBottomOf="@id/tvAppsTimeValue"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -226,7 +226,7 @@
                     tools:ignore="HardcodedText" />
 
                 <TextView
-                    android:id="@+id/tvKpi2Value"
+                    android:id="@+id/tvAppSwitchesValue"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
@@ -252,7 +252,7 @@
                     android:text="switches"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
-                    app:layout_constraintTop_toBottomOf="@id/tvKpi2Value"
+                    app:layout_constraintTop_toBottomOf="@id/tvAppSwitchesValue"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"
@@ -316,7 +316,7 @@
                     tools:ignore="HardcodedText" />
 
                 <TextView
-                    android:id="@+id/tvKpi3Value"
+                    android:id="@+id/tvUniqueAppsValue"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
@@ -342,7 +342,7 @@
                     android:text="apps"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
-                    app:layout_constraintTop_toBottomOf="@id/tvKpi3Value"
+                    app:layout_constraintTop_toBottomOf="@id/tvUniqueAppsValue"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"

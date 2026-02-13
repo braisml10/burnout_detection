@@ -78,7 +78,7 @@
             app:layout_constraintTop_toBottomOf="@id/btnBack"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- KPI row: 3 cards (CENTERED STACK: icon -> title -> value -> unit) -->
+        <!-- KPI row: 3 cards -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardKpiTotal"
             android:layout_width="0dp"
@@ -377,15 +377,11 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <TextView
-                android:id="@+id/tvLinePlaceholder"
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/lineChart"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="(Gráfico lineal pendiente)"
-                android:textColor="#64748B"
-                android:textSize="14sp"
-                tools:ignore="HardcodedText" />
+                android:padding="12dp" />
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Chart 2 title -->

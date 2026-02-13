@@ -7,6 +7,9 @@ import androidx.lifecycle.LiveData;
 import com.example.burnout_app.data.dao.UserActivityDAO;
 import com.example.burnout_app.data.db.BurnoutDatabase;
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
+import com.example.burnout_app.data.entity.HourlyMetricsEntity;
+
+import java.util.List;
 
 public class UserActivityRepository {
 
@@ -20,5 +23,10 @@ public class UserActivityRepository {
     public LiveData<DailyMetricsEntity> observeDailyMetrics(int epochDay) {
         return userActivityDao.observeDailyMetrics(epochDay);
     }
+
+    public LiveData<List<HourlyMetricsEntity>> observeHourlyMetrics(int epochDay) {
+        return userActivityDao.observeHourlyMetricsByDate(epochDay);
+    }
+
 }
 

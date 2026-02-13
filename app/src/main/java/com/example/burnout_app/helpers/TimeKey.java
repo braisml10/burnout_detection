@@ -110,7 +110,7 @@ public final class TimeKey {
 
     public static String dateLabelFromEpochDay(int epochDay) {
         long ts = epochDay * 86400000L;
-        return dateLabelFromTimestamp(ts); // reutiliza tu método existente
+        return dateLabelFromTimestamp(ts); // reutiliza tu méodo existente
     }
 
 

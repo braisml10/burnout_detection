@@ -69,5 +69,9 @@ public interface UserActivityDAO {
     @Query("DELETE FROM hourly_metric WHERE date < :cutoffDate")
     int deleteHourlyMetricsOlderThanDate(int cutoffDate);
 
+    @Query("SELECT * FROM hourly_metric WHERE date = :date ORDER BY hour ASC")
+    LiveData<List<HourlyMetricsEntity>> observeHourlyMetricsByDate(int date);
+
+
 
 }

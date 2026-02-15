@@ -20,7 +20,7 @@ public class DailyDetailViewModel extends AndroidViewModel {
     public static class UiState {
         public final String totalScreenTime;
         public final String sessions;   // desbloqueos
-        public final String night;      // minutos nocturnos
+        public final String night;      // minutos nocturnos (KPI)
 
         public UiState(String totalScreenTime, String sessions, String night) {
             this.totalScreenTime = totalScreenTime;
@@ -37,9 +37,14 @@ public class DailyDetailViewModel extends AndroidViewModel {
     private final LiveData<DailyMetricsEntity> metrics;
     private final LiveData<UiState> uiState;
 
-    // Hourly + serie para gráfica (06..21)
+    // Hourly del día seleccionado
     private final LiveData<List<HourlyMetricsEntity>> hourly;
+
+    // Serie para gráfico lineal: 06..21 (16 puntos)
     private final LiveData<int[]> screenMinutes6to22;
+
+    // Serie para barras nocturnas: 22,23,00,01,02,03,04,05,06 (9 puntos)
+    private final LiveData<int[]> nightMinutes22to6;
 
     public DailyDetailViewModel(@NonNull Application app) {
         super(app);
@@ -50,7 +55,7 @@ public class DailyDetailViewModel extends AndroidViewModel {
         selectedDay.setValue(today);
 
         // Re-observar Room cada vez que cambie el día
-        metrics = Transformations.switchMap(selectedDay, day -> repo.observeDailyMetrics(day));
+        metrics = Transformations.switchMap(selectedDay, repo::observeDailyMetrics);
 
         // Mapear entidad -> UiState
         uiState = Transformations.map(metrics, m -> {
@@ -68,7 +73,7 @@ public class DailyDetailViewModel extends AndroidViewModel {
         });
 
         // Hourly del día seleccionado
-        hourly = Transformations.switchMap(selectedDay, day -> repo.observeHourlyMetrics(day));
+        hourly = Transformations.switchMap(selectedDay, repo::observeHourlyMetrics);
 
         // Serie minutos/hora para gráfica: 06..21 (16 puntos)
         screenMinutes6to22 = Transformations.map(hourly, rows -> {
@@ -84,6 +89,29 @@ public class DailyDetailViewModel extends AndroidViewModel {
             }
             return out;
         });
+
+        // Serie noche: 22,23,00,01,02,03,04,05,06 (9 puntos)
+        // OJO: esto usa las horas 22-23 y 00-06 DEL MISMO epochDay.
+        // Si quieres noche real cruzando día (22-23 del día D + 00-06 del día D+1), dímelo y lo ajustamos.
+        nightMinutes22to6 = Transformations.map(hourly, rows -> {
+            int[] out = new int[9]; // idx 0=22h, 1=23h, 2=00h ... 8=06h
+            if (rows == null) return out;
+
+            for (HourlyMetricsEntity h : rows) {
+                if (h == null) continue;
+                int hour = h.hour;
+
+                int idx = -1;
+                if (hour == 22) idx = 0;
+                else if (hour == 23) idx = 1;
+                else if (hour >= 0 && hour <= 6) idx = 2 + hour; // 0->2 ... 6->8
+
+                if (idx >= 0) {
+                    out[idx] = (int) (h.screen_ms / 60000L);
+                }
+            }
+            return out;
+        });
     }
 
     public LiveData<UiState> getUiState() {
@@ -92,6 +120,10 @@ public class DailyDetailViewModel extends AndroidViewModel {
 
     public LiveData<int[]> getScreenMinutes6to22() {
         return screenMinutes6to22;
+    }
+
+    public LiveData<int[]> getNightMinutes22to6() {
+        return nightMinutes22to6;
     }
 
     public void loadDay(int epochDay) {

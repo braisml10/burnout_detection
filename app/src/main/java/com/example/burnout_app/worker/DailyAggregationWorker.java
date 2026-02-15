@@ -16,6 +16,7 @@ import com.example.burnout_app.data.entity.AppUsageEventEntity;
 import com.example.burnout_app.data.entity.DailyAppMetricsEntity;
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
+import com.example.burnout_app.helpers.AppCategoryResolver;
 import com.example.burnout_app.helpers.RetentionPolicy;
 import com.example.burnout_app.helpers.TimeKey;
 
@@ -71,6 +72,24 @@ public class DailyAggregationWorker extends Worker {
 
         SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
 
+        // ------------------------------------------------------------------
+        // ✅ FIX: tras pm clear / reinstalación, NO rellenar con histórico.
+        // Primera ejecución => solo setear last_usage_capture_ts=now y salir.
+        // ------------------------------------------------------------------
+        boolean firstRunAfterClear = !prefs.contains(KEY_LAST_USAGE_CAPTURE_TS);
+        if (firstRunAfterClear) {
+            Log.d(TAG, "First run after clear -> init last_usage_capture_ts=now and exit (avoid backfill)");
+            prefs.edit()
+                    .putLong(KEY_LAST_USAGE_CAPTURE_TS, now)
+                    .putBoolean(KEY_SCREEN_IS_ON, false)
+                    .putLong(KEY_SCREEN_OPEN_TS, -1L)
+                    .putLong(KEY_LAST_SCREEN_EVENT_TS, TimeKey.startOfDayMs(now))
+                    .putLong(KEY_LAST_UNLOCK_EVENT_TS, TimeKey.startOfDayMs(now))
+                    .apply();
+            Log.d(TAG, "================ doWork END ================");
+            return Result.success();
+        }
+
         // 0) asegurar filas daily (hoy + mañana para nocturno)
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(today, 0L, 0, 0L, 0, 0, 0, 0, 0L));
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(tomorrow, 0L, 0, 0L, 0, 0, 0, 0, 0L));
@@ -101,7 +120,10 @@ public class DailyAggregationWorker extends Worker {
         for (UsageStatsProvider.RawEvent r : rawAll) {
             if (r.pkg == null) continue;
 
-            long appId = resolveAppId(db, r.pkg);
+            // ✅ FIX extra: descartar cualquier raw event fuera del rango
+            if (r.ts < start || r.ts > end) continue;
+
+            long appId = resolveAppId(db, ctx, r.pkg);
             if (appId <= 0) continue;
 
             String key = appId + "|" + r.type + "|" + r.ts;
@@ -118,7 +140,7 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Usage insert: inserted=" + toInsert.size()
                 + " todayCount=" + db.usageDao().countUsageEventsByDate(today));
 
-        // 3) agregación foreground por apps (hoy) + switches (FIX)
+        // 3) agregación foreground por apps (hoy) + switches
         List<AppUsageEventEntity> eventsToday = db.usageDao().getUsageEventsByDate(today);
 
         long foregroundMs = 0L;
@@ -131,8 +153,7 @@ public class DailyAggregationWorker extends Worker {
         long openFgTs = -1L;
         long lastFgTs = -1L;
 
-        // ================= SWITCH COUNT (ROBUSTO) =================
-        // Cuenta switches solo cuando entra a FG una app "real" distinta
+        // ================= SWITCH COUNT =================
         int appSwitchCount = 0;
         long lastSwitchTs = -1L;
 
@@ -143,13 +164,13 @@ public class DailyAggregationWorker extends Worker {
 
         final int SWITCH_DEBUG_LIMIT = 15;
         ArrayList<String> switchDebug = new ArrayList<>();
-        // ==========================================================
+        // =================================================
 
         for (AppUsageEventEntity e : eventsToday) {
 
             if (e.event_type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
 
-                // anti-duplicado para la misma app muy seguido (tu lógica)
+                // anti-duplicado para la misma app muy seguido
                 if (currentFgAppId != null
                         && currentFgAppId.equals(e.app_id)
                         && lastFgTs > 0
@@ -158,7 +179,7 @@ public class DailyAggregationWorker extends Worker {
                     continue;
                 }
 
-                // -------- SWITCH (nuevo) --------
+                // -------- SWITCH --------
                 String toPkg = safePkg(db, e.app_id);
                 if (!isNoisePackage(toPkg)) {
 
@@ -187,9 +208,9 @@ public class DailyAggregationWorker extends Worker {
                         lastRealFgTs = e.timestamp;
                     }
                 }
-                // -------------------------------
+                // ------------------------
 
-                // cerrar segmento anterior (tu lógica)
+                // cerrar segmento anterior
                 if (currentFgAppId != null && openFgTs > 0 && e.timestamp > openFgTs) {
                     long delta = e.timestamp - openFgTs;
                     foregroundMs += delta;
@@ -247,10 +268,9 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Night windows: endToday=[" + nightStartEndingToday + "," + nightEndEndingToday + "]"
                 + " endTomorrow=[" + nightStartEndingTomorrow + "," + nightEndEndingTomorrow + "]");
 
-        // 5) SCREEN + UNLOCK incremental + nocturno por solape + HOURLY (split por hora)
+        // 5) SCREEN + UNLOCK incremental + nocturno por solape + HOURLY
         long startOfDay = TimeKey.startOfDayMs(now);
 
-        // reset por cambio de día
         if (TimeKey.epochDayLocal(prefs.getLong(KEY_SCREEN_OPEN_TS, -1L)) != today) {
             Log.d(TAG, "Day changed -> resetting screen/unlock incremental state");
             prefs.edit()
@@ -273,9 +293,6 @@ public class DailyAggregationWorker extends Worker {
         long nightDeltaToday = 0L;
         long nightDeltaTomorrow = 0L;
 
-        boolean sawScreenEvents = false;
-        boolean sawUnlockEvents = false;
-
         long[] screenMsByHour = new long[24];
         int[] unlockByHour = new int[24];
 
@@ -288,13 +305,14 @@ public class DailyAggregationWorker extends Worker {
 
             if (r.pkg != null) continue; // system only
 
-            // incremental de pantalla (excepto unlock)
+            // ✅ FIX extra: descartar fuera de rango
+            if (r.ts < start || r.ts > end) continue;
+
             if (r.type != UsageEvents.Event.KEYGUARD_HIDDEN && r.ts <= lastScreenEventTs) {
                 continue;
             }
 
             if (r.type == UsageEvents.Event.SCREEN_INTERACTIVE) {
-                sawScreenEvents = true;
 
                 if (!screenIsOn) {
                     screenIsOn = true;
@@ -304,16 +322,14 @@ public class DailyAggregationWorker extends Worker {
                 lastScreenEventTs = Math.max(lastScreenEventTs, r.ts);
 
             } else if (r.type == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
-                sawScreenEvents = true;
 
                 if (screenIsOn && screenOpenTs > 0 && r.ts > screenOpenTs) {
                     long segStart = screenOpenTs;
                     long segEnd = r.ts;
-                    long segMs = segEnd - segStart;
 
+                    long segMs = segEnd - segStart;
                     screenMsDelta += segMs;
 
-                    // hourly split (solo hoy)
                     addScreenSegmentToHours(screenMsByHour, today, segStart, segEnd);
 
                     long addToday = overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
@@ -321,11 +337,6 @@ public class DailyAggregationWorker extends Worker {
 
                     nightDeltaToday += addToday;
                     nightDeltaTomorrow += addTomorrow;
-
-                    Log.d(TAG, "SCREEN_OFF ts=" + r.ts
-                            + " seg=[" + segStart + "," + segEnd + "] segMs=" + segMs
-                            + " nightAddToday=" + addToday
-                            + " nightAddTomorrow=" + addTomorrow);
                 }
 
                 screenIsOn = false;
@@ -335,27 +346,22 @@ public class DailyAggregationWorker extends Worker {
             } else if (r.type == UsageEvents.Event.KEYGUARD_HIDDEN) {
 
                 if (r.ts > lastUnlockEventTs) {
-                    sawUnlockEvents = true;
                     unlockDelta++;
                     lastUnlockEventTs = Math.max(lastUnlockEventTs, r.ts);
 
                     int h = hourOfTsLocal(r.ts);
                     if (h >= 0 && h <= 23) unlockByHour[h]++;
-
-                    Log.d(TAG, "UNLOCK ts=" + r.ts + " unlockDelta=" + unlockDelta);
                 }
             }
         }
 
-        // si pantalla sigue ON, cerramos hasta now
         if (screenIsOn && screenOpenTs > 0 && now > screenOpenTs) {
             long segStart = screenOpenTs;
             long segEnd = now;
-            long segMs = segEnd - segStart;
 
+            long segMs = segEnd - segStart;
             screenMsDelta += segMs;
 
-            // hourly split (solo hoy)
             addScreenSegmentToHours(screenMsByHour, today, segStart, segEnd);
 
             long addToday = overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
@@ -364,12 +370,7 @@ public class DailyAggregationWorker extends Worker {
             nightDeltaToday += addToday;
             nightDeltaTomorrow += addTomorrow;
 
-            // mover open para evitar doble conteo
-            screenOpenTs = now;
-
-            Log.d(TAG, "SCREEN_STILL_ON closeToNow seg=[" + segStart + "," + segEnd + "] segMs=" + segMs
-                    + " nightAddToday=" + addToday
-                    + " nightAddTomorrow=" + addTomorrow);
+            screenOpenTs = now; // evitar doble conteo
         }
 
         prefs.edit()
@@ -379,24 +380,9 @@ public class DailyAggregationWorker extends Worker {
                 .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
                 .apply();
 
-        Log.d(TAG, "State(after): screenIsOn=" + screenIsOn
-                + " screenOpenTs=" + screenOpenTs
-                + " lastScreenEventTs=" + lastScreenEventTs
-                + " lastUnlockEventTs=" + lastUnlockEventTs);
-
-        Log.d(TAG, "Screen/unlock delta: screenMsDelta=" + screenMsDelta
-                + " unlockDelta=" + unlockDelta
-                + " sawScreenEvents=" + sawScreenEvents
-                + " sawUnlockEvents=" + sawUnlockEvents);
-
-        Log.d(TAG, "Night deltas (attribution): today+=" + nightDeltaToday + " tomorrow+=" + nightDeltaTomorrow);
-
         // 6) SAVE TODAY (daily_metrics)
         DailyMetricsEntity cur = db.userActivityDao().getDailyMetricsByDate(today);
-        if (cur == null) {
-            Log.e(TAG, "SAVE TODAY: cur==null (unexpected)");
-        } else {
-
+        if (cur != null) {
             cur.screen_ms = Math.max(0L, cur.screen_ms + screenMsDelta);
             cur.unlock_count = Math.max(0, cur.unlock_count + unlockDelta);
 
@@ -410,25 +396,14 @@ public class DailyAggregationWorker extends Worker {
             cur.night_ms = Math.max(0L, cur.night_ms + nightDeltaToday);
 
             db.userActivityDao().upsertDailyMetrics(cur);
-
-            Log.d(TAG, "SAVE TODAY: screen_ms=" + cur.screen_ms
-                    + " unlock_count=" + cur.unlock_count
-                    + " session_count=" + cur.session_count
-                    + " foreground_ms=" + cur.foreground_ms
-                    + " app_switch_count=" + cur.app_switch_count
-                    + " unique_apps=" + cur.unique_apps_count
-                    + " night_ms(today)=" + cur.night_ms);
         }
 
         // 7) SAVE TOMORROW (night)
         if (nightDeltaTomorrow > 0) {
             DailyMetricsEntity tm = db.userActivityDao().getDailyMetricsByDate(tomorrow);
-            if (tm == null) {
-                Log.e(TAG, "SAVE TOMORROW: tm==null (unexpected)");
-            } else {
+            if (tm != null) {
                 tm.night_ms = Math.max(0L, tm.night_ms + nightDeltaTomorrow);
                 db.userActivityDao().upsertDailyMetrics(tm);
-                Log.d(TAG, "SAVE TOMORROW: night_ms+=" + nightDeltaTomorrow + " -> night_ms=" + tm.night_ms);
             }
         }
 
@@ -447,9 +422,8 @@ public class DailyAggregationWorker extends Worker {
         if (!rows.isEmpty()) {
             db.usageDao().upsertDailyAppMetrics(rows);
         }
-        Log.d(TAG, "daily_app_metric rows=" + rows.size());
 
-        // 9) HOURLY persist (hoy) -> sumamos deltas a lo existente
+        // 9) HOURLY persist
         persistHourly(db, today, screenMsByHour, unlockByHour, switchByHour);
 
         // 10) retención
@@ -465,7 +439,6 @@ public class DailyAggregationWorker extends Worker {
                 + " deletedHourly=" + delHourly);
 
         Log.d(TAG, "================ doWork END ================");
-
         return Result.success();
     }
 
@@ -488,10 +461,6 @@ public class DailyAggregationWorker extends Worker {
 
             ArrayList<HourlyMetricsEntity> out = new ArrayList<>(24);
 
-            long screenDeltaMsSum = 0L;
-            int unlockDeltaSum = 0;
-            int switchDeltaSum = 0;
-
             for (int h = 0; h < 24; h++) {
                 HourlyMetricsEntity cur = byHour[h];
 
@@ -505,38 +474,24 @@ public class DailyAggregationWorker extends Worker {
                 int addUnlock = (unlockByHour != null && unlockByHour.length == 24) ? unlockByHour[h] : 0;
                 int addSwitch = (switchByHour != null && switchByHour.length == 24) ? switchByHour[h] : 0;
 
-                screenDeltaMsSum += addScreen;
-                unlockDeltaSum += addUnlock;
-                switchDeltaSum += addSwitch;
-
                 out.add(new HourlyMetricsEntity(
                         epochDay,
                         h,
                         Math.max(0L, baseScreen + addScreen),
                         Math.max(0, baseUnlock + addUnlock),
-                        Math.max(0, baseNotif),                  // (no lo calculamos aquí)
+                        Math.max(0, baseNotif),
                         Math.max(0, baseSwitch + addSwitch),
-                        Math.max(0, baseUnique)                  // (no lo calculamos aquí)
+                        Math.max(0, baseUnique)
                 ));
             }
 
             db.userActivityDao().upsertHourlyMetrics(out);
-
-            Log.d(TAG, "[HOURLY] persisted day=" + epochDay
-                    + " rows=" + out.size()
-                    + " screenDeltaMs=" + screenDeltaMsSum
-                    + " unlockDelta=" + unlockDeltaSum
-                    + " switchDelta=" + switchDeltaSum);
 
         } catch (Exception ex) {
             Log.e(TAG, "[HOURLY] persist failed: " + ex.getMessage(), ex);
         }
     }
 
-    /**
-     * Divide un segmento de pantalla [segStart, segEnd) en buckets por hora local.
-     * Solo suma dentro del epochDay indicado.
-     */
     private void addScreenSegmentToHours(long[] out24, int epochDay, long segStart, long segEnd) {
         if (out24 == null || out24.length != 24) return;
         if (segEnd <= segStart) return;
@@ -548,10 +503,9 @@ public class DailyAggregationWorker extends Worker {
         long e = Math.min(segEnd, dayEnd);
         if (e <= s) return;
 
-        // vamos hora por hora
         for (int h = 0; h < 24; h++) {
             long hs = atLocalHourMs(epochDay, h, 0);
-            long he = atLocalHourMs(epochDay, h, 0) + 60L * 60_000L;
+            long he = hs + 60L * 60_000L;
             long add = overlapMs(s, e, hs, he);
             if (add > 0) out24[h] += add;
         }
@@ -574,29 +528,14 @@ public class DailyAggregationWorker extends Worker {
         }
     }
 
-    /**
-     * Filtra "no-apps" típicas: launcher/home, system ui, etc.
-     * (puedes ampliar esta lista según tu móvil)
-     */
     private boolean isNoisePackage(String pkg) {
         if (pkg == null) return true;
-
-        // launcher/home (varía por fabricante)
         if (pkg.contains("launcher")) return true;
         if (pkg.contains("quickstep")) return true;
-
-        // system UI
         if (pkg.equals("com.android.systemui")) return true;
-
-        // añade aquí otros si te hace falta:
-        // if (pkg.startsWith("com.android.")) return true;
-
         return false;
     }
 
-    /**
-     * Timestamp local para epochDay a hora:minuto. (respeta TZ/DST)
-     */
     private long atLocalHourMs(int epochDay, int hour, int minute) {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(TimeKey.startOfDayMsFromEpochDay(epochDay));
@@ -615,14 +554,59 @@ public class DailyAggregationWorker extends Worker {
         return Math.max(0L, e - s);
     }
 
-    private long resolveAppId(BurnoutDatabase db, String pkg) {
+    /**
+     * RESOLVE APP ID + (AUTO) name + category en tabla app.
+     * NOTA: Este método asume que tu UsageDAO tiene:
+     * - getNameByAppId(long)
+     * - getCategoryByAppId(long)
+     * - updateAppName(long, String)
+     * - updateAppCategory(long, String)
+     */
+    private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
         Long existing = db.usageDao().getAppIdByPackageName(pkg);
-        if (existing != null) return existing;
+        if (existing != null) {
+            try {
+                String curName = db.usageDao().getNameByAppId(existing);
+                String curCat = db.usageDao().getCategoryByAppId(existing);
 
-        long inserted = db.usageDao().insertApp(new AppEntity(pkg, pkg, null, false));
+                if (curName == null || curName.trim().isEmpty() || curName.equals(pkg)) {
+                    String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
+                    db.usageDao().updateAppName(existing, label);
+                }
+
+                if (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat)) {
+                    String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
+                    if (cat == null) cat = "OTHER";
+                    db.usageDao().updateAppCategory(existing, cat);
+                }
+
+            } catch (Exception ignore) { }
+            return existing;
+        }
+
+        String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
+        String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
+        if (cat == null) cat = "OTHER";
+
+        long inserted = db.usageDao().insertApp(new AppEntity(pkg, label, cat, false));
         if (inserted > 0) return inserted;
 
         Long after = db.usageDao().getAppIdByPackageName(pkg);
-        return (after != null) ? after : -1L;
+        if (after != null) {
+            try {
+                String curName = db.usageDao().getNameByAppId(after);
+                String curCat = db.usageDao().getCategoryByAppId(after);
+
+                if (curName == null || curName.trim().isEmpty() || curName.equals(pkg)) {
+                    db.usageDao().updateAppName(after, label);
+                }
+                if (curCat == null || curCat.trim().isEmpty()) {
+                    db.usageDao().updateAppCategory(after, cat);
+                }
+            } catch (Exception ignore) { }
+            return after;
+        }
+
+        return -1L;
     }
 }

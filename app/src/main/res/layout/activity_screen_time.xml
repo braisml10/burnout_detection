@@ -216,7 +216,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:text="Nº de sesiones"
+                    android:text="Nº sesiones"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
                     app:layout_constraintTop_toBottomOf="@id/iconBgSessions"
@@ -415,15 +415,11 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
-            <TextView
-                android:id="@+id/tvBarsPlaceholder"
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/barChartNight"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="(Gráfico de barras pendiente)"
-                android:textColor="#64748B"
-                android:textSize="14sp"
-                tools:ignore="HardcodedText" />
+                android:padding="12dp" />
         </com.google.android.material.card.MaterialCardView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

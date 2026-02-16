@@ -43,6 +43,9 @@ public class DailyAggregationWorker extends Worker {
     private static final long FIRST_LOOKBACK_MS = 2 * 60 * 60_000L; // 2h
     private static final long FG_DEBOUNCE_MS = 500L;
 
+    private static final String PKG_SELF = "com.example.burnout_app";
+    private static final String PKG_LAUNCHER = "com.android.launcher";
+
     public DailyAggregationWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
     }
@@ -530,11 +533,31 @@ public class DailyAggregationWorker extends Worker {
 
     private boolean isNoisePackage(String pkg) {
         if (pkg == null) return true;
+
+        // Tu propia app
+        if (pkg.equals("com.example.burnout_app")) return true;
+
+        // Launcher
         if (pkg.contains("launcher")) return true;
         if (pkg.contains("quickstep")) return true;
+
+        // System UI
         if (pkg.equals("com.android.systemui")) return true;
+
+        // Servicios Android base
+        if (pkg.startsWith("com.android.")) return true;
+
+        // Google Play Services y módulos dinámicos
+        if (pkg.startsWith("com.google.android.gms")) return true;
+        if (pkg.contains("dynamite")) return true;
+
+        // Módulos Google internos
+        if (pkg.contains("tachyon")) return true;
+        if (pkg.contains("googlequicksearchbox")) return true;
+
         return false;
     }
+
 
     private long atLocalHourMs(int epochDay, int hour, int minute) {
         Calendar cal = Calendar.getInstance();
@@ -554,27 +577,26 @@ public class DailyAggregationWorker extends Worker {
         return Math.max(0L, e - s);
     }
 
-    /**
-     * RESOLVE APP ID + (AUTO) name + category en tabla app.
-     * NOTA: Este método asume que tu UsageDAO tiene:
-     * - getNameByAppId(long)
-     * - getCategoryByAppId(long)
-     * - updateAppName(long, String)
-     * - updateAppCategory(long, String)
-     */
     private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
+        boolean mustIgnore = shouldIgnorePkg(pkg);
+
         Long existing = db.usageDao().getAppIdByPackageName(pkg);
         if (existing != null) {
             try {
+                if (mustIgnore) {
+                    db.usageDao().updateAppIgnored(existing, true);
+                }
+
                 String curName = db.usageDao().getNameByAppId(existing);
-                String curCat = db.usageDao().getCategoryByAppId(existing);
+                String curCat  = db.usageDao().getCategoryByAppId(existing);
 
                 if (curName == null || curName.trim().isEmpty() || curName.equals(pkg)) {
                     String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
                     db.usageDao().updateAppName(existing, label);
                 }
 
-                if (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat)) {
+                // Si es ignored, nos da igual la categoría (pero puedes dejarlo igual)
+                if (!mustIgnore && (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat))) {
                     String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
                     if (cat == null) cat = "OTHER";
                     db.usageDao().updateAppCategory(existing, cat);
@@ -585,22 +607,25 @@ public class DailyAggregationWorker extends Worker {
         }
 
         String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
-        String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
+
+        String cat = mustIgnore ? "OTHER" : AppCategoryResolver.resolveCategory(ctx, pkg);
         if (cat == null) cat = "OTHER";
 
-        long inserted = db.usageDao().insertApp(new AppEntity(pkg, label, cat, false));
+        long inserted = db.usageDao().insertApp(new AppEntity(pkg, label, cat, mustIgnore));
         if (inserted > 0) return inserted;
 
         Long after = db.usageDao().getAppIdByPackageName(pkg);
         if (after != null) {
             try {
+                if (mustIgnore) db.usageDao().updateAppIgnored(after, true);
+
                 String curName = db.usageDao().getNameByAppId(after);
-                String curCat = db.usageDao().getCategoryByAppId(after);
+                String curCat  = db.usageDao().getCategoryByAppId(after);
 
                 if (curName == null || curName.trim().isEmpty() || curName.equals(pkg)) {
                     db.usageDao().updateAppName(after, label);
                 }
-                if (curCat == null || curCat.trim().isEmpty()) {
+                if (!mustIgnore && (curCat == null || curCat.trim().isEmpty())) {
                     db.usageDao().updateAppCategory(after, cat);
                 }
             } catch (Exception ignore) { }
@@ -609,4 +634,11 @@ public class DailyAggregationWorker extends Worker {
 
         return -1L;
     }
+
+
+    private static boolean shouldIgnorePkg(String pkg) {
+        if (pkg == null) return false;
+        return PKG_SELF.equals(pkg) || PKG_LAUNCHER.equals(pkg);
+    }
+
 }

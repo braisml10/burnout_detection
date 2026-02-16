@@ -1,5 +1,7 @@
 package com.example.burnout_app.data.dao;
 
+import android.database.Cursor;
+
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -39,8 +41,6 @@ public interface UsageDAO {
     @Query("SELECT package_name FROM app WHERE app_id = :appId LIMIT 1")
     String getPackageNameByAppId(long appId);
 
-    // ---- (nuevo) por package_name, más estable para el Worker ----
-
     @Query("SELECT category FROM app WHERE package_name = :pkg LIMIT 1")
     String getCategoryByPackageName(String pkg);
 
@@ -53,10 +53,23 @@ public interface UsageDAO {
     @Query("UPDATE app SET name = :name WHERE package_name = :pkg")
     int updateAppNameByPackageName(String pkg, String name);
 
-    // ---- (opcional pero útil) listar apps para UI/depurar ----
+    @Query("UPDATE app SET is_ignored = :ignored WHERE app_id = :appId")
+    int updateAppIgnored(long appId, boolean ignored);
+
     @Query("SELECT * FROM app ORDER BY name COLLATE NOCASE ASC")
     List<AppEntity> getAllApps();
 
+    @Query("UPDATE app SET is_ignored = :ignored WHERE package_name = :pkg")
+    int setIgnoredByPackage(String pkg, boolean ignored);
+
+    @Query("SELECT app_id, SUM(foreground_ms) AS total_ms " +
+            "FROM daily_app_metric " +
+            "WHERE date = :date " +
+            "GROUP BY app_id")
+    Cursor getFgByAppIdForDay(int date);
+
+    @Query("SELECT app_id, category, is_ignored FROM app")
+    Cursor getAppCategoryMap();
 
     // =========================================================
     // APP_USAGE_EVENT
@@ -74,15 +87,47 @@ public interface UsageDAO {
     @Query("DELETE FROM app_usage_event WHERE date < :cutoffDate")
     int deleteUsageEventsOlderThanDate(int cutoffDate);
 
-
     // =========================================================
     // DAILY_APP_METRIC
     // =========================================================
 
-    // ✅ Esto está bien porque tu entity tiene PK (date, app_id)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDailyAppMetrics(List<DailyAppMetricsEntity> rows);
 
     @Query("DELETE FROM daily_app_metric WHERE date < :cutoffDate")
     int deleteDailyAppMetricsOlderThanDate(int cutoffDate);
+
+    @Query(
+            "SELECT " +
+                    "  CASE " +
+                    "    WHEN a.category IS NULL OR TRIM(a.category) = '' THEN 'OTHER' " +
+                    "    ELSE UPPER(a.category) " +
+                    "  END AS category, " +
+                    "  SUM(dam.foreground_ms) AS total_ms " +
+                    "FROM daily_app_metric AS dam " +
+                    "JOIN app AS a ON dam.app_id = a.app_id " +
+                    "WHERE dam.date = :date " +
+                    "  AND a.is_ignored = 0 " +
+                    "GROUP BY category"
+    )
+    Cursor getCategoryTotalsMsForDay(int date);
+
+    @Query(
+            "SELECT dam.app_id AS app_id, " +
+                    "CASE " +
+                    "  WHEN a.name IS NULL OR TRIM(a.name) = '' THEN a.package_name " +
+                    "  ELSE a.name " +
+                    "END AS name, " +                      // <-- display_name en 'name'
+                    "a.package_name AS package_name, " +
+                    "SUM(dam.foreground_ms) AS total_ms " +
+                    "FROM daily_app_metric dam " +
+                    "JOIN app a ON a.app_id = dam.app_id " +
+                    "WHERE dam.date = :date " +
+                    "  AND a.is_ignored = 0 " +
+                    "GROUP BY dam.app_id " +
+                    "ORDER BY total_ms DESC " +
+                    "LIMIT :limit"
+    )
+    Cursor getTopAppsForDay(int date, int limit);
+
 }

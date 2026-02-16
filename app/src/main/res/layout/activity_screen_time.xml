@@ -40,7 +40,7 @@
             app:layout_constraintBottom_toBottomOf="@id/btnBack"
             tools:ignore="HardcodedText" />
 
-        <!-- Day selector row: <  Hoy  > -->
+        <!-- Day selector row -->
         <ImageButton
             android:id="@+id/btnPrevDay"
             android:layout_width="36dp"
@@ -133,22 +133,26 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent" />
 
+                <!-- VALUE FLEXIBLE: deja sitio fijo al Unit -->
                 <TextView
                     android:id="@+id/tvTotalValue"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="0dp"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:ellipsize="end"
                     android:text="0"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:textSize="30sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="22sp"
+                    android:autoSizeMaxTextSize="30sp"
+                    android:autoSizeStepGranularity="1sp"
                     app:layout_constraintTop_toBottomOf="@id/tvTotalLabel"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/tvTotalUnit"
                     tools:ignore="HardcodedText" />
 
                 <TextView
@@ -157,6 +161,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:gravity="center"
+                    android:includeFontPadding="true"
+                    android:paddingBottom="2dp"
+                    android:maxLines="1"
                     android:text="min"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
@@ -226,19 +233,22 @@
                 <TextView
                     android:id="@+id/tvSessionsValue"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="0dp"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:ellipsize="end"
                     android:text="0"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:textSize="30sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="22sp"
+                    android:autoSizeMaxTextSize="30sp"
+                    android:autoSizeStepGranularity="1sp"
                     app:layout_constraintTop_toBottomOf="@id/tvSessionsLabel"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/tvSessionsUnit"
                     tools:ignore="HardcodedText" />
 
                 <TextView
@@ -247,6 +257,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:gravity="center"
+                    android:includeFontPadding="true"
+                    android:paddingBottom="2dp"
+                    android:maxLines="1"
                     android:text="aperturas"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
@@ -305,7 +318,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:text="Uso nocturno"
+                    android:text="Uso noche"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
                     app:layout_constraintTop_toBottomOf="@id/iconBgNight"
@@ -315,19 +328,22 @@
                 <TextView
                     android:id="@+id/tvNightValue"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="0dp"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:ellipsize="end"
                     android:text="0"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:textSize="30sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="22sp"
+                    android:autoSizeMaxTextSize="30sp"
+                    android:autoSizeStepGranularity="1sp"
                     app:layout_constraintTop_toBottomOf="@id/tvNightLabel"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/tvNightUnit"
                     tools:ignore="HardcodedText" />
 
                 <TextView
@@ -336,6 +352,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:gravity="center"
+                    android:includeFontPadding="true"
+                    android:paddingBottom="2dp"
+                    android:maxLines="1"
                     android:text="min"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"

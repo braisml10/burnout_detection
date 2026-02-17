@@ -1,5 +1,7 @@
 package com.example.burnout_app.data.dao;
 
+import android.database.Cursor;
+
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -72,6 +74,14 @@ public interface UserActivityDAO {
     @Query("SELECT * FROM hourly_metric WHERE date = :date ORDER BY hour ASC")
     LiveData<List<HourlyMetricsEntity>> observeHourlyMetricsByDate(int date);
 
-
+    // hourly_metric
+    @Query("""
+        SELECT hour AS hour,
+               app_switch_count AS switches
+        FROM hourly_metric
+        WHERE date = :date
+        ORDER BY hour ASC
+    """)
+    Cursor getSwitchesPerHourForDay(int date);
 
 }

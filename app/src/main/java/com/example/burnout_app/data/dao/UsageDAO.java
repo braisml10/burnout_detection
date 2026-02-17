@@ -138,15 +138,5 @@ public interface UsageDAO {
     )
     Cursor getTotalForegroundMsForDay(int date);
 
-    // hourly_metric
-    @Query("""
-        SELECT hour AS hour,
-               app_switch_count AS switches
-        FROM hourly_metric
-        WHERE date = :date
-        ORDER BY hour ASC
-    """)
-    Cursor getSwitchesPerHourForDay(int date);
-
 
 }

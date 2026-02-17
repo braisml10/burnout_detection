@@ -60,7 +60,7 @@ public class ActivityScreenTime extends AppCompatActivity {
         if (barChartNight == null) {
             throw new IllegalStateException("barChartNight NULL: falta R.id.barChartNight en el layout");
         }
-        setupNightBarChart(barChartNight);
+        setupNightHeatStrip(barChartNight);
 
         vm = new ViewModelProvider(this).get(DailyDetailViewModel.class);
 
@@ -110,28 +110,20 @@ public class ActivityScreenTime extends AppCompatActivity {
             lineChart.invalidate();
         });
 
-        // Bar chart: noche 22..06 (22,23,00,01,02,03,04,05,06)
+        // ✅ Heat strip nocturno: 8 celdas (22..05)
         vm.getNightMinutes22to6().observe(this, minutes -> {
-            if (minutes == null) {
+            if (minutes == null || minutes.length == 0) {
                 barChartNight.clear();
                 barChartNight.invalidate();
                 return;
             }
 
-            List<BarEntry> entries = new ArrayList<>(minutes.length);
-            for (int i = 0; i < minutes.length; i++) {
-                entries.add(new BarEntry(i, minutes[i])); // X = 0..8
+            int[] mins8 = new int[8];
+            for (int i = 0; i < 8 && i < minutes.length; i++) {
+                mins8[i] = minutes[i];
             }
 
-            BarDataSet ds = new BarDataSet(entries, "Minutos");
-            ds.setColor(Color.parseColor("#F59E0B")); // naranja
-            ds.setDrawValues(false);
-
-            BarData data = new BarData(ds);
-            data.setBarWidth(0.7f);
-
-            barChartNight.setData(data);
-            barChartNight.invalidate();
+            renderNightHeatStrip(barChartNight, mins8);
         });
 
         // Flechas
@@ -170,7 +162,6 @@ public class ActivityScreenTime extends AppCompatActivity {
         c.setTouchEnabled(true);
         c.setPinchZoom(true);
 
-        // X: 6..22
         XAxis x = c.getXAxis();
         x.setPosition(XAxis.XAxisPosition.BOTTOM);
         x.setGranularity(1f);
@@ -186,7 +177,6 @@ public class ActivityScreenTime extends AppCompatActivity {
             }
         });
 
-        // Y: 0..60
         c.getAxisRight().setEnabled(false);
         c.getAxisLeft().setAxisMinimum(0f);
         c.getAxisLeft().setAxisMaximum(60f);
@@ -196,52 +186,68 @@ public class ActivityScreenTime extends AppCompatActivity {
         c.getAxisLeft().setDrawGridLines(true);
     }
 
-    private void setupNightBarChart(BarChart c) {
+    // ✅ Strip
+    private void setupNightHeatStrip(BarChart c) {
         c.getDescription().setEnabled(false);
         c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
 
-        c.setTouchEnabled(true);
+        c.setTouchEnabled(false);
         c.setPinchZoom(false);
         c.setScaleEnabled(false);
 
-        // X: índices 0..8 -> 22,23,00..06
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setAxisMinimum(-0.5f);
-        x.setAxisMaximum(8.5f);
-        x.setLabelCount(9, true);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setDrawGridLines(false);
-        x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
-                int i = Math.round(value);
-                switch (i) {
-                    case 0: return "22h";
-                    case 1: return "23h";
-                    case 2: return "00h";
-                    case 3: return "01h";
-                    case 4: return "02h";
-                    case 5: return "03h";
-                    case 6: return "04h";
-                    case 7: return "05h";
-                    case 8: return "06h";
-                    default: return "";
-                }
-            }
-        });
-
-        // Y: 0..60
         c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setAxisMaximum(60f);
-        c.getAxisLeft().setGranularity(10f);
-        c.getAxisLeft().setLabelCount(7, true);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
+        c.getAxisLeft().setEnabled(false);
 
-        // Ajustes visuales típicos para barras
+        XAxis x = c.getXAxis();
+        x.setEnabled(false);
+
+        c.setDrawGridBackground(false);
+        c.setDrawBorders(false);
+
+        c.setViewPortOffsets(0f, 0f, 0f, 0f);
+        c.setExtraOffsets(0f, 0f, 0f, 0f);
         c.setFitBars(true);
     }
+
+    private void renderNightHeatStrip(BarChart chart, int[] minutes8) {
+        final int ON  = Color.parseColor("#FACC15"); // amarillo vivo
+        final int OFF = Color.parseColor("#6B5A1A"); // amarillo apagado
+
+        final float ON_V  = 1.0f;
+        final float OFF_V = 1.0f; // ✅ clave: si es 0 no se dibuja
+
+        List<BarEntry> entries = new ArrayList<>(8);
+        List<Integer> colors = new ArrayList<>(8);
+
+        for (int i = 0; i < 8; i++) {
+            int m = (minutes8 != null && minutes8.length > i) ? minutes8[i] : 0;
+            boolean used = m > 0;
+
+            entries.add(new BarEntry(i, used ? ON_V : OFF_V));
+            colors.add(used ? ON : OFF);
+        }
+
+        BarDataSet ds = new BarDataSet(entries, "");
+        ds.setDrawValues(false);
+        ds.setColors(colors);
+        ds.setHighlightEnabled(false);
+
+        ds.setBarBorderWidth(1f);
+        ds.setBarBorderColor(Color.parseColor("#0E1729"));
+
+        BarData data = new BarData(ds);
+        data.setBarWidth(1.0f);
+
+        chart.setData(data);
+
+        chart.getXAxis().setAxisMinimum(-0.5f);
+        chart.getXAxis().setAxisMaximum(7.5f);
+
+        // ✅ fija el rango para que OFF_V se vea “bajito” y ON sea alto
+        chart.getAxisLeft().setAxisMinimum(0f);
+        chart.getAxisLeft().setAxisMaximum(1f);
+
+        chart.invalidate();
+    }
+
 }

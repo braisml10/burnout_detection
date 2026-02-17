@@ -113,7 +113,7 @@ public class AppsUsageViewModel extends AndroidViewModel {
 
     private final LiveData<UiState> uiState;
 
-    // ✅ KPI tiempo total (suma foreground_ms de todas las apps no ignoradas)
+    // KPI tiempo total (suma foreground_ms de todas las apps no ignoradas)
     private final MutableLiveData<String> appsTimeFiltered = new MutableLiveData<>();
 
     // Categorías
@@ -133,16 +133,14 @@ public class AppsUsageViewModel extends AndroidViewModel {
         userRepo = new UserActivityRepository(app);
         usageRepo = new UsageRepository(app);
 
-        LiveData<DailyMetricsEntity> src = Transformations.switchMap(selectedDay, day ->
-                userRepo.observeDailyMetrics(day)
-        );
+        // KPI superiores (switches + uniqueApps) salen de daily_metrics (agregado global)
+        LiveData<DailyMetricsEntity> src = Transformations.switchMap(selectedDay, userRepo::observeDailyMetrics);
 
         uiState = Transformations.map(src, m -> {
-            long fgMsAll = (m != null) ? m.foreground_ms : 0L;
-            int switches = (m != null) ? m.app_switch_count : 0;
+            long fgMsAll   = (m != null) ? m.foreground_ms : 0L;       // debug: puede incluir ignoradas
+            int switches  = (m != null) ? m.app_switch_count : 0;
             int uniqueApps = (m != null) ? m.unique_apps_count : 0;
 
-            // Solo para debug (esto incluye ignoradas si tu DailyMetrics lo incluye)
             Log.d("KPI_TOTAL", "DailyMetrics.foreground_ms (ALL, incl ignored) = " + fgMsAll);
 
             return new UiState(
@@ -188,8 +186,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
 
     private void loadCategories(int day) {
         io.execute(() -> {
-
-            // Total real (solo apps no ignoradas) -> KPI
             long totalMs = usageRepo.getTotalForegroundMsForDay(day);
             appsTimeFiltered.postValue(formatTimeKpi(totalMs));
 
@@ -228,7 +224,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
                     pOther
             );
 
-            // Debug: si DB vacía, pOther será 0 (no 100)
             Log.d("CAT_VM", "DAY " + day + " total=" + total + " pOther=" + pOther);
 
             categoryState.postValue(out);
@@ -237,7 +232,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
 
     private void loadTopApps(int day) {
         io.execute(() -> {
-            // total filtrado: el mismo que categorías (para porcentajes)
             long totalFiltered = 0L;
             Map<String, Long> cat = usageRepo.getCategoryTotalsMsForDay(day);
             for (Long v : cat.values()) totalFiltered += (v != null) ? v : 0L;
@@ -256,21 +250,16 @@ public class AppsUsageViewModel extends AndroidViewModel {
             int b2 = clampPct(p2);
             int b3 = clampPct(p3);
 
-            Log.d("TOP_APPS_VM", "DAY " + day + " totalFiltered=" + totalFiltered);
-            Log.d("TOP_APPS_VM", "1=" + n1 + " " + p1 + "%");
-            Log.d("TOP_APPS_VM", "2=" + n2 + " " + p2 + "%");
-            Log.d("TOP_APPS_VM", "3=" + n3 + " " + p3 + "%");
-
             topAppsState.postValue(new TopAppsState(n1, n2, n3, p1, p2, p3, b1, b2, b3));
         });
     }
 
-    // ✅ NUEVO: switches acumulados 0..24
+    // ✅ switches acumulados 0..24
     private void loadSwitchesChart(int day) {
         io.execute(() -> {
 
-            // Debe devolver int[24] con switches por hora
-            int[] perHour = usageRepo.getSwitchesPerHourForDay(day);
+            // ✅ hourly_metric -> UserActivityRepository (no UsageRepository)
+            int[] perHour = userRepo.getSwitchesPerHourForDay(day);
 
             if (perHour == null || perHour.length != 24) {
                 Log.d("SW_CHART", "perHour inválido (null o != 24). day=" + day);
@@ -289,10 +278,7 @@ public class AppsUsageViewModel extends AndroidViewModel {
                 entries.add(new Entry((float) h, (float) acc));
             }
 
-            // punto final en 24 para que llegue al borde derecho
             entries.add(new Entry(24f, (float) acc));
-
-            Log.d("SW_CHART", "DAY " + day + " total(acc)=" + acc + " maxY=" + max);
 
             switchesChartState.postValue(new SwitchesChartState(entries, max));
         });

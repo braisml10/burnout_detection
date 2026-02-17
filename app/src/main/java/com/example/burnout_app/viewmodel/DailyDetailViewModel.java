@@ -91,8 +91,6 @@ public class DailyDetailViewModel extends AndroidViewModel {
         });
 
         // Serie noche: 22,23,00,01,02,03,04,05,06 (9 puntos)
-        // OJO: esto usa las horas 22-23 y 00-06 DEL MISMO epochDay.
-        // Si quieres noche real cruzando día (22-23 del día D + 00-06 del día D+1), dímelo y lo ajustamos.
         nightMinutes22to6 = Transformations.map(hourly, rows -> {
             int[] out = new int[9]; // idx 0=22h, 1=23h, 2=00h ... 8=06h
             if (rows == null) return out;
@@ -114,6 +112,10 @@ public class DailyDetailViewModel extends AndroidViewModel {
         });
     }
 
+    // ---------------------------
+    // Getters
+    // ---------------------------
+
     public LiveData<UiState> getUiState() {
         return uiState;
     }
@@ -126,12 +128,20 @@ public class DailyDetailViewModel extends AndroidViewModel {
         return nightMinutes22to6;
     }
 
+    // ---------------------------
+    // API
+    // ---------------------------
+
     public void loadDay(int epochDay) {
         Integer current = selectedDay.getValue();
         if (current == null || current != epochDay) {
             selectedDay.setValue(epochDay);
         }
     }
+
+    // ---------------------------
+    // Helpers
+    // ---------------------------
 
     private static String formatScreenTime(long ms) {
         long totalMin = ms / 60000L;

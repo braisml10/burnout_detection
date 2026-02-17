@@ -6,7 +6,9 @@ import android.util.Log;
 
 import com.example.burnout_app.data.db.BurnoutDatabase;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class UsageRepository {
@@ -15,8 +17,12 @@ public class UsageRepository {
 
     public UsageRepository(Context ctx) {
         Context appCtx = ctx.getApplicationContext();
-        db = BurnoutDatabase.getInstance(ctx.getApplicationContext());
+        db = BurnoutDatabase.getInstance(appCtx);
     }
+
+    // =========================================================
+    // CATEGORY TOTALS (DailyAppMetric + App join) - UI: Multitask
+    // =========================================================
 
     /**
      * category -> total_ms (solo apps no ignoradas)
@@ -36,13 +42,13 @@ public class UsageRepository {
                 long ms = c.getLong(iMs);
 
                 Log.d("CAT_SQL", "category=" + cat + " ms=" + ms);
-
                 out.put(cat, ms);
             }
         } finally {
             c.close();
         }
 
+        // Garantiza que existan todas las categorías en el mapa (evita NPE/keys faltantes en UI)
         ensure(out, "SOCIAL");
         ensure(out, "ENTERTAINMENT");
         ensure(out, "MESSAGING");
@@ -51,14 +57,18 @@ public class UsageRepository {
 
         long sum = 0L;
         for (Long v : out.values()) sum += v;
-
         Log.d("CAT_SQL", "TOTAL SUM FROM SQL = " + sum);
 
         return out;
     }
 
-    // Total time using apps
+    // =========================================================
+    // TOTAL FOREGROUND (DailyAppMetric + App ignored filter)
+    // =========================================================
 
+    /**
+     * Total time using apps (foreground_ms) del día, excluyendo apps ignoradas.
+     */
     public long getTotalForegroundMsForDay(int date) {
 
         long total = 0L;
@@ -80,45 +90,10 @@ public class UsageRepository {
         return total;
     }
 
-    public int[] getSwitchesPerHourForDay(int date) {
+    // =========================================================
+    // TOP APPS (DailyAppMetric + App join) - UI: Multitask
+    // =========================================================
 
-        int[] out = new int[24]; // 0..23
-
-        Cursor c = db.usageDao().getSwitchesPerHourForDay(date);
-        try {
-            int iHour = c.getColumnIndexOrThrow("hour");
-            int iCnt  = c.getColumnIndexOrThrow("switches");
-
-            while (c.moveToNext()) {
-                int hour = c.getInt(iHour);
-                int cnt  = c.getInt(iCnt);
-
-                if (hour >= 0 && hour <= 23) {
-                    out[hour] = cnt;
-                }
-
-                Log.d("SW_SQL", "day=" + date + " hour=" + hour + " switches=" + cnt);
-            }
-        } finally {
-            c.close();
-        }
-
-        // Log rápido del vector final
-        StringBuilder sb = new StringBuilder();
-        sb.append("day=").append(date).append(" perHour=[");
-        for (int h = 0; h < 24; h++) {
-            if (h > 0) sb.append(",");
-            sb.append(out[h]);
-        }
-        sb.append("]");
-        Log.d("SW_SQL", sb.toString());
-
-        return out;
-    }
-
-    // ---------------------------------------------------------
-    // TOP APPS
-    // ---------------------------------------------------------
     public static class TopAppRow {
         public final long appId;
         public final String name;
@@ -133,8 +108,11 @@ public class UsageRepository {
         }
     }
 
-    public java.util.List<TopAppRow> getTopAppsForDay(int date, int limit) {
-        java.util.List<TopAppRow> out = new java.util.ArrayList<>();
+    /**
+     * Top N apps por foreground_ms del día, excluyendo apps ignoradas.
+     */
+    public List<TopAppRow> getTopAppsForDay(int date, int limit) {
+        List<TopAppRow> out = new ArrayList<>();
 
         Cursor c = db.usageDao().getTopAppsForDay(date, limit);
         try {
@@ -159,6 +137,9 @@ public class UsageRepository {
         return out;
     }
 
+    // =========================================================
+    // Helpers
+    // =========================================================
 
     private static void ensure(Map<String, Long> m, String k) {
         if (!m.containsKey(k)) m.put(k, 0L);

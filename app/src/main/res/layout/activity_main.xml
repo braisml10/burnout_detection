@@ -446,11 +446,10 @@
         app:layout_constraintStart_toStartOf="parent"
         tools:ignore="HardcodedText" />
 
-    <!-- CHART PLACEHOLDER (CLICKABLE, opcional) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardChart"
         android:layout_width="0dp"
-        android:layout_height="160dp"
+        android:layout_height="220dp"
         android:layout_marginTop="12dp"
         app:cardCornerRadius="18dp"
         app:cardElevation="0dp"
@@ -466,19 +465,20 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <FrameLayout
-            android:id="@+id/chartContainer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="(Gráfico pendiente: métricas por hora)"
-                android:textColor="#64748B"
-                android:textSize="14sp"
-                tools:ignore="HardcodedText" />
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/barChart3h"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
         </FrameLayout>
+
     </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

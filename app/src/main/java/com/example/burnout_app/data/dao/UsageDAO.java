@@ -130,4 +130,23 @@ public interface UsageDAO {
     )
     Cursor getTopAppsForDay(int date, int limit);
 
+    @Query(
+            "SELECT SUM(d.foreground_ms) AS total_ms " +
+                    "FROM daily_app_metric d " +
+                    "INNER JOIN app a ON d.app_id = a.app_id " +
+                    "WHERE d.date = :date AND a.is_ignored = 0"
+    )
+    Cursor getTotalForegroundMsForDay(int date);
+
+    // hourly_metric
+    @Query("""
+        SELECT hour AS hour,
+               app_switch_count AS switches
+        FROM hourly_metric
+        WHERE date = :date
+        ORDER BY hour ASC
+    """)
+    Cursor getSwitchesPerHourForDay(int date);
+
+
 }

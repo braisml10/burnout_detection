@@ -13,7 +13,9 @@ import com.example.burnout_app.data.entity.DailyMetricsEntity;
 import com.example.burnout_app.data.repo.UsageRepository;
 import com.example.burnout_app.data.repo.UserActivityRepository;
 import com.example.burnout_app.helpers.TimeKey;
+import com.github.mikephil.charting.data.Entry;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -91,6 +93,19 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
+    // ---------------------------
+    // SWITCHES CHART (acumulado 0..24)
+    // ---------------------------
+    public static class SwitchesChartState {
+        public final List<Entry> entries;
+        public final int maxY;
+
+        public SwitchesChartState(List<Entry> entries, int maxY) {
+            this.entries = entries;
+            this.maxY = maxY;
+        }
+    }
+
     private final UserActivityRepository userRepo;
     private final UsageRepository usageRepo;
 
@@ -98,7 +113,7 @@ public class AppsUsageViewModel extends AndroidViewModel {
 
     private final LiveData<UiState> uiState;
 
-    // ✅ KPI tiempo total (filtrado igual que categorías)
+    // ✅ KPI tiempo total (suma foreground_ms de todas las apps no ignoradas)
     private final MutableLiveData<String> appsTimeFiltered = new MutableLiveData<>();
 
     // Categorías
@@ -106,6 +121,9 @@ public class AppsUsageViewModel extends AndroidViewModel {
 
     // Top Apps
     private final MutableLiveData<TopAppsState> topAppsState = new MutableLiveData<>();
+
+    // Switches chart
+    private final MutableLiveData<SwitchesChartState> switchesChartState = new MutableLiveData<>();
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
 
@@ -124,6 +142,7 @@ public class AppsUsageViewModel extends AndroidViewModel {
             int switches = (m != null) ? m.app_switch_count : 0;
             int uniqueApps = (m != null) ? m.unique_apps_count : 0;
 
+            // Solo para debug (esto incluye ignoradas si tu DailyMetrics lo incluye)
             Log.d("KPI_TOTAL", "DailyMetrics.foreground_ms (ALL, incl ignored) = " + fgMsAll);
 
             return new UiState(
@@ -137,15 +156,22 @@ public class AppsUsageViewModel extends AndroidViewModel {
         loadAll(today);
     }
 
+    // ---------------------------
+    // Getters
+    // ---------------------------
     public LiveData<UiState> getUiState() { return uiState; }
 
     public LiveData<CategoryState> getCategoryState() { return categoryState; }
 
     public LiveData<String> getAppsTimeFiltered() { return appsTimeFiltered; }
 
-    // ✅ YA EXISTE
     public LiveData<TopAppsState> getTopAppsState() { return topAppsState; }
 
+    public LiveData<SwitchesChartState> getSwitchesChartState() { return switchesChartState; }
+
+    // ---------------------------
+    // Loading
+    // ---------------------------
     public void loadDay(int day) {
         Integer cur = selectedDay.getValue();
         if (cur == null || cur != day) {
@@ -157,10 +183,15 @@ public class AppsUsageViewModel extends AndroidViewModel {
     private void loadAll(int day) {
         loadCategories(day);
         loadTopApps(day);
+        loadSwitchesChart(day);
     }
 
     private void loadCategories(int day) {
         io.execute(() -> {
+
+            // Total real (solo apps no ignoradas) -> KPI
+            long totalMs = usageRepo.getTotalForegroundMsForDay(day);
+            appsTimeFiltered.postValue(formatTimeKpi(totalMs));
 
             Map<String, Long> ms = usageRepo.getCategoryTotalsMsForDay(day);
 
@@ -170,21 +201,19 @@ public class AppsUsageViewModel extends AndroidViewModel {
             long work   = get(ms, "WORK");
             long other  = get(ms, "OTHER");
 
-            long totalMsFiltered = social + ent + msg + work + other;
+            long total = social + ent + msg + work + other;
 
-            // ✅ KPI tiempo total = suma filtrada (cuadra con categorías)
-            appsTimeFiltered.postValue(formatTimeKpi(totalMsFiltered));
+            int pSocial = 0, pEnt = 0, pMsg = 0, pWork = 0, pOther = 0;
 
-            long total = totalMsFiltered;
-            if (total <= 0L) total = 1L;
+            if (total > 0L) {
+                pSocial = pct(social, total);
+                pEnt    = pct(ent, total);
+                pMsg    = pct(msg, total);
+                pWork   = pct(work, total);
 
-            int pSocial = pct(social, total);
-            int pEnt    = pct(ent, total);
-            int pMsg    = pct(msg, total);
-            int pWork   = pct(work, total);
-
-            int pOther = 100 - (pSocial + pEnt + pMsg + pWork);
-            pOther = clampPct(pOther);
+                pOther  = 100 - (pSocial + pEnt + pMsg + pWork);
+                pOther  = clampPct(pOther);
+            }
 
             CategoryState out = new CategoryState(
                     formatTimeShort(social),
@@ -199,9 +228,8 @@ public class AppsUsageViewModel extends AndroidViewModel {
                     pOther
             );
 
-            Log.d("CAT_VM", "---- DAY " + day + " ----");
-            Log.d("CAT_VM", "SOCIAL=" + social + " ENT=" + ent + " MSG=" + msg + " WORK=" + work + " OTHER=" + other);
-            Log.d("CAT_VM", "SUM FILTERED=" + totalMsFiltered);
+            // Debug: si DB vacía, pOther será 0 (no 100)
+            Log.d("CAT_VM", "DAY " + day + " total=" + total + " pOther=" + pOther);
 
             categoryState.postValue(out);
         });
@@ -209,7 +237,7 @@ public class AppsUsageViewModel extends AndroidViewModel {
 
     private void loadTopApps(int day) {
         io.execute(() -> {
-            // total filtrado: el mismo que KPI/ categorías
+            // total filtrado: el mismo que categorías (para porcentajes)
             long totalFiltered = 0L;
             Map<String, Long> cat = usageRepo.getCategoryTotalsMsForDay(day);
             for (Long v : cat.values()) totalFiltered += (v != null) ? v : 0L;
@@ -217,7 +245,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
 
             List<UsageRepository.TopAppRow> rows = usageRepo.getTopAppsForDay(day, 3);
 
-            // defaults UI
             String n1 = "--", n2 = "--", n3 = "--";
             int p1 = 0, p2 = 0, p3 = 0;
 
@@ -225,7 +252,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
             if (rows.size() > 1) { n2 = safe(rows.get(1).name); p2 = pct(rows.get(1).totalMs, totalFiltered); }
             if (rows.size() > 2) { n3 = safe(rows.get(2).name); p3 = pct(rows.get(2).totalMs, totalFiltered); }
 
-            // barras pueden ser igual que pct (0..100)
             int b1 = clampPct(p1);
             int b2 = clampPct(p2);
             int b3 = clampPct(p3);
@@ -239,6 +265,42 @@ public class AppsUsageViewModel extends AndroidViewModel {
         });
     }
 
+    // ✅ NUEVO: switches acumulados 0..24
+    private void loadSwitchesChart(int day) {
+        io.execute(() -> {
+
+            // Debe devolver int[24] con switches por hora
+            int[] perHour = usageRepo.getSwitchesPerHourForDay(day);
+
+            if (perHour == null || perHour.length != 24) {
+                Log.d("SW_CHART", "perHour inválido (null o != 24). day=" + day);
+                switchesChartState.postValue(new SwitchesChartState(new ArrayList<>(), 0));
+                return;
+            }
+
+            List<Entry> entries = new ArrayList<>(25);
+
+            int acc = 0;
+            int max = 0;
+
+            for (int h = 0; h < 24; h++) {
+                acc += perHour[h];
+                if (acc > max) max = acc;
+                entries.add(new Entry((float) h, (float) acc));
+            }
+
+            // punto final en 24 para que llegue al borde derecho
+            entries.add(new Entry(24f, (float) acc));
+
+            Log.d("SW_CHART", "DAY " + day + " total(acc)=" + acc + " maxY=" + max);
+
+            switchesChartState.postValue(new SwitchesChartState(entries, max));
+        });
+    }
+
+    // ---------------------------
+    // Helpers
+    // ---------------------------
     private static String safe(String s) {
         if (s == null) return "--";
         String t = s.trim();

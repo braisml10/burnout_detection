@@ -78,7 +78,7 @@
             app:layout_constraintTop_toBottomOf="@id/btnBack"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- KPI row: 3 cards (CENTERED STACK: icon -> title -> value -> unit) -->
+        <!-- KPI row: 3 cards -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardKpi1"
             android:layout_width="0dp"
@@ -126,7 +126,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:text="Tiempo total en apps"
+                    android:text="Tiempo apps"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
                     app:layout_constraintTop_toBottomOf="@id/iconBgKpi1"
@@ -134,22 +134,26 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     tools:ignore="HardcodedText" />
 
+                <!-- VALUE FLEXIBLE + autosize -->
                 <TextView
                     android:id="@+id/tvAppsTimeValue"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="0dp"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:ellipsize="end"
                     android:text="0"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:textSize="30sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="22sp"
+                    android:autoSizeMaxTextSize="30sp"
+                    android:autoSizeStepGranularity="1sp"
                     app:layout_constraintTop_toBottomOf="@id/tvKpi1Label"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/tvKpi1Sub"
                     tools:ignore="HardcodedText" />
 
                 <TextView
@@ -158,6 +162,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:gravity="center"
+                    android:includeFontPadding="true"
+                    android:paddingBottom="2dp"
+                    android:maxLines="1"
                     android:text="min"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
@@ -169,6 +176,7 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
+
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardKpi2"
@@ -217,7 +225,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:text="Cambios apps"
+                    android:text="Cambios app"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
                     app:layout_constraintTop_toBottomOf="@id/iconBgKpi2"
@@ -228,19 +236,22 @@
                 <TextView
                     android:id="@+id/tvAppSwitchesValue"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="0dp"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:ellipsize="end"
                     android:text="0"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:textSize="30sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="22sp"
+                    android:autoSizeMaxTextSize="30sp"
+                    android:autoSizeStepGranularity="1sp"
                     app:layout_constraintTop_toBottomOf="@id/tvKpi2Label"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/tvKpi2Unit"
                     tools:ignore="HardcodedText" />
 
                 <TextView
@@ -249,6 +260,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:gravity="center"
+                    android:includeFontPadding="true"
+                    android:paddingBottom="2dp"
+                    android:maxLines="1"
                     android:text="switches"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
@@ -260,6 +274,7 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
+
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardKpi3"
@@ -318,19 +333,22 @@
                 <TextView
                     android:id="@+id/tvUniqueAppsValue"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="0dp"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
                     android:maxLines="1"
-                    android:ellipsize="end"
                     android:text="0"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:textSize="30sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="22sp"
+                    android:autoSizeMaxTextSize="30sp"
+                    android:autoSizeStepGranularity="1sp"
                     app:layout_constraintTop_toBottomOf="@id/tvKpi3Label"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/tvKpi3Unit"
                     tools:ignore="HardcodedText" />
 
                 <TextView
@@ -339,6 +357,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:gravity="center"
+                    android:includeFontPadding="true"
+                    android:paddingBottom="2dp"
+                    android:maxLines="1"
                     android:text="apps"
                     android:textColor="#94A3B8"
                     android:textSize="12sp"
@@ -350,6 +371,7 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
+
 
         <!-- Tiempo por categoría header -->
         <TextView
@@ -636,15 +658,11 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <TextView
-                android:id="@+id/tvSwitchesPlaceholder"
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/chartSwitches"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="(Gráfico pendiente)"
-                android:textColor="#64748B"
-                android:textSize="14sp"
-                tools:ignore="HardcodedText" />
+                android:padding="14dp" />
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Most used apps -->

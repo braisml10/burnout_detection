@@ -79,18 +79,18 @@ public class DailyAggregationWorker extends Worker {
         // ✅ FIX: tras pm clear / reinstalación, NO rellenar con histórico.
         // Primera ejecución => solo setear last_usage_capture_ts=now y salir.
         // ------------------------------------------------------------------
+        long lastTs = prefs.getLong(KEY_LAST_USAGE_CAPTURE_TS, -1L);
         boolean firstRunAfterClear = !prefs.contains(KEY_LAST_USAGE_CAPTURE_TS);
         if (firstRunAfterClear) {
-            Log.d(TAG, "First run after clear -> init last_usage_capture_ts=now and exit (avoid backfill)");
+            Log.d(TAG, "First run after clear -> init last_usage_capture_ts with short lookback (no backfill huge)");
+            lastTs = now - 30 * 60_000L; // 30 min
             prefs.edit()
-                    .putLong(KEY_LAST_USAGE_CAPTURE_TS, now)
+                    .putLong(KEY_LAST_USAGE_CAPTURE_TS, lastTs)
                     .putBoolean(KEY_SCREEN_IS_ON, false)
                     .putLong(KEY_SCREEN_OPEN_TS, -1L)
                     .putLong(KEY_LAST_SCREEN_EVENT_TS, TimeKey.startOfDayMs(now))
                     .putLong(KEY_LAST_UNLOCK_EVENT_TS, TimeKey.startOfDayMs(now))
                     .apply();
-            Log.d(TAG, "================ doWork END ================");
-            return Result.success();
         }
 
         // 0) asegurar filas daily (hoy + mañana para nocturno)
@@ -98,7 +98,6 @@ public class DailyAggregationWorker extends Worker {
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(tomorrow, 0L, 0, 0L, 0, 0, 0, 0, 0L));
 
         // 1) captura incremental SIN solape
-        long lastTs = prefs.getLong(KEY_LAST_USAGE_CAPTURE_TS, -1L);
         long start = (lastTs > 0) ? (lastTs + 1) : Math.max(0L, now - FIRST_LOOKBACK_MS);
         long end = now;
 
@@ -596,10 +595,13 @@ public class DailyAggregationWorker extends Worker {
                 }
 
                 // Si es ignored, nos da igual la categoría (pero puedes dejarlo igual)
-                if (!mustIgnore && (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat))) {
-                    String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
-                    if (cat == null) cat = "OTHER";
-                    db.usageDao().updateAppCategory(existing, cat);
+                if (!mustIgnore) {
+                    String desiredCat = AppCategoryResolver.resolveCategory(ctx, pkg);
+                    if (desiredCat == null) desiredCat = "OTHER";
+
+                    if (curCat == null || !curCat.equalsIgnoreCase(desiredCat)) {
+                        db.usageDao().updateAppCategory(existing, desiredCat);
+                    }
                 }
 
             } catch (Exception ignore) { }
@@ -607,6 +609,24 @@ public class DailyAggregationWorker extends Worker {
         }
 
         String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
+
+        if (label != null) label = label.trim();
+
+        boolean labelOk = (label != null && !label.isEmpty() && !label.equalsIgnoreCase(pkg));
+
+        if (labelOk) {
+            String curName = db.usageDao().getNameByAppId(existing);
+
+            boolean mustUpdateName =
+                    (curName == null || curName.trim().isEmpty()) ||
+                            curName.equalsIgnoreCase(pkg) ||
+                            looksLikePackage(curName) ||
+                            !curName.trim().equals(label);
+
+            if (mustUpdateName) {
+                db.usageDao().updateAppName(existing, label);
+            }
+        }
 
         String cat = mustIgnore ? "OTHER" : AppCategoryResolver.resolveCategory(ctx, pkg);
         if (cat == null) cat = "OTHER";
@@ -634,6 +654,25 @@ public class DailyAggregationWorker extends Worker {
 
         return -1L;
     }
+
+    private static boolean looksLikePackage(String s) {
+        if (s == null) return false;
+        String t = s.trim();
+        if (t.isEmpty()) return false;
+
+        // heurística simple: tiene puntos, sin espacios, y suele empezar por com./org./net./android
+        if (t.contains(" ") ) return false;
+        if (!t.contains(".")) return false;
+
+        return t.startsWith("com.")
+                || t.startsWith("org.")
+                || t.startsWith("net.")
+                || t.startsWith("io.")
+                || t.startsWith("android")
+                || t.startsWith("com.android")
+                || t.startsWith("com.google");
+    }
+
 
 
     private static boolean shouldIgnorePkg(String pkg) {

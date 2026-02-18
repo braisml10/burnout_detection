@@ -3,6 +3,7 @@ package com.example.burnout_app.helpers;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.util.Log;
 
 import java.util.Locale;
 
@@ -68,25 +69,25 @@ public class AppCategoryResolver {
     }
 
     public static String resolveAppLabel(Context ctx, String packageName) {
-        if (ctx == null || packageName == null) return packageName;
-
         try {
             PackageManager pm = ctx.getPackageManager();
             ApplicationInfo ai = pm.getApplicationInfo(packageName, 0);
+
             CharSequence label = pm.getApplicationLabel(ai);
-            String out = (label != null) ? label.toString() : null;
 
-            if (out == null || out.trim().isEmpty()) return packageName;
-            return out;
+            if (label != null) {
+                String name = label.toString().trim();
+                if (!name.isEmpty()) return name;
+            }
 
-        } catch (PackageManager.NameNotFoundException e) {
-            return packageName;
-        } catch (SecurityException e) {
-            return packageName;
-        } catch (Throwable t) {
-            return packageName;
+        } catch (Exception e) {
+            Log.e("APP_LABEL", "Label error for " + packageName, e);
         }
+
+        return packageName;
     }
+
+
 
     // ==========================
     // Heurísticas por paquete
@@ -107,23 +108,21 @@ public class AppCategoryResolver {
                 "messenger",
                 "line.android",
                 "kik",
-                "discord",          // si lo consideras chat (muchos lo usan así)
-                "slack",            // a veces WORK, pero si prefieres WORK, muévelo abajo
+                "discord",
+                "slack",
                 "wechat",
                 "viber"
         )) {
-            // Si prefieres Slack como WORK, quítalo de aquí y déjalo en WORK.
             if (p.contains("slack")) return WORK;
             return MESSAGING;
         }
 
-        // Social
+        // Social (⚠️ quito "x.")
         if (containsAny(p,
                 "instagram",
                 "facebook",
-                "fb.",              // algunos paquetes
-                "twitter",
-                "x.",               // ojo: algunos paquetes raros
+                "fb.",              // ok
+                "twitter",          // suficiente para X
                 "tiktok",
                 "reddit",
                 "snapchat",
@@ -135,7 +134,7 @@ public class AppCategoryResolver {
             return SOCIAL;
         }
 
-        // Entretenimiento (streaming / música / vídeo / juegos)
+        // Entretenimiento
         if (containsAny(p,
                 "netflix",
                 "primevideo",
@@ -151,7 +150,7 @@ public class AppCategoryResolver {
                 "deezer",
                 "steam",
                 "epicgames",
-                "supercell",        // clash royale/brawl stars etc.
+                "supercell",
                 "riotgames"
         )) {
             return ENTERTAINMENT;
@@ -167,7 +166,7 @@ public class AppCategoryResolver {
                 "word",
                 "excel",
                 "powerpoint",
-                "google.android.gm",    // Gmail
+                "com.google.android.gm",
                 "com.google.android.apps.docs",
                 "com.google.android.apps.sheets",
                 "com.google.android.apps.meetings",
@@ -187,23 +186,29 @@ public class AppCategoryResolver {
     }
 
     private static boolean isNoisePackage(String p) {
+        if (p == null) return true;
+
         // launcher/home (varía por fabricante)
         if (p.contains("launcher")) return true;
         if (p.contains("quickstep")) return true;
 
-        // system ui / settings
+        // system ui / settings / permission controller
         if (p.equals("com.android.systemui")) return true;
-        if (p.startsWith("com.android.")) {
-            // excepción: chrome etc. se manejan fuera si quieres, pero por defecto lo dejamos como OTHER
-            // Puedes afinar aquí si quieres.
-            return p.contains("permissioncontroller") || p.contains("settings");
-        }
+        if (p.contains("permissioncontroller")) return true;
+        if (p.equals("com.android.settings")) return true;
+
+        // Google “módulos/servicios” que NO quieres tratar como apps reales
+        if (p.contains("dynamite")) return true;                 // com.google.android.apps.dynamite
+        if (p.contains("googlequicksearchbox")) return true;     // search / assistant
+        if (p.contains("tachyon")) return true;                  // meet core
+        if (p.startsWith("com.google.android.gms")) return true; // play services
 
         // Samsung / OEM
         if (p.startsWith("com.sec.android.app.launcher")) return true;
 
         return false;
     }
+
 
     private static boolean containsAny(String haystack, String... needles) {
         if (haystack == null) return false;

@@ -157,9 +157,9 @@ public class ActivityMultitask extends AppCompatActivity {
         vm.getTopAppsState().observe(this, t -> {
             if (t == null) return;
 
-            tvApp1Name.setText(prettyName(t.name1));
-            tvApp2Name.setText(prettyName(t.name2));
-            tvApp3Name.setText(prettyName(t.name3));
+            tvApp1Name.setText(t.name1);
+            tvApp2Name.setText(t.name2);
+            tvApp3Name.setText(t.name3);
 
             tvApp1Pct.setText(t.pct1 + "%");
             tvApp2Pct.setText(t.pct2 + "%");

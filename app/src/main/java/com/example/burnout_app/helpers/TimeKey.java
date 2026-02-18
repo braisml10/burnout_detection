@@ -57,7 +57,7 @@ public final class TimeKey {
     }
 
     public static String formatEpochDay(int epochDay) {
-        long startOfDayMs = epochDay * 86_400_000L;
+        long startOfDayMs = startOfDayMsFromEpochDay(epochDay); // ✅ LOCAL
 
         Calendar cal = Calendar.getInstance(); // local timezone
         cal.setTimeInMillis(startOfDayMs);
@@ -65,6 +65,7 @@ public final class TimeKey {
         SimpleDateFormat sdf = new SimpleDateFormat("d MMMM", new Locale("es", "ES"));
         return sdf.format(cal.getTime());
     }
+
 
     public static String dateLabelFromTimestamp(long timestampMs) {
         Calendar cal = Calendar.getInstance(); // timezone local del dispositivo
@@ -104,14 +105,15 @@ public final class TimeKey {
     }
 
     public static int epochDayFromTimestamp(long ts) {
-        // días desde 1970-01-01
-        return (int) (ts / 86400000L);
+        return epochDayLocal(ts);
     }
 
+
     public static String dateLabelFromEpochDay(int epochDay) {
-        long ts = epochDay * 86400000L;
-        return dateLabelFromTimestamp(ts); // reutiliza tu méodo existente
+        long tsLocal = startOfDayMsFromEpochDay(epochDay); // ✅ LOCAL
+        return dateLabelFromTimestamp(tsLocal);
     }
+
 
 
 

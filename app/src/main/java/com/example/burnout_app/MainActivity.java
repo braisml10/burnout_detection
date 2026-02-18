@@ -9,11 +9,18 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.example.burnout_app.collectors.UsageStatsProvider;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DashboardViewModel;
+import com.example.burnout_app.worker.DailyAggregationWorker;
 import com.google.android.material.card.MaterialCardView;
 
 import com.github.mikephil.charting.charts.BarChart;
@@ -25,12 +32,16 @@ import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
 
     private BarChart barChart3h;
+
+    private static final String WORK_DAILY_AGG = "daily_aggregation_work";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
         } else {
             Log.d(TAG, "Usage Access granted.");
+            ensureAggregationWorkScheduled();
         }
     }
 
@@ -220,4 +232,35 @@ public class MainActivity extends AppCompatActivity {
 
         chart.invalidate();
     }
+
+    private void ensureAggregationWorkScheduled() {
+
+        Constraints constraints = new Constraints.Builder()
+                .setRequiresBatteryNotLow(true)
+                .build();
+
+        // 1) Periodic: para que se ejecute de forma estable (p.ej. cada 1h para ir refrescando)
+        PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(
+                DailyAggregationWorker.class,
+                1, TimeUnit.HOURS
+        ).setConstraints(constraints).build();
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                WORK_DAILY_AGG,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                periodic
+        );
+
+        // 2) Kickoff inmediato: para que tengas datos ya (si no, esperas al scheduler)
+        OneTimeWorkRequest now = new OneTimeWorkRequest.Builder(DailyAggregationWorker.class)
+                .setConstraints(constraints)
+                .build();
+
+        WorkManager.getInstance(this).enqueueUniqueWork(
+                WORK_DAILY_AGG + "_kickoff",
+                ExistingWorkPolicy.REPLACE,
+                now
+        );
+    }
+
 }

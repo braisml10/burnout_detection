@@ -1,6 +1,7 @@
 package com.example.burnout_app.viewmodel;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -12,6 +13,7 @@ import androidx.lifecycle.Transformations;
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
 import com.example.burnout_app.data.repo.UsageRepository;
 import com.example.burnout_app.data.repo.UserActivityRepository;
+import com.example.burnout_app.helpers.AppCategoryResolver;
 import com.example.burnout_app.helpers.TimeKey;
 import com.github.mikephil.charting.data.Entry;
 
@@ -242,9 +244,20 @@ public class AppsUsageViewModel extends AndroidViewModel {
             String n1 = "--", n2 = "--", n3 = "--";
             int p1 = 0, p2 = 0, p3 = 0;
 
-            if (rows.size() > 0) { n1 = safe(rows.get(0).name); p1 = pct(rows.get(0).totalMs, totalFiltered); }
-            if (rows.size() > 1) { n2 = safe(rows.get(1).name); p2 = pct(rows.get(1).totalMs, totalFiltered); }
-            if (rows.size() > 2) { n3 = safe(rows.get(2).name); p3 = pct(rows.get(2).totalMs, totalFiltered); }
+            Context ctx = getApplication();
+
+            if (rows.size() > 0) {
+                n1 = resolveDisplayName(ctx, rows.get(0).name);
+                p1 = pct(rows.get(0).totalMs, totalFiltered);
+            }
+            if (rows.size() > 1) {
+                n2 = resolveDisplayName(ctx, rows.get(1).name);
+                p2 = pct(rows.get(1).totalMs, totalFiltered);
+            }
+            if (rows.size() > 2) {
+                n3 = resolveDisplayName(ctx, rows.get(2).name);
+                p3 = pct(rows.get(2).totalMs, totalFiltered);
+            }
 
             int b1 = clampPct(p1);
             int b2 = clampPct(p2);
@@ -254,11 +267,12 @@ public class AppsUsageViewModel extends AndroidViewModel {
         });
     }
 
-    // ✅ switches acumulados 0..24
+
+    // ✅ switches acumulados 0..24 (con punto inicial 0)
     private void loadSwitchesChart(int day) {
         io.execute(() -> {
 
-            // ✅ hourly_metric -> UserActivityRepository (no UsageRepository)
+            // ✅ hourly_metric -> UserActivityRepository
             int[] perHour = userRepo.getSwitchesPerHourForDay(day);
 
             if (perHour == null || perHour.length != 24) {
@@ -267,22 +281,31 @@ public class AppsUsageViewModel extends AndroidViewModel {
                 return;
             }
 
+            // DEBUG: comprueba suma por hora vs total
+            int sum = 0;
+            for (int h = 0; h < 24; h++) sum += perHour[h];
+            Log.d("SW_CHART", "day=" + day + " perHour=" + java.util.Arrays.toString(perHour) + " sum=" + sum);
+
+            // ✅ Queremos que la curva "arranque" en 0 y vaya subiendo
+            // Convención: Entry(x=0)=0, Entry(x=1)=acum(0), ... Entry(x=24)=acum(0..23)
             List<Entry> entries = new ArrayList<>(25);
 
             int acc = 0;
-            int max = 0;
+            entries.add(new Entry(0f, 0f)); // ✅ inicio del día
 
+            int max = 0;
             for (int h = 0; h < 24; h++) {
                 acc += perHour[h];
                 if (acc > max) max = acc;
-                entries.add(new Entry((float) h, (float) acc));
-            }
 
-            entries.add(new Entry(24f, (float) acc));
+                // punto al final de cada hora
+                entries.add(new Entry((float) (h + 1), (float) acc));
+            }
 
             switchesChartState.postValue(new SwitchesChartState(entries, max));
         });
     }
+
 
     // ---------------------------
     // Helpers
@@ -332,4 +355,30 @@ public class AppsUsageViewModel extends AndroidViewModel {
         super.onCleared();
         io.shutdownNow();
     }
+
+    private static String resolveDisplayName(Context ctx, String raw) {
+        if (raw == null) return "--";
+        String s = raw.trim();
+        if (s.isEmpty()) return "--";
+
+        // Caso típico “android” (suele venir de cosas del sistema)
+        if ("android".equalsIgnoreCase(s)) return "Sistema";
+
+        // Si parece package, resolvemos label real con PackageManager
+        boolean looksLikePkg = s.contains(".") && !s.contains(" ");
+        if (looksLikePkg) {
+            String label = AppCategoryResolver.resolveAppLabel(ctx, s);
+            if (label != null) {
+                label = label.trim();
+                // Si falla y devuelve el mismo package, no lo aceptamos
+                if (!label.isEmpty() && !label.equalsIgnoreCase(s)) return label;
+            }
+            // fallback: último segmento
+            String[] parts = s.split("\\.");
+            return parts[parts.length - 1];
+        }
+
+        return s;
+    }
+
 }

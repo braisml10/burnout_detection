@@ -145,9 +145,19 @@ public class ActivityScreenTime extends AppCompatActivity {
         vm.loadDay(selectedDay);
     }
 
+    /**
+     * ✅ FIX: NO uses dateLabelFromEpochDay(day) porque puede convertir con UTC y “restar” 1 día.
+     * Usamos el inicio del día LOCAL (startOfDayMsFromEpochDay) y lo formateamos con dateLabelFromTimestamp.
+     */
     private void applyDayUi(int day, int today) {
-        if (day == today) tvDayLabel.setText("Hoy");
-        else tvDayLabel.setText(TimeKey.dateLabelFromEpochDay(day));
+        if (day == today) {
+            tvDayLabel.setText("Hoy");
+        } else if (day == today - 1) {
+            tvDayLabel.setText("Ayer");
+        } else {
+            long dayStartLocalMs = TimeKey.startOfDayMsFromEpochDay(day); // debe ser LOCAL
+            tvDayLabel.setText(TimeKey.dateLabelFromTimestamp(dayStartLocalMs));
+        }
 
         boolean canGoNext = day < today;
         btnNextDay.setEnabled(canGoNext);
@@ -243,11 +253,9 @@ public class ActivityScreenTime extends AppCompatActivity {
         chart.getXAxis().setAxisMinimum(-0.5f);
         chart.getXAxis().setAxisMaximum(7.5f);
 
-        // ✅ fija el rango para que OFF_V se vea “bajito” y ON sea alto
         chart.getAxisLeft().setAxisMinimum(0f);
         chart.getAxisLeft().setAxisMaximum(1f);
 
         chart.invalidate();
     }
-
 }

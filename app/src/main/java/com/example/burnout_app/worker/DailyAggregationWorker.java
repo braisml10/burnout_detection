@@ -93,7 +93,8 @@ public class DailyAggregationWorker extends Worker {
                     .apply();
         }
 
-        // 0) asegurar filas daily (hoy + mañana para nocturno)
+        // 0) asegurar filas daily (ayer, hoy + mañana para nocturno)
+        db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(yesterday, 0L, 0, 0L, 0, 0, 0, 0, 0L));
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(today, 0L, 0, 0L, 0, 0, 0, 0, 0L));
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(tomorrow, 0L, 0, 0L, 0, 0, 0, 0, 0L));
 
@@ -143,8 +144,6 @@ public class DailyAggregationWorker extends Worker {
 
         for (UsageStatsProvider.RawEvent r : rawAll) {
             if (r.pkg == null) continue;
-
-            // ✅ descartar cualquier raw event fuera del rango
             if (r.ts < start || r.ts > end) continue;
 
             Long appIdObj = appIdCache.get(r.pkg);
@@ -297,6 +296,7 @@ public class DailyAggregationWorker extends Worker {
         long startOfDayToday = TimeKey.startOfDayMs(now);
         long startOfDayYesterday = TimeKey.startOfDayMsFromEpochDay(yesterday);
         long endOfDayYesterday = startOfDayToday; // inicio de hoy = fin de ayer
+        long endOfDayToday = startOfDayToday + 24L * 60L * 60_000L;
 
         boolean screenIsOn = prefs.getBoolean(KEY_SCREEN_IS_ON, false);
         long screenOpenTs  = prefs.getLong(KEY_SCREEN_OPEN_TS, -1L);
@@ -304,31 +304,46 @@ public class DailyAggregationWorker extends Worker {
         long lastScreenEventTs = prefs.getLong(KEY_LAST_SCREEN_EVENT_TS, start);
         long lastUnlockEventTs = prefs.getLong(KEY_LAST_UNLOCK_EVENT_TS, start);
 
-    // ✅ Si el día cambió, NO “mates” un segmento abierto.
-    // Solo “arrastra” el inicio al comienzo del día actual si estaba ON.
-        int openDay = TimeKey.epochDayLocal(screenOpenTs);
-        if (openDay != today) {
-            lastScreenEventTs = start;
-            lastUnlockEventTs = start;
+        // ✅ Sanear estado inconsistente
+        if (screenIsOn && screenOpenTs <= 0) {
+            Log.w(TAG, "Fix inconsistent state: screenIsOn=true but screenOpenTs invalid -> resetting");
+            screenIsOn = false;
+            screenOpenTs = -1L;
+        }
+
+        // ✅ Si el día cambió, arrastrar marcadores al inicio del día actual
+        int lastDay = TimeKey.epochDayLocal(lastScreenEventTs);
+        if (lastDay != today) {
+            if (screenIsOn && screenOpenTs > 0) {
+                // como mínimo empieza hoy a las 00:00 (no puede empezar "antes" de hoy para el daily de hoy)
+                screenOpenTs = Math.max(screenOpenTs, startOfDayToday);
+            }
+            lastScreenEventTs = startOfDayToday;
+            lastUnlockEventTs = startOfDayToday;
+
             prefs.edit()
                     .putLong(KEY_LAST_SCREEN_EVENT_TS, lastScreenEventTs)
                     .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
+                    .putLong(KEY_SCREEN_OPEN_TS, screenOpenTs)
+                    .putBoolean(KEY_SCREEN_IS_ON, screenIsOn)
                     .apply();
         }
 
+        // ✅ split daily: ayer vs hoy
+        long screenMsDeltaPrev  = 0L; // ayer
+        long screenMsDeltaToday = 0L; // hoy
 
-        long screenMsDelta = 0L;
         int unlockDelta = 0;
 
         long nightDeltaToday = 0L;
         long nightDeltaTomorrow = 0L;
 
-// ✅ dos buffers hourly: ayer y hoy
+        // ✅ dos buffers hourly: ayer y hoy
         long[] screenMsByHourPrev = new long[24];
         long[] screenMsByHourToday = new long[24];
 
-        int[] unlockByHourToday = new int[24];   // (si quieres unlock por hora de ayer, igual: otro array)
-        int[] unlockByHourPrev  = new int[24];   // opcional, por si te interesa
+        int[] unlockByHourToday = new int[24];
+        int[] unlockByHourPrev  = new int[24];
 
         Log.d(TAG, "State(before): screenIsOn=" + screenIsOn
                 + " screenOpenTs=" + screenOpenTs
@@ -338,11 +353,14 @@ public class DailyAggregationWorker extends Worker {
         for (UsageStatsProvider.RawEvent r : rawAll) {
 
             if (r.pkg != null) continue; // system only
+            if (r.ts < start || r.ts > end) continue;
+
+            // Si venimos con pantalla ON arrastrada antes del start, ancla al start para no contar fuera del rango incremental
             if (screenIsOn && screenOpenTs > 0 && screenOpenTs < start) {
                 screenOpenTs = start;
             }
 
-            // Para screen events usamos lastScreenEventTs
+            // Para screen events usamos lastScreenEventTs (pero NO aplica a KEYGUARD_HIDDEN)
             if (r.type != UsageEvents.Event.KEYGUARD_HIDDEN && r.ts <= lastScreenEventTs) {
                 continue;
             }
@@ -351,7 +369,6 @@ public class DailyAggregationWorker extends Worker {
 
                 if (!screenIsOn) {
                     screenIsOn = true;
-                    // OJO: no fuerces startOfDayToday aquí, porque el evento puede ser de ayer.
                     screenOpenTs = r.ts;
                     Log.d(TAG, "SCREEN_ON ts=" + r.ts + " screenOpenTs=" + screenOpenTs);
                 }
@@ -363,28 +380,32 @@ public class DailyAggregationWorker extends Worker {
                     long segStart = screenOpenTs;
                     long segEnd = r.ts;
 
-                    long segMs = segEnd - segStart;
-                    screenMsDelta += segMs;
+                    // ✅ split DAILY por solape de día (evita que hoy “coma” minutos de ayer)
+                    long prevPart  = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
+                    long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
+                    screenMsDeltaPrev  += prevPart;
+                    screenMsDeltaToday += todayPart;
 
-                    // ✅ Atribuir a AYER y HOY según el solape
-                    // Parte en ayer
+                    // ✅ HOURLY por solape (ya estaba bien)
                     if (segStart < endOfDayYesterday) {
                         long s = segStart;
                         long e = Math.min(segEnd, endOfDayYesterday);
                         addScreenSegmentToHours(screenMsByHourPrev, yesterday, s, e);
                     }
-                    // Parte en hoy
                     if (segEnd > startOfDayToday) {
                         long s = Math.max(segStart, startOfDayToday);
                         long e = segEnd;
                         addScreenSegmentToHours(screenMsByHourToday, today, s, e);
                     }
 
-                    // nocturno por solape (ya estaba bien)
+                    // nocturno por solape (mantener)
                     long addToday = overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
                     long addTomorrow = overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
                     nightDeltaToday += addToday;
                     nightDeltaTomorrow += addTomorrow;
+
+                    // ✅ avanzar marcador para evitar re-procesos en reintentos
+                    lastScreenEventTs = Math.max(lastScreenEventTs, segEnd);
                 }
 
                 screenIsOn = false;
@@ -401,19 +422,21 @@ public class DailyAggregationWorker extends Worker {
                     int d = TimeKey.epochDayLocal(r.ts);
                     if (h >= 0 && h <= 23) {
                         if (d == today) unlockByHourToday[h]++;
-                        else if (d == yesterday) unlockByHourPrev[h]++; // opcional
+                        else if (d == yesterday) unlockByHourPrev[h]++;
                     }
                 }
             }
         }
 
-// Cierre al final si sigue ON
+        // Cierre al final si sigue ON
         if (screenIsOn && screenOpenTs > 0 && now > screenOpenTs) {
             long segStart = screenOpenTs;
             long segEnd = now;
 
-            long segMs = segEnd - segStart;
-            screenMsDelta += segMs;
+            long prevPart  = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
+            long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
+            screenMsDeltaPrev  += prevPart;
+            screenMsDeltaToday += todayPart;
 
             if (segStart < endOfDayYesterday) {
                 long s = segStart;
@@ -431,6 +454,9 @@ public class DailyAggregationWorker extends Worker {
             nightDeltaToday += addToday;
             nightDeltaTomorrow += addTomorrow;
 
+            // ✅ avanzar marcador (robusto a reintentos)
+            lastScreenEventTs = Math.max(lastScreenEventTs, now);
+
             // “avanza” openTs para evitar doble conteo en la próxima run
             screenOpenTs = now;
         }
@@ -442,13 +468,21 @@ public class DailyAggregationWorker extends Worker {
                 .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
                 .apply();
 
+        // 6) SAVE YESTERDAY (daily_metrics) -> SOLO screen_ms split
+        if (screenMsDeltaPrev > 0) {
+            DailyMetricsEntity prev = db.userActivityDao().getDailyMetricsByDate(yesterday);
+            if (prev != null) {
+                prev.screen_ms = Math.max(0L, prev.screen_ms + screenMsDeltaPrev);
+                db.userActivityDao().upsertDailyMetrics(prev);
+            }
+        }
 
-        // 6) SAVE TODAY (daily_metrics)
+        // 7) SAVE TODAY (daily_metrics)
         DailyMetricsEntity cur = db.userActivityDao().getDailyMetricsByDate(today);
         if (cur != null) {
-            cur.screen_ms = Math.max(0L, cur.screen_ms + screenMsDelta);
-            cur.unlock_count = Math.max(0, cur.unlock_count + unlockDelta);
+            cur.screen_ms = Math.max(0L, cur.screen_ms + screenMsDeltaToday);
 
+            cur.unlock_count = Math.max(0, cur.unlock_count + unlockDelta);
             // TU DEFINICIÓN: sesiones = desbloqueos
             cur.session_count = cur.unlock_count;
 
@@ -461,7 +495,7 @@ public class DailyAggregationWorker extends Worker {
             db.userActivityDao().upsertDailyMetrics(cur);
         }
 
-        // 7) SAVE TOMORROW (night)
+        // 8) SAVE TOMORROW (night)
         if (nightDeltaTomorrow > 0) {
             DailyMetricsEntity tm = db.userActivityDao().getDailyMetricsByDate(tomorrow);
             if (tm != null) {
@@ -470,7 +504,7 @@ public class DailyAggregationWorker extends Worker {
             }
         }
 
-        // 8) daily_app_metrics (today)
+        // 9) daily_app_metrics (today)
         ArrayList<DailyAppMetricsEntity> rows = new ArrayList<>();
         for (Map.Entry<Long, Long> entry : fgMsByApp.entrySet()) {
             long appId = entry.getKey();
@@ -486,12 +520,11 @@ public class DailyAggregationWorker extends Worker {
             db.usageDao().upsertDailyAppMetrics(rows);
         }
 
-        // 9) HOURLY persist: ayer + hoy
+        // 10) HOURLY persist: ayer + hoy
         persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, null /*switch prev si lo quieres*/);
         persistHourly(db, today, screenMsByHourToday, unlockByHourToday, switchByHour);
 
-
-        // 10) retención
+        // 11) retención
         int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
         int delScreen = db.userActivityDao().deleteScreenEventsOlderThanDate(cutoffDate);
         int delNotif = db.notificationDao().deleteNotificationEventsOlderThanDate(cutoffDate);
@@ -540,7 +573,6 @@ public class DailyAggregationWorker extends Worker {
                 int addSwitch = (switchByHour != null && switchByHour.length == 24) ? switchByHour[h] : 0;
 
                 // Nota: switches por hora aquí lo guardas como "delta de esta ejecución".
-                // Si quieres acumulado por hora, usa baseSwitch + addSwitch.
                 int newSwitch = (switchByHour == null) ? baseSwitch : addSwitch;
 
                 out.add(new HourlyMetricsEntity(

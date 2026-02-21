@@ -5,6 +5,7 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
@@ -37,24 +38,26 @@ public class DailyDetailViewModel extends AndroidViewModel {
     private final LiveData<DailyMetricsEntity> metrics;
     private final LiveData<UiState> uiState;
 
-    // Hourly del día seleccionado
-    private final LiveData<List<HourlyMetricsEntity>> hourly;
+    // Hourly del día seleccionado y del día anterior
+    private final LiveData<List<HourlyMetricsEntity>> hourlyToday;
+    private final LiveData<List<HourlyMetricsEntity>> hourlyPrev;
 
     // Serie para gráfico lineal: 06..21 (16 puntos)
     private final LiveData<int[]> screenMinutes6to22;
 
     // Serie para barras nocturnas: 22,23,00,01,02,03,04,05,06 (9 puntos)
-    private final LiveData<int[]> nightMinutes22to6;
+    private final MediatorLiveData<int[]> nightMinutes22to6 = new MediatorLiveData<>();
+
+    private List<HourlyMetricsEntity> cachePrev;
+    private List<HourlyMetricsEntity> cacheToday;
 
     public DailyDetailViewModel(@NonNull Application app) {
         super(app);
         repo = new UserActivityRepository(app);
 
-        // Por defecto: hoy
         int today = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay.setValue(today);
 
-        // Re-observar Room cada vez que cambie el día
         metrics = Transformations.switchMap(selectedDay, repo::observeDailyMetrics);
 
         // Mapear entidad -> UiState
@@ -72,12 +75,15 @@ public class DailyDetailViewModel extends AndroidViewModel {
             );
         });
 
-        // Hourly del día seleccionado
-        hourly = Transformations.switchMap(selectedDay, repo::observeHourlyMetrics);
+        // ✅ hourly del día seleccionado
+        hourlyToday = Transformations.switchMap(selectedDay, repo::observeHourlyMetrics);
 
-        // Serie minutos/hora para gráfica: 06..21 (16 puntos)
-        screenMinutes6to22 = Transformations.map(hourly, rows -> {
-            int[] out = new int[16]; // idx 0 = 06:00, idx 15 = 21:00
+        // ✅ hourly del día anterior (para 22 y 23)
+        hourlyPrev = Transformations.switchMap(selectedDay, d -> repo.observeHourlyMetrics(d - 1));
+
+        // 06..21 (16 puntos)
+        screenMinutes6to22 = Transformations.map(hourlyToday, rows -> {
+            int[] out = new int[16];
             if (rows == null) return out;
 
             for (HourlyMetricsEntity h : rows) {
@@ -90,27 +96,48 @@ public class DailyDetailViewModel extends AndroidViewModel {
             return out;
         });
 
-        // Serie noche: 22,23,00,01,02,03,04,05,06 (9 puntos)
-        nightMinutes22to6 = Transformations.map(hourly, rows -> {
-            int[] out = new int[9]; // idx 0=22h, 1=23h, 2=00h ... 8=06h
-            if (rows == null) return out;
+        // ✅ combinar prev + today para la noche (sin Runnable)
+        nightMinutes22to6.addSource(hourlyPrev, rows -> {
+            cachePrev = rows;
+            recomputeNight();
+        });
+        nightMinutes22to6.addSource(hourlyToday, rows -> {
+            cacheToday = rows;
+            recomputeNight();
+        });
 
-            for (HourlyMetricsEntity h : rows) {
+        // valor inicial (evita nulls)
+        nightMinutes22to6.setValue(new int[8]);
+
+    }
+
+
+    private void recomputeNight() {
+        int[] out = new int[8]; // 0=22, 1=23, 2=00, ..., 7=05
+
+        // 22 y 23 del día anterior
+        if (cachePrev != null) {
+            for (HourlyMetricsEntity h : cachePrev) {
+                if (h == null) continue;
+                if (h.hour == 22) out[0] = (int) (h.screen_ms / 60000L);
+                else if (h.hour == 23) out[1] = (int) (h.screen_ms / 60000L);
+            }
+        }
+
+        // 00..05 del día actual
+        if (cacheToday != null) {
+            for (HourlyMetricsEntity h : cacheToday) {
                 if (h == null) continue;
                 int hour = h.hour;
-
-                int idx = -1;
-                if (hour == 22) idx = 0;
-                else if (hour == 23) idx = 1;
-                else if (hour >= 0 && hour <= 6) idx = 2 + hour; // 0->2 ... 6->8
-
-                if (idx >= 0) {
-                    out[idx] = (int) (h.screen_ms / 60000L);
+                if (hour >= 0 && hour <= 5) {
+                    out[2 + hour] = (int) (h.screen_ms / 60000L); // 0->2 ... 5->7
                 }
             }
-            return out;
-        });
+        }
+
+        nightMinutes22to6.setValue(out);
     }
+
 
     // ---------------------------
     // Getters
@@ -135,6 +162,12 @@ public class DailyDetailViewModel extends AndroidViewModel {
     public void loadDay(int epochDay) {
         Integer current = selectedDay.getValue();
         if (current == null || current != epochDay) {
+
+            // ✅ evita mezclar prev/today de días distintos durante el cambio
+            cachePrev = null;
+            cacheToday = null;
+            nightMinutes22to6.setValue(new int[8]);
+
             selectedDay.setValue(epochDay);
         }
     }

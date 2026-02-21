@@ -104,7 +104,14 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Capture range: start=" + start + " end=" + end + " lastTs=" + lastTs);
 
         List<UsageStatsProvider.RawEvent> rawAll = UsageStatsProvider.collectEvents(ctx, start, end);
-        Log.d(TAG, "Raw events total=" + rawAll.size());
+        Log.d(TAG, "Raw events total=" + (rawAll != null ? rawAll.size() : 0));
+
+        if (rawAll == null || rawAll.isEmpty()) {
+            prefs.edit().putLong(KEY_LAST_USAGE_CAPTURE_TS, end).apply();
+            Log.d(TAG, "No raw events -> end");
+            Log.d(TAG, "================ doWork END ================");
+            return Result.success();
+        }
 
         // debug resumen por tipos (system vs pkg)
         int cntSys = 0, cntPkg = 0;
@@ -115,6 +122,21 @@ public class DailyAggregationWorker extends Worker {
         }
         Log.d(TAG, "Raw split: pkg=" + cntPkg + " sys=" + cntSys + " typeCount=" + typeCount);
 
+        // ------------------------------------------------------------------
+        // ✅ OPT: resolver appId SOLO 1 vez por package (nada de actualizar por evento)
+        // ------------------------------------------------------------------
+        HashSet<String> uniquePkgs = new HashSet<>();
+        for (UsageStatsProvider.RawEvent r : rawAll) {
+            if (r != null && r.pkg != null) uniquePkgs.add(r.pkg);
+        }
+
+        Map<String, Long> appIdCache = new HashMap<>(Math.max(16, uniquePkgs.size() * 2));
+        for (String pkg : uniquePkgs) {
+            long appId = resolveAppId(db, ctx, pkg);
+            if (appId > 0) appIdCache.put(pkg, appId);
+        }
+        // ------------------------------------------------------------------
+
         // 2) insertar FG/BG en app_usage_event (solo pkg != null)
         HashSet<String> seen = new HashSet<>();
         List<AppUsageEventEntity> toInsert = new ArrayList<>();
@@ -122,10 +144,11 @@ public class DailyAggregationWorker extends Worker {
         for (UsageStatsProvider.RawEvent r : rawAll) {
             if (r.pkg == null) continue;
 
-            // ✅ FIX extra: descartar cualquier raw event fuera del rango
+            // ✅ descartar cualquier raw event fuera del rango
             if (r.ts < start || r.ts > end) continue;
 
-            long appId = resolveAppId(db, ctx, r.pkg);
+            Long appIdObj = appIdCache.get(r.pkg);
+            long appId = (appIdObj != null) ? appIdObj : -1L;
             if (appId <= 0) continue;
 
             String key = appId + "|" + r.type + "|" + r.ts;
@@ -271,23 +294,28 @@ public class DailyAggregationWorker extends Worker {
                 + " endTomorrow=[" + nightStartEndingTomorrow + "," + nightEndEndingTomorrow + "]");
 
         // 5) SCREEN + UNLOCK incremental + nocturno por solape + HOURLY
-        long startOfDay = TimeKey.startOfDayMs(now);
+        long startOfDayToday = TimeKey.startOfDayMs(now);
+        long startOfDayYesterday = TimeKey.startOfDayMsFromEpochDay(yesterday);
+        long endOfDayYesterday = startOfDayToday; // inicio de hoy = fin de ayer
 
-        if (TimeKey.epochDayLocal(prefs.getLong(KEY_SCREEN_OPEN_TS, -1L)) != today) {
-            Log.d(TAG, "Day changed -> resetting screen/unlock incremental state");
+        boolean screenIsOn = prefs.getBoolean(KEY_SCREEN_IS_ON, false);
+        long screenOpenTs  = prefs.getLong(KEY_SCREEN_OPEN_TS, -1L);
+
+        long lastScreenEventTs = prefs.getLong(KEY_LAST_SCREEN_EVENT_TS, start);
+        long lastUnlockEventTs = prefs.getLong(KEY_LAST_UNLOCK_EVENT_TS, start);
+
+    // ✅ Si el día cambió, NO “mates” un segmento abierto.
+    // Solo “arrastra” el inicio al comienzo del día actual si estaba ON.
+        int openDay = TimeKey.epochDayLocal(screenOpenTs);
+        if (openDay != today) {
+            lastScreenEventTs = start;
+            lastUnlockEventTs = start;
             prefs.edit()
-                    .putBoolean(KEY_SCREEN_IS_ON, false)
-                    .putLong(KEY_SCREEN_OPEN_TS, -1L)
-                    .putLong(KEY_LAST_SCREEN_EVENT_TS, startOfDay)
-                    .putLong(KEY_LAST_UNLOCK_EVENT_TS, startOfDay)
+                    .putLong(KEY_LAST_SCREEN_EVENT_TS, lastScreenEventTs)
+                    .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
                     .apply();
         }
 
-        boolean screenIsOn = prefs.getBoolean(KEY_SCREEN_IS_ON, false);
-        long screenOpenTs = prefs.getLong(KEY_SCREEN_OPEN_TS, -1L);
-
-        long lastScreenEventTs = prefs.getLong(KEY_LAST_SCREEN_EVENT_TS, startOfDay);
-        long lastUnlockEventTs = prefs.getLong(KEY_LAST_UNLOCK_EVENT_TS, startOfDay);
 
         long screenMsDelta = 0L;
         int unlockDelta = 0;
@@ -295,8 +323,12 @@ public class DailyAggregationWorker extends Worker {
         long nightDeltaToday = 0L;
         long nightDeltaTomorrow = 0L;
 
-        long[] screenMsByHour = new long[24];
-        int[] unlockByHour = new int[24];
+// ✅ dos buffers hourly: ayer y hoy
+        long[] screenMsByHourPrev = new long[24];
+        long[] screenMsByHourToday = new long[24];
+
+        int[] unlockByHourToday = new int[24];   // (si quieres unlock por hora de ayer, igual: otro array)
+        int[] unlockByHourPrev  = new int[24];   // opcional, por si te interesa
 
         Log.d(TAG, "State(before): screenIsOn=" + screenIsOn
                 + " screenOpenTs=" + screenOpenTs
@@ -306,10 +338,11 @@ public class DailyAggregationWorker extends Worker {
         for (UsageStatsProvider.RawEvent r : rawAll) {
 
             if (r.pkg != null) continue; // system only
+            if (screenIsOn && screenOpenTs > 0 && screenOpenTs < start) {
+                screenOpenTs = start;
+            }
 
-            // ✅ FIX extra: descartar fuera de rango
-            if (r.ts < start || r.ts > end) continue;
-
+            // Para screen events usamos lastScreenEventTs
             if (r.type != UsageEvents.Event.KEYGUARD_HIDDEN && r.ts <= lastScreenEventTs) {
                 continue;
             }
@@ -318,7 +351,8 @@ public class DailyAggregationWorker extends Worker {
 
                 if (!screenIsOn) {
                     screenIsOn = true;
-                    screenOpenTs = Math.max(r.ts, startOfDay);
+                    // OJO: no fuerces startOfDayToday aquí, porque el evento puede ser de ayer.
+                    screenOpenTs = r.ts;
                     Log.d(TAG, "SCREEN_ON ts=" + r.ts + " screenOpenTs=" + screenOpenTs);
                 }
                 lastScreenEventTs = Math.max(lastScreenEventTs, r.ts);
@@ -332,11 +366,23 @@ public class DailyAggregationWorker extends Worker {
                     long segMs = segEnd - segStart;
                     screenMsDelta += segMs;
 
-                    addScreenSegmentToHours(screenMsByHour, today, segStart, segEnd);
+                    // ✅ Atribuir a AYER y HOY según el solape
+                    // Parte en ayer
+                    if (segStart < endOfDayYesterday) {
+                        long s = segStart;
+                        long e = Math.min(segEnd, endOfDayYesterday);
+                        addScreenSegmentToHours(screenMsByHourPrev, yesterday, s, e);
+                    }
+                    // Parte en hoy
+                    if (segEnd > startOfDayToday) {
+                        long s = Math.max(segStart, startOfDayToday);
+                        long e = segEnd;
+                        addScreenSegmentToHours(screenMsByHourToday, today, s, e);
+                    }
 
+                    // nocturno por solape (ya estaba bien)
                     long addToday = overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
                     long addTomorrow = overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
-
                     nightDeltaToday += addToday;
                     nightDeltaTomorrow += addTomorrow;
                 }
@@ -352,11 +398,16 @@ public class DailyAggregationWorker extends Worker {
                     lastUnlockEventTs = Math.max(lastUnlockEventTs, r.ts);
 
                     int h = hourOfTsLocal(r.ts);
-                    if (h >= 0 && h <= 23) unlockByHour[h]++;
+                    int d = TimeKey.epochDayLocal(r.ts);
+                    if (h >= 0 && h <= 23) {
+                        if (d == today) unlockByHourToday[h]++;
+                        else if (d == yesterday) unlockByHourPrev[h]++; // opcional
+                    }
                 }
             }
         }
 
+// Cierre al final si sigue ON
         if (screenIsOn && screenOpenTs > 0 && now > screenOpenTs) {
             long segStart = screenOpenTs;
             long segEnd = now;
@@ -364,15 +415,24 @@ public class DailyAggregationWorker extends Worker {
             long segMs = segEnd - segStart;
             screenMsDelta += segMs;
 
-            addScreenSegmentToHours(screenMsByHour, today, segStart, segEnd);
+            if (segStart < endOfDayYesterday) {
+                long s = segStart;
+                long e = Math.min(segEnd, endOfDayYesterday);
+                addScreenSegmentToHours(screenMsByHourPrev, yesterday, s, e);
+            }
+            if (segEnd > startOfDayToday) {
+                long s = Math.max(segStart, startOfDayToday);
+                long e = segEnd;
+                addScreenSegmentToHours(screenMsByHourToday, today, s, e);
+            }
 
             long addToday = overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
             long addTomorrow = overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
-
             nightDeltaToday += addToday;
             nightDeltaTomorrow += addTomorrow;
 
-            screenOpenTs = now; // evitar doble conteo
+            // “avanza” openTs para evitar doble conteo en la próxima run
+            screenOpenTs = now;
         }
 
         prefs.edit()
@@ -381,6 +441,7 @@ public class DailyAggregationWorker extends Worker {
                 .putLong(KEY_LAST_SCREEN_EVENT_TS, lastScreenEventTs)
                 .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
                 .apply();
+
 
         // 6) SAVE TODAY (daily_metrics)
         DailyMetricsEntity cur = db.userActivityDao().getDailyMetricsByDate(today);
@@ -425,8 +486,10 @@ public class DailyAggregationWorker extends Worker {
             db.usageDao().upsertDailyAppMetrics(rows);
         }
 
-        // 9) HOURLY persist
-        persistHourly(db, today, screenMsByHour, unlockByHour, switchByHour);
+        // 9) HOURLY persist: ayer + hoy
+        persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, null /*switch prev si lo quieres*/);
+        persistHourly(db, today, screenMsByHourToday, unlockByHourToday, switchByHour);
+
 
         // 10) retención
         int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
@@ -476,13 +539,17 @@ public class DailyAggregationWorker extends Worker {
                 int addUnlock = (unlockByHour != null && unlockByHour.length == 24) ? unlockByHour[h] : 0;
                 int addSwitch = (switchByHour != null && switchByHour.length == 24) ? switchByHour[h] : 0;
 
+                // Nota: switches por hora aquí lo guardas como "delta de esta ejecución".
+                // Si quieres acumulado por hora, usa baseSwitch + addSwitch.
+                int newSwitch = (switchByHour == null) ? baseSwitch : addSwitch;
+
                 out.add(new HourlyMetricsEntity(
                         epochDay,
                         h,
                         Math.max(0L, baseScreen + addScreen),
                         Math.max(0, baseUnlock + addUnlock),
                         Math.max(0, baseNotif),
-                        Math.max(0, baseSwitch + addSwitch),
+                        Math.max(0, newSwitch),
                         Math.max(0, baseUnique)
                 ));
             }
@@ -533,30 +600,23 @@ public class DailyAggregationWorker extends Worker {
     private boolean isNoisePackage(String pkg) {
         if (pkg == null) return true;
 
-        // Tu propia app
-        if (pkg.equals("com.example.burnout_app")) return true;
+        if (pkg.equals(PKG_SELF)) return true;
 
-        // Launcher
         if (pkg.contains("launcher")) return true;
         if (pkg.contains("quickstep")) return true;
 
-        // System UI
         if (pkg.equals("com.android.systemui")) return true;
 
-        // Servicios Android base
         if (pkg.startsWith("com.android.")) return true;
 
-        // Google Play Services y módulos dinámicos
         if (pkg.startsWith("com.google.android.gms")) return true;
         if (pkg.contains("dynamite")) return true;
 
-        // Módulos Google internos
         if (pkg.contains("tachyon")) return true;
         if (pkg.contains("googlequicksearchbox")) return true;
 
         return false;
     }
-
 
     private long atLocalHourMs(int epochDay, int hour, int minute) {
         Calendar cal = Calendar.getInstance();
@@ -576,57 +636,49 @@ public class DailyAggregationWorker extends Worker {
         return Math.max(0L, e - s);
     }
 
+    // =========================================================
+    // ✅ App resolution (sin “actualizar cada vez”; solo si falta)
+    // =========================================================
     private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
+        if (pkg == null || pkg.trim().isEmpty()) return -1L;
+
         boolean mustIgnore = shouldIgnorePkg(pkg);
 
         Long existing = db.usageDao().getAppIdByPackageName(pkg);
         if (existing != null) {
-            try {
-                if (mustIgnore) {
-                    db.usageDao().updateAppIgnored(existing, true);
-                }
 
-                String curName = db.usageDao().getNameByAppId(existing);
-                String curCat  = db.usageDao().getCategoryByAppId(existing);
+            if (mustIgnore) {
+                db.usageDao().updateAppIgnored(existing, true);
+                return existing;
+            }
 
-                if (curName == null || curName.trim().isEmpty() || curName.equals(pkg)) {
-                    String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
+            String curName = db.usageDao().getNameByAppId(existing);
+            String curCat  = db.usageDao().getCategoryByAppId(existing);
+
+            boolean needsName = (curName == null || curName.trim().isEmpty() || curName.equals(pkg) || looksLikePackage(curName));
+            boolean needsCat  = (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat));
+
+            if (needsName) {
+                String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
+                if (label != null) label = label.trim();
+                if (label != null && !label.isEmpty() && !label.equals(pkg)) {
                     db.usageDao().updateAppName(existing, label);
                 }
+            }
 
-                // Si es ignored, nos da igual la categoría (pero puedes dejarlo igual)
-                if (!mustIgnore) {
-                    String desiredCat = AppCategoryResolver.resolveCategory(ctx, pkg);
-                    if (desiredCat == null) desiredCat = "OTHER";
+            if (needsCat) {
+                String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
+                if (cat == null) cat = "OTHER";
+                db.usageDao().updateAppCategory(existing, cat);
+            }
 
-                    if (curCat == null || !curCat.equalsIgnoreCase(desiredCat)) {
-                        db.usageDao().updateAppCategory(existing, desiredCat);
-                    }
-                }
-
-            } catch (Exception ignore) { }
             return existing;
         }
 
+        // no existe: crear
         String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
-
         if (label != null) label = label.trim();
-
-        boolean labelOk = (label != null && !label.isEmpty() && !label.equalsIgnoreCase(pkg));
-
-        if (labelOk) {
-            String curName = db.usageDao().getNameByAppId(existing);
-
-            boolean mustUpdateName =
-                    (curName == null || curName.trim().isEmpty()) ||
-                            curName.equalsIgnoreCase(pkg) ||
-                            looksLikePackage(curName) ||
-                            !curName.trim().equals(label);
-
-            if (mustUpdateName) {
-                db.usageDao().updateAppName(existing, label);
-            }
-        }
+        if (label == null || label.isEmpty()) label = pkg;
 
         String cat = mustIgnore ? "OTHER" : AppCategoryResolver.resolveCategory(ctx, pkg);
         if (cat == null) cat = "OTHER";
@@ -634,25 +686,9 @@ public class DailyAggregationWorker extends Worker {
         long inserted = db.usageDao().insertApp(new AppEntity(pkg, label, cat, mustIgnore));
         if (inserted > 0) return inserted;
 
+        // fallback (race)
         Long after = db.usageDao().getAppIdByPackageName(pkg);
-        if (after != null) {
-            try {
-                if (mustIgnore) db.usageDao().updateAppIgnored(after, true);
-
-                String curName = db.usageDao().getNameByAppId(after);
-                String curCat  = db.usageDao().getCategoryByAppId(after);
-
-                if (curName == null || curName.trim().isEmpty() || curName.equals(pkg)) {
-                    db.usageDao().updateAppName(after, label);
-                }
-                if (!mustIgnore && (curCat == null || curCat.trim().isEmpty())) {
-                    db.usageDao().updateAppCategory(after, cat);
-                }
-            } catch (Exception ignore) { }
-            return after;
-        }
-
-        return -1L;
+        return (after != null) ? after : -1L;
     }
 
     private static boolean looksLikePackage(String s) {
@@ -660,8 +696,7 @@ public class DailyAggregationWorker extends Worker {
         String t = s.trim();
         if (t.isEmpty()) return false;
 
-        // heurística simple: tiene puntos, sin espacios, y suele empezar por com./org./net./android
-        if (t.contains(" ") ) return false;
+        if (t.contains(" ")) return false;
         if (!t.contains(".")) return false;
 
         return t.startsWith("com.")
@@ -673,11 +708,8 @@ public class DailyAggregationWorker extends Worker {
                 || t.startsWith("com.google");
     }
 
-
-
     private static boolean shouldIgnorePkg(String pkg) {
         if (pkg == null) return false;
         return PKG_SELF.equals(pkg) || PKG_LAUNCHER.equals(pkg);
     }
-
 }

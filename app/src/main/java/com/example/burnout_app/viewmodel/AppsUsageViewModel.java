@@ -2,7 +2,6 @@ package com.example.burnout_app.viewmodel;
 
 import android.app.Application;
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -143,7 +142,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
             int switches  = (m != null) ? m.app_switch_count : 0;
             int uniqueApps = (m != null) ? m.unique_apps_count : 0;
 
-            Log.d("KPI_TOTAL", "DailyMetrics.foreground_ms (ALL, incl ignored) = " + fgMsAll);
 
             return new UiState(
                     String.valueOf(switches),
@@ -226,7 +224,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
                     pOther
             );
 
-            Log.d("CAT_VM", "DAY " + day + " total=" + total + " pOther=" + pOther);
 
             categoryState.postValue(out);
         });
@@ -276,7 +273,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
             int[] perHour = userRepo.getSwitchesPerHourForDay(day);
 
             if (perHour == null || perHour.length != 24) {
-                Log.d("SW_CHART", "perHour inválido (null o != 24). day=" + day);
                 switchesChartState.postValue(new SwitchesChartState(new ArrayList<>(), 0));
                 return;
             }
@@ -284,7 +280,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
             // DEBUG: comprueba suma por hora vs total
             int sum = 0;
             for (int h = 0; h < 24; h++) sum += perHour[h];
-            Log.d("SW_CHART", "day=" + day + " perHour=" + java.util.Arrays.toString(perHour) + " sum=" + sum);
 
             // ✅ Queremos que la curva "arranque" en 0 y vaya subiendo
             // Convención: Entry(x=0)=0, Entry(x=1)=acum(0), ... Entry(x=24)=acum(0..23)

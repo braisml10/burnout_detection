@@ -81,7 +81,6 @@ public class AppCategoryResolver {
             }
 
         } catch (Exception e) {
-            Log.e("APP_LABEL", "Label error for " + packageName, e);
         }
 
         return packageName;

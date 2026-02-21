@@ -112,19 +112,14 @@ public class ActivityScreenTime extends AppCompatActivity {
 
         // ✅ Heat strip nocturno: 8 celdas (22..05)
         vm.getNightMinutes22to6().observe(this, minutes -> {
-            if (minutes == null || minutes.length == 0) {
+            if (minutes == null || minutes.length != 8) {
                 barChartNight.clear();
                 barChartNight.invalidate();
                 return;
             }
-
-            int[] mins8 = new int[8];
-            for (int i = 0; i < 8 && i < minutes.length; i++) {
-                mins8[i] = minutes[i];
-            }
-
-            renderNightHeatStrip(barChartNight, mins8);
+            renderNightHeatStrip(barChartNight, minutes);
         });
+
 
         // Flechas
         btnPrevDay.setOnClickListener(v -> {
@@ -145,10 +140,6 @@ public class ActivityScreenTime extends AppCompatActivity {
         vm.loadDay(selectedDay);
     }
 
-    /**
-     * ✅ FIX: NO uses dateLabelFromEpochDay(day) porque puede convertir con UTC y “restar” 1 día.
-     * Usamos el inicio del día LOCAL (startOfDayMsFromEpochDay) y lo formateamos con dateLabelFromTimestamp.
-     */
     private void applyDayUi(int day, int today) {
         if (day == today) {
             tvDayLabel.setText("Hoy");
@@ -196,7 +187,7 @@ public class ActivityScreenTime extends AppCompatActivity {
         c.getAxisLeft().setDrawGridLines(true);
     }
 
-    // ✅ Strip
+    // Strip
     private void setupNightHeatStrip(BarChart c) {
         c.getDescription().setEnabled(false);
         c.getLegend().setEnabled(false);

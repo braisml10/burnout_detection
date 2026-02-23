@@ -22,6 +22,8 @@ import com.example.burnout_app.helpers.TimeKey;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,11 +36,12 @@ public class DailyAggregationWorker extends Worker {
     private static final String PREFS = "burnout_runtime";
     private static final String KEY_LAST_USAGE_CAPTURE_TS = "last_usage_capture_ts";
 
-    // incremental screen/unlock
+    // incremental screen/unlock (state)
     private static final String KEY_SCREEN_IS_ON = "screen_is_on";
-    private static final String KEY_SCREEN_OPEN_TS = "screen_open_ts";
-    private static final String KEY_LAST_SCREEN_EVENT_TS = "last_screen_event_ts";
     private static final String KEY_LAST_UNLOCK_EVENT_TS = "last_unlock_event_ts";
+
+    // ✅ new: monotonic cursor for screen accounting (prevents double count)
+    private static final String KEY_LAST_SCREEN_ACCOUNTED_TS = "last_screen_accounted_ts";
 
     private static final long FIRST_LOOKBACK_MS = 2 * 60 * 60_000L; // 2h
     private static final long FG_DEBOUNCE_MS = 500L;
@@ -77,7 +80,7 @@ public class DailyAggregationWorker extends Worker {
 
         // ------------------------------------------------------------------
         // ✅ FIX: tras pm clear / reinstalación, NO rellenar con histórico.
-        // Primera ejecución => solo setear last_usage_capture_ts=now y salir.
+        // Primera ejecución => lookback corto.
         // ------------------------------------------------------------------
         long lastTs = prefs.getLong(KEY_LAST_USAGE_CAPTURE_TS, -1L);
         boolean firstRunAfterClear = !prefs.contains(KEY_LAST_USAGE_CAPTURE_TS);
@@ -87,9 +90,8 @@ public class DailyAggregationWorker extends Worker {
             prefs.edit()
                     .putLong(KEY_LAST_USAGE_CAPTURE_TS, lastTs)
                     .putBoolean(KEY_SCREEN_IS_ON, false)
-                    .putLong(KEY_SCREEN_OPEN_TS, -1L)
-                    .putLong(KEY_LAST_SCREEN_EVENT_TS, TimeKey.startOfDayMs(now))
                     .putLong(KEY_LAST_UNLOCK_EVENT_TS, TimeKey.startOfDayMs(now))
+                    .putLong(KEY_LAST_SCREEN_ACCOUNTED_TS, Math.max(TimeKey.startOfDayMs(now), lastTs))
                     .apply();
         }
 
@@ -124,7 +126,7 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Raw split: pkg=" + cntPkg + " sys=" + cntSys + " typeCount=" + typeCount);
 
         // ------------------------------------------------------------------
-        // ✅ OPT: resolver appId SOLO 1 vez por package (nada de actualizar por evento)
+        // ✅ OPT: resolver appId SOLO 1 vez por package
         // ------------------------------------------------------------------
         HashSet<String> uniquePkgs = new HashSet<>();
         for (UsageStatsProvider.RawEvent r : rawAll) {
@@ -136,7 +138,6 @@ public class DailyAggregationWorker extends Worker {
             long appId = resolveAppId(db, ctx, pkg);
             if (appId > 0) appIdCache.put(pkg, appId);
         }
-        // ------------------------------------------------------------------
 
         // 2) insertar FG/BG en app_usage_event (solo pkg != null)
         HashSet<String> seen = new HashSet<>();
@@ -194,7 +195,6 @@ public class DailyAggregationWorker extends Worker {
 
             if (e.event_type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
 
-                // anti-duplicado para la misma app muy seguido
                 if (currentFgAppId != null
                         && currentFgAppId.equals(e.app_id)
                         && lastFgTs > 0
@@ -234,7 +234,6 @@ public class DailyAggregationWorker extends Worker {
                 }
                 // ------------------------
 
-                // cerrar segmento anterior
                 if (currentFgAppId != null && openFgTs > 0 && e.timestamp > openFgTs) {
                     long delta = e.timestamp - openFgTs;
                     foregroundMs += delta;
@@ -289,47 +288,21 @@ public class DailyAggregationWorker extends Worker {
         long nightStartEndingTomorrow = atLocalHourMs(today, 22, 0);
         long nightEndEndingTomorrow   = atLocalHourMs(tomorrow, 6, 0);
 
-        Log.d(TAG, "Night windows: endToday=[" + nightStartEndingToday + "," + nightEndEndingToday + "]"
-                + " endTomorrow=[" + nightStartEndingTomorrow + "," + nightEndEndingTomorrow + "]");
-
-        // 5) SCREEN + UNLOCK incremental + nocturno por solape + HOURLY
+        // 5) SCREEN + UNLOCK incremental (cursor-based) + HOURLY
         long startOfDayToday = TimeKey.startOfDayMs(now);
         long startOfDayYesterday = TimeKey.startOfDayMsFromEpochDay(yesterday);
-        long endOfDayYesterday = startOfDayToday; // inicio de hoy = fin de ayer
+        long endOfDayYesterday = startOfDayToday;
         long endOfDayToday = startOfDayToday + 24L * 60L * 60_000L;
 
         boolean screenIsOn = prefs.getBoolean(KEY_SCREEN_IS_ON, false);
-        long screenOpenTs  = prefs.getLong(KEY_SCREEN_OPEN_TS, -1L);
 
-        long lastScreenEventTs = prefs.getLong(KEY_LAST_SCREEN_EVENT_TS, start);
         long lastUnlockEventTs = prefs.getLong(KEY_LAST_UNLOCK_EVENT_TS, start);
 
-        // ✅ Sanear estado inconsistente
-        if (screenIsOn && screenOpenTs <= 0) {
-            Log.w(TAG, "Fix inconsistent state: screenIsOn=true but screenOpenTs invalid -> resetting");
-            screenIsOn = false;
-            screenOpenTs = -1L;
-        }
+        // ✅ cursor monotónico: último instante ya contabilizado
+        long lastAccountedTs = prefs.getLong(KEY_LAST_SCREEN_ACCOUNTED_TS, start);
+        if (lastAccountedTs < start) lastAccountedTs = start;
+        if (lastAccountedTs > end) lastAccountedTs = end;
 
-        // ✅ Si el día cambió, arrastrar marcadores al inicio del día actual
-        int lastDay = TimeKey.epochDayLocal(lastScreenEventTs);
-        if (lastDay != today) {
-            if (screenIsOn && screenOpenTs > 0) {
-                // como mínimo empieza hoy a las 00:00 (no puede empezar "antes" de hoy para el daily de hoy)
-                screenOpenTs = Math.max(screenOpenTs, startOfDayToday);
-            }
-            lastScreenEventTs = startOfDayToday;
-            lastUnlockEventTs = startOfDayToday;
-
-            prefs.edit()
-                    .putLong(KEY_LAST_SCREEN_EVENT_TS, lastScreenEventTs)
-                    .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
-                    .putLong(KEY_SCREEN_OPEN_TS, screenOpenTs)
-                    .putBoolean(KEY_SCREEN_IS_ON, screenIsOn)
-                    .apply();
-        }
-
-        // ✅ split daily: ayer vs hoy
         long screenMsDeltaPrev  = 0L; // ayer
         long screenMsDeltaToday = 0L; // hoy
 
@@ -338,82 +311,61 @@ public class DailyAggregationWorker extends Worker {
         long nightDeltaToday = 0L;
         long nightDeltaTomorrow = 0L;
 
-        // ✅ dos buffers hourly: ayer y hoy
         long[] screenMsByHourPrev = new long[24];
         long[] screenMsByHourToday = new long[24];
 
         int[] unlockByHourToday = new int[24];
         int[] unlockByHourPrev  = new int[24];
 
-        Log.d(TAG, "State(before): screenIsOn=" + screenIsOn
-                + " screenOpenTs=" + screenOpenTs
-                + " lastScreenEventTs=" + lastScreenEventTs
-                + " lastUnlockEventTs=" + lastUnlockEventTs);
-
+        // ✅ coger SOLO system events y ordenarlos por ts (evita reorden/doble)
+        ArrayList<UsageStatsProvider.RawEvent> sys = new ArrayList<>();
         for (UsageStatsProvider.RawEvent r : rawAll) {
-
-            if (r.pkg != null) continue; // system only
+            if (r == null) continue;
+            if (r.pkg != null) continue;
             if (r.ts < start || r.ts > end) continue;
-
-            // Si venimos con pantalla ON arrastrada antes del start, ancla al start para no contar fuera del rango incremental
-            if (screenIsOn && screenOpenTs > 0 && screenOpenTs < start) {
-                screenOpenTs = start;
+            sys.add(r);
+        }
+        Collections.sort(sys, new Comparator<UsageStatsProvider.RawEvent>() {
+            @Override public int compare(UsageStatsProvider.RawEvent a, UsageStatsProvider.RawEvent b) {
+                return Long.compare(a.ts, b.ts);
             }
+        });
 
-            // Para screen events usamos lastScreenEventTs (pero NO aplica a KEYGUARD_HIDDEN)
-            if (r.type != UsageEvents.Event.KEYGUARD_HIDDEN && r.ts <= lastScreenEventTs) {
-                continue;
-            }
+        long cursor = lastAccountedTs;
 
-            if (r.type == UsageEvents.Event.SCREEN_INTERACTIVE) {
+        for (UsageStatsProvider.RawEvent r : sys) {
 
-                if (!screenIsOn) {
-                    screenIsOn = true;
-                    screenOpenTs = r.ts;
-                    Log.d(TAG, "SCREEN_ON ts=" + r.ts + " screenOpenTs=" + screenOpenTs);
+            // 5.1 contabilizar intervalo [cursor -> r.ts] si screenIsOn
+            if (r.ts > cursor && screenIsOn) {
+                long segStart = cursor;
+                long segEnd = r.ts;
+
+                long prevPart  = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
+                long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
+                screenMsDeltaPrev  += prevPart;
+                screenMsDeltaToday += todayPart;
+
+                if (segStart < endOfDayYesterday) {
+                    addScreenSegmentToHours(screenMsByHourPrev, yesterday, segStart, Math.min(segEnd, endOfDayYesterday));
                 }
-                lastScreenEventTs = Math.max(lastScreenEventTs, r.ts);
+                if (segEnd > startOfDayToday) {
+                    addScreenSegmentToHours(screenMsByHourToday, today, Math.max(segStart, startOfDayToday), segEnd);
+                }
+
+                nightDeltaToday += overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
+                nightDeltaTomorrow += overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
+            }
+
+            cursor = Math.max(cursor, r.ts);
+
+            // 5.2 aplicar el evento
+            if (r.type == UsageEvents.Event.SCREEN_INTERACTIVE) {
+                screenIsOn = true;
 
             } else if (r.type == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
-
-                if (screenIsOn && screenOpenTs > 0 && r.ts > screenOpenTs) {
-                    long segStart = screenOpenTs;
-                    long segEnd = r.ts;
-
-                    // ✅ split DAILY por solape de día (evita que hoy “coma” minutos de ayer)
-                    long prevPart  = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
-                    long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
-                    screenMsDeltaPrev  += prevPart;
-                    screenMsDeltaToday += todayPart;
-
-                    // ✅ HOURLY por solape (ya estaba bien)
-                    if (segStart < endOfDayYesterday) {
-                        long s = segStart;
-                        long e = Math.min(segEnd, endOfDayYesterday);
-                        addScreenSegmentToHours(screenMsByHourPrev, yesterday, s, e);
-                    }
-                    if (segEnd > startOfDayToday) {
-                        long s = Math.max(segStart, startOfDayToday);
-                        long e = segEnd;
-                        addScreenSegmentToHours(screenMsByHourToday, today, s, e);
-                    }
-
-                    // nocturno por solape (mantener)
-                    long addToday = overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
-                    long addTomorrow = overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
-                    nightDeltaToday += addToday;
-                    nightDeltaTomorrow += addTomorrow;
-
-                    // ✅ avanzar marcador para evitar re-procesos en reintentos
-                    lastScreenEventTs = Math.max(lastScreenEventTs, segEnd);
-                }
-
                 screenIsOn = false;
-                screenOpenTs = -1L;
-                lastScreenEventTs = Math.max(lastScreenEventTs, r.ts);
 
             } else if (r.type == UsageEvents.Event.KEYGUARD_HIDDEN) {
-
                 if (r.ts > lastUnlockEventTs) {
                     unlockDelta++;
                     lastUnlockEventTs = Math.max(lastUnlockEventTs, r.ts);
@@ -428,10 +380,10 @@ public class DailyAggregationWorker extends Worker {
             }
         }
 
-        // Cierre al final si sigue ON
-        if (screenIsOn && screenOpenTs > 0 && now > screenOpenTs) {
-            long segStart = screenOpenTs;
-            long segEnd = now;
+        // 5.3 cerrar [cursor -> end] si sigue ON
+        if (end > cursor && screenIsOn) {
+            long segStart = cursor;
+            long segEnd = end;
 
             long prevPart  = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
             long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
@@ -439,36 +391,24 @@ public class DailyAggregationWorker extends Worker {
             screenMsDeltaToday += todayPart;
 
             if (segStart < endOfDayYesterday) {
-                long s = segStart;
-                long e = Math.min(segEnd, endOfDayYesterday);
-                addScreenSegmentToHours(screenMsByHourPrev, yesterday, s, e);
+                addScreenSegmentToHours(screenMsByHourPrev, yesterday, segStart, Math.min(segEnd, endOfDayYesterday));
             }
             if (segEnd > startOfDayToday) {
-                long s = Math.max(segStart, startOfDayToday);
-                long e = segEnd;
-                addScreenSegmentToHours(screenMsByHourToday, today, s, e);
+                addScreenSegmentToHours(screenMsByHourToday, today, Math.max(segStart, startOfDayToday), segEnd);
             }
 
-            long addToday = overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
-            long addTomorrow = overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
-            nightDeltaToday += addToday;
-            nightDeltaTomorrow += addTomorrow;
-
-            // ✅ avanzar marcador (robusto a reintentos)
-            lastScreenEventTs = Math.max(lastScreenEventTs, now);
-
-            // “avanza” openTs para evitar doble conteo en la próxima run
-            screenOpenTs = now;
+            nightDeltaToday += overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
+            nightDeltaTomorrow += overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
         }
 
+        // ✅ avanzar cursor SIEMPRE al final del rango procesado
         prefs.edit()
                 .putBoolean(KEY_SCREEN_IS_ON, screenIsOn)
-                .putLong(KEY_SCREEN_OPEN_TS, screenOpenTs)
-                .putLong(KEY_LAST_SCREEN_EVENT_TS, lastScreenEventTs)
                 .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
+                .putLong(KEY_LAST_SCREEN_ACCOUNTED_TS, end)
                 .apply();
 
-        // 6) SAVE YESTERDAY (daily_metrics) -> SOLO screen_ms split
+        // 6) SAVE YESTERDAY (screen split)
         if (screenMsDeltaPrev > 0) {
             DailyMetricsEntity prev = db.userActivityDao().getDailyMetricsByDate(yesterday);
             if (prev != null) {
@@ -477,13 +417,12 @@ public class DailyAggregationWorker extends Worker {
             }
         }
 
-        // 7) SAVE TODAY (daily_metrics)
+        // 7) SAVE TODAY
         DailyMetricsEntity cur = db.userActivityDao().getDailyMetricsByDate(today);
         if (cur != null) {
             cur.screen_ms = Math.max(0L, cur.screen_ms + screenMsDeltaToday);
 
             cur.unlock_count = Math.max(0, cur.unlock_count + unlockDelta);
-            // TU DEFINICIÓN: sesiones = desbloqueos
             cur.session_count = cur.unlock_count;
 
             cur.foreground_ms = foregroundMs;
@@ -515,13 +454,12 @@ public class DailyAggregationWorker extends Worker {
                 rows.add(new DailyAppMetricsEntity(today, appId, fg, openCount, 0));
             }
         }
-
         if (!rows.isEmpty()) {
             db.usageDao().upsertDailyAppMetrics(rows);
         }
 
         // 10) HOURLY persist: ayer + hoy
-        persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, null /*switch prev si lo quieres*/);
+        persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, null);
         persistHourly(db, today, screenMsByHourToday, unlockByHourToday, switchByHour);
 
         // 11) retención
@@ -572,7 +510,6 @@ public class DailyAggregationWorker extends Worker {
                 int addUnlock = (unlockByHour != null && unlockByHour.length == 24) ? unlockByHour[h] : 0;
                 int addSwitch = (switchByHour != null && switchByHour.length == 24) ? switchByHour[h] : 0;
 
-                // Nota: switches por hora aquí lo guardas como "delta de esta ejecución".
                 int newSwitch = (switchByHour == null) ? baseSwitch : addSwitch;
 
                 out.add(new HourlyMetricsEntity(
@@ -669,7 +606,7 @@ public class DailyAggregationWorker extends Worker {
     }
 
     // =========================================================
-    // ✅ App resolution (sin “actualizar cada vez”; solo si falta)
+    // ✅ App resolution
     // =========================================================
     private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
         if (pkg == null || pkg.trim().isEmpty()) return -1L;
@@ -707,7 +644,6 @@ public class DailyAggregationWorker extends Worker {
             return existing;
         }
 
-        // no existe: crear
         String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
         if (label != null) label = label.trim();
         if (label == null || label.isEmpty()) label = pkg;
@@ -718,7 +654,6 @@ public class DailyAggregationWorker extends Worker {
         long inserted = db.usageDao().insertApp(new AppEntity(pkg, label, cat, mustIgnore));
         if (inserted > 0) return inserted;
 
-        // fallback (race)
         Long after = db.usageDao().getAppIdByPackageName(pkg);
         return (after != null) ? after : -1L;
     }

@@ -74,6 +74,11 @@ public interface UserActivityDAO {
     @Query("SELECT * FROM hourly_metric WHERE date = :date ORDER BY hour ASC")
     LiveData<List<HourlyMetricsEntity>> observeHourlyMetricsByDate(int date);
 
+
+    // for notifications
+    @Query("SELECT notification_count FROM daily_metrics WHERE date = :date LIMIT 1")
+    Integer getNotificationCountForDay(int date);
+
     // hourly_metric
     @Query("""
         SELECT hour AS hour,
@@ -83,5 +88,14 @@ public interface UserActivityDAO {
         ORDER BY hour ASC
     """)
     Cursor getSwitchesPerHourForDay(int date);
+
+    // for notifications
+    @Query("SELECT hour, notification_count AS notifs FROM hourly_metric WHERE date = :date ORDER BY hour")
+    Cursor getNotificationsPerHourForDay(int date);
+
+    @Query("SELECT COUNT(*) AS active_hours FROM hourly_metric WHERE date = :date AND screen_ms > 0")
+    Cursor getActiveHoursForDay(int date);
+
+
 
 }

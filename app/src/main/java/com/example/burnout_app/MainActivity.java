@@ -1,9 +1,11 @@
 package com.example.burnout_app;
 
+import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -37,16 +39,13 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-
-    private BarChart barChart3h;
-
     private static final String WORK_DAILY_AGG = "daily_aggregation_work";
 
+    private BarChart barChart3h;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main);
 
         // ---------------------------------------------------------
@@ -54,7 +53,8 @@ public class MainActivity extends AppCompatActivity {
         // ---------------------------------------------------------
         setupCardNavigation(R.id.cardScreenTime, ActivityScreenTime.class, "cardScreenTime");
         setupCardNavigation(R.id.cardMultitask, ActivityMultitask.class, "cardMultitask");
-        // (si más adelante activas Notifications/Communication, añades aquí)
+        setupCardNavigation(R.id.cardNotifications, ActivityNotifications.class, "cardNotifications");
+        // (si más adelante activas Communication, añades aquí)
 
         // ---------------------------------------------------------
         // DATE LABEL
@@ -94,15 +94,60 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // ---------------------------------------------------------
-        // USAGE ACCESS PERMISSION (solo abre ajustes; no WorkManager aquí)
+        // PERMISSIONS / SPECIAL ACCESS
         // ---------------------------------------------------------
-        if (!UsageStatsProvider.hasUsageAccess(this)) {
+        ensureSpecialAccess();
+    }
+
+    /**
+     * 1) Si no hay Usage Access -> abre ajustes.
+     * 2) Si no hay Notification Listener -> abre ajustes.
+     * 3) Si ambos OK -> schedule WorkManager.
+     */
+    private void ensureSpecialAccess() {
+
+        boolean usageOk = UsageStatsProvider.hasUsageAccess(this);
+        boolean notifOk = isNotificationListenerEnabled();
+
+        Log.d(TAG, "Special access -> usageOk=" + usageOk + " notifListenerOk=" + notifOk);
+
+        // 1) Usage Access
+        if (!usageOk) {
             Log.d(TAG, "Usage Access NOT granted -> opening settings");
             startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
-        } else {
-            Log.d(TAG, "Usage Access granted.");
-            ensureAggregationWorkScheduled();
+            return;
         }
+
+        // 2) Notification Listener
+        if (!notifOk) {
+            Log.d(TAG, "Notification Listener NOT enabled -> opening settings");
+            startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
+            return;
+        }
+
+        // 3) Todo OK -> schedule
+        Log.d(TAG, "All access granted -> scheduling aggregation worker");
+        ensureAggregationWorkScheduled();
+    }
+
+    /**
+     * Comprueba si tu NotificationListenerService está en enabled_notification_listeners.
+     */
+    private boolean isNotificationListenerEnabled() {
+        String enabled = Settings.Secure.getString(
+                getContentResolver(),
+                "enabled_notification_listeners"
+        );
+
+        if (TextUtils.isEmpty(enabled)) return false;
+
+        ComponentName me = new ComponentName(
+                this,
+                com.example.burnout_app.collectors.BurnoutNotificationListenerService.class
+        );
+
+        // El string suele contener "pkg/class:pkg/class:..."
+        return enabled.contains(me.flattenToString());
     }
 
     private void setupCardNavigation(int cardId, Class<?> targetActivity, String labelForLogs) {
@@ -124,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // =========================================================
-    // CHART HELPERS (estilo inspirado en tus otras activities)
+    // CHART HELPERS
     // =========================================================
 
     private void setup3hBarChart(BarChart c) {
@@ -136,7 +181,6 @@ public class MainActivity extends AppCompatActivity {
         c.setPinchZoom(false);
         c.setScaleEnabled(false);
 
-        // X: 8 barras (0..7) -> 00,03,06,09,12,15,18,21
         XAxis x = c.getXAxis();
         x.setPosition(XAxis.XAxisPosition.BOTTOM);
 
@@ -168,13 +212,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         c.getAxisRight().setEnabled(false);
 
         c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setAxisMaximum(180f);     // ✅ 3h = 180 min
-        c.getAxisLeft().setGranularity(30f);      // ✅ ticks cada 30 min
-        c.getAxisLeft().setLabelCount(7, true);   // 0..180 (7 labels)
+        c.getAxisLeft().setAxisMaximum(180f);
+        c.getAxisLeft().setGranularity(30f);
+        c.getAxisLeft().setLabelCount(7, true);
         c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
         c.getAxisLeft().setDrawGridLines(true);
 
@@ -189,8 +232,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private long[] aggregate3hBuckets(List<HourlyMetricsEntity> rows) {
-        long[] bucketsMs = new long[8]; // 0..7
-
+        long[] bucketsMs = new long[8];
         if (rows == null) return bucketsMs;
 
         for (HourlyMetricsEntity h : rows) {
@@ -198,7 +240,7 @@ public class MainActivity extends AppCompatActivity {
             int hour = h.hour;
             if (hour < 0 || hour > 23) continue;
 
-            int bucket = hour / 3; // 0..7
+            int bucket = hour / 3;
             bucketsMs[bucket] += h.screen_ms;
         }
         return bucketsMs;
@@ -218,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         BarDataSet ds = new BarDataSet(entries, "Minutos");
-        ds.setColor(Color.parseColor("#22D3EE")); // turquesa
+        ds.setColor(Color.parseColor("#22D3EE"));
         ds.setDrawValues(false);
 
         BarData data = new BarData(ds);
@@ -226,12 +268,15 @@ public class MainActivity extends AppCompatActivity {
 
         chart.setData(data);
 
-        // ✅ deja margen arriba para que no quede “pegado”
         float maxY = data.getYMax();
         chart.getAxisLeft().setAxisMaximum(Math.max(30f, maxY * 1.2f));
 
         chart.invalidate();
     }
+
+    // =========================================================
+    // WORKMANAGER
+    // =========================================================
 
     private void ensureAggregationWorkScheduled() {
 
@@ -239,7 +284,6 @@ public class MainActivity extends AppCompatActivity {
                 .setRequiresBatteryNotLow(true)
                 .build();
 
-        // 1) Periodic: para que se ejecute de forma estable (p.ej. cada 1h para ir refrescando)
         PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(
                 DailyAggregationWorker.class,
                 1, TimeUnit.HOURS
@@ -251,7 +295,6 @@ public class MainActivity extends AppCompatActivity {
                 periodic
         );
 
-        // 2) Kickoff inmediato: para que tengas datos ya (si no, esperas al scheduler)
         OneTimeWorkRequest now = new OneTimeWorkRequest.Builder(DailyAggregationWorker.class)
                 .setConstraints(constraints)
                 .build();
@@ -262,5 +305,4 @@ public class MainActivity extends AppCompatActivity {
                 now
         );
     }
-
 }

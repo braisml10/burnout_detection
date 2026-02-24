@@ -3,6 +3,7 @@ package com.example.burnout_app.worker;
 import android.app.usage.UsageEvents;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -40,7 +41,7 @@ public class DailyAggregationWorker extends Worker {
     private static final String KEY_SCREEN_IS_ON = "screen_is_on";
     private static final String KEY_LAST_UNLOCK_EVENT_TS = "last_unlock_event_ts";
 
-    // ✅ new: monotonic cursor for screen accounting (prevents double count)
+    // ✅ monotonic cursor for screen accounting (prevents double count)
     private static final String KEY_LAST_SCREEN_ACCOUNTED_TS = "last_screen_accounted_ts";
 
     private static final long FIRST_LOOKBACK_MS = 2 * 60 * 60_000L; // 2h
@@ -109,17 +110,15 @@ public class DailyAggregationWorker extends Worker {
         List<UsageStatsProvider.RawEvent> rawAll = UsageStatsProvider.collectEvents(ctx, start, end);
         Log.d(TAG, "Raw events total=" + (rawAll != null ? rawAll.size() : 0));
 
-        if (rawAll == null || rawAll.isEmpty()) {
-            prefs.edit().putLong(KEY_LAST_USAGE_CAPTURE_TS, end).apply();
-            Log.d(TAG, "No raw events -> end");
-            Log.d(TAG, "================ doWork END ================");
-            return Result.success();
-        }
+        // ✅ IMPORTANTE: NO hacemos return si rawAll está vacío.
+        // Las notificaciones pueden existir igualmente.
+        if (rawAll == null) rawAll = new ArrayList<>();
 
         // debug resumen por tipos (system vs pkg)
         int cntSys = 0, cntPkg = 0;
         Map<Integer, Integer> typeCount = new HashMap<>();
         for (UsageStatsProvider.RawEvent r : rawAll) {
+            if (r == null) continue;
             if (r.pkg == null) cntSys++; else cntPkg++;
             typeCount.put(r.type, typeCount.getOrDefault(r.type, 0) + 1);
         }
@@ -144,6 +143,7 @@ public class DailyAggregationWorker extends Worker {
         List<AppUsageEventEntity> toInsert = new ArrayList<>();
 
         for (UsageStatsProvider.RawEvent r : rawAll) {
+            if (r == null) continue;
             if (r.pkg == null) continue;
             if (r.ts < start || r.ts > end) continue;
 
@@ -298,13 +298,12 @@ public class DailyAggregationWorker extends Worker {
 
         long lastUnlockEventTs = prefs.getLong(KEY_LAST_UNLOCK_EVENT_TS, start);
 
-        // ✅ cursor monotónico: último instante ya contabilizado
         long lastAccountedTs = prefs.getLong(KEY_LAST_SCREEN_ACCOUNTED_TS, start);
         if (lastAccountedTs < start) lastAccountedTs = start;
         if (lastAccountedTs > end) lastAccountedTs = end;
 
-        long screenMsDeltaPrev  = 0L; // ayer
-        long screenMsDeltaToday = 0L; // hoy
+        long screenMsDeltaPrev  = 0L;
+        long screenMsDeltaToday = 0L;
 
         int unlockDelta = 0;
 
@@ -317,7 +316,6 @@ public class DailyAggregationWorker extends Worker {
         int[] unlockByHourToday = new int[24];
         int[] unlockByHourPrev  = new int[24];
 
-        // ✅ coger SOLO system events y ordenarlos por ts (evita reorden/doble)
         ArrayList<UsageStatsProvider.RawEvent> sys = new ArrayList<>();
         for (UsageStatsProvider.RawEvent r : rawAll) {
             if (r == null) continue;
@@ -335,7 +333,6 @@ public class DailyAggregationWorker extends Worker {
 
         for (UsageStatsProvider.RawEvent r : sys) {
 
-            // 5.1 contabilizar intervalo [cursor -> r.ts] si screenIsOn
             if (r.ts > cursor && screenIsOn) {
                 long segStart = cursor;
                 long segEnd = r.ts;
@@ -358,7 +355,6 @@ public class DailyAggregationWorker extends Worker {
 
             cursor = Math.max(cursor, r.ts);
 
-            // 5.2 aplicar el evento
             if (r.type == UsageEvents.Event.SCREEN_INTERACTIVE) {
                 screenIsOn = true;
 
@@ -380,7 +376,6 @@ public class DailyAggregationWorker extends Worker {
             }
         }
 
-        // 5.3 cerrar [cursor -> end] si sigue ON
         if (end > cursor && screenIsOn) {
             long segStart = cursor;
             long segEnd = end;
@@ -401,12 +396,52 @@ public class DailyAggregationWorker extends Worker {
             nightDeltaTomorrow += overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
         }
 
-        // ✅ avanzar cursor SIEMPRE al final del rango procesado
         prefs.edit()
                 .putBoolean(KEY_SCREEN_IS_ON, screenIsOn)
                 .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
                 .putLong(KEY_LAST_SCREEN_ACCOUNTED_TS, end)
                 .apply();
+
+        // ============================
+        // ✅ NOTIFICATIONS (NUEVO)
+        // ============================
+        int[] notifByHourToday = new int[24];
+        int[] notifByHourPrev  = new int[24];
+
+        Cursor cToday = null;
+        try {
+            cToday = db.notificationDao().countByHourCursor(today);
+            if (cToday != null) {
+                int iHour = cToday.getColumnIndex("hour");
+                int iC = cToday.getColumnIndex("c");
+                while (cToday.moveToNext()) {
+                    int h = cToday.getInt(iHour);
+                    int cnt = cToday.getInt(iC);
+                    if (h >= 0 && h <= 23) notifByHourToday[h] = cnt;
+                }
+            }
+        } finally {
+            if (cToday != null) cToday.close();
+        }
+
+        Cursor cPrev = null;
+        try {
+            cPrev = db.notificationDao().countByHourCursor(yesterday);
+            if (cPrev != null) {
+                int iHour = cPrev.getColumnIndex("hour");
+                int iC = cPrev.getColumnIndex("c");
+                while (cPrev.moveToNext()) {
+                    int h = cPrev.getInt(iHour);
+                    int cnt = cPrev.getInt(iC);
+                    if (h >= 0 && h <= 23) notifByHourPrev[h] = cnt;
+                }
+            }
+        } finally {
+            if (cPrev != null) cPrev.close();
+        }
+
+        int notifTotalToday = db.notificationDao().countByDate(today);
+        int notifTotalPrev  = db.notificationDao().countByDate(yesterday);
 
         // 6) SAVE YESTERDAY (screen split)
         if (screenMsDeltaPrev > 0) {
@@ -415,6 +450,13 @@ public class DailyAggregationWorker extends Worker {
                 prev.screen_ms = Math.max(0L, prev.screen_ms + screenMsDeltaPrev);
                 db.userActivityDao().upsertDailyMetrics(prev);
             }
+        }
+
+        // ✅ yesterday notifications (SET)
+        DailyMetricsEntity prevNotif = db.userActivityDao().getDailyMetricsByDate(yesterday);
+        if (prevNotif != null) {
+            prevNotif.notification_count = Math.max(0, notifTotalPrev);
+            db.userActivityDao().upsertDailyMetrics(prevNotif);
         }
 
         // 7) SAVE TODAY
@@ -430,6 +472,9 @@ public class DailyAggregationWorker extends Worker {
             cur.app_switch_count = appSwitchCount;
 
             cur.night_ms = Math.max(0L, cur.night_ms + nightDeltaToday);
+
+            // ✅ today notifications (SET)
+            cur.notification_count = Math.max(0, notifTotalToday);
 
             db.userActivityDao().upsertDailyMetrics(cur);
         }
@@ -458,9 +503,9 @@ public class DailyAggregationWorker extends Worker {
             db.usageDao().upsertDailyAppMetrics(rows);
         }
 
-        // 10) HOURLY persist: ayer + hoy
-        persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, null);
-        persistHourly(db, today, screenMsByHourToday, unlockByHourToday, switchByHour);
+        // 10) HOURLY persist: ayer + hoy (✅ con notifs)
+        persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, notifByHourPrev, null);
+        persistHourly(db, today, screenMsByHourToday, unlockByHourToday, notifByHourToday, switchByHour);
 
         // 11) retención
         int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
@@ -484,6 +529,7 @@ public class DailyAggregationWorker extends Worker {
                                int epochDay,
                                long[] screenMsByHour,
                                int[] unlockByHour,
+                               int[] notifByHour,
                                int[] switchByHour) {
         try {
             List<HourlyMetricsEntity> existing = db.userActivityDao().getHourlyMetricsByDate(epochDay);
@@ -502,14 +548,18 @@ public class DailyAggregationWorker extends Worker {
 
                 long baseScreen = (cur != null) ? cur.screen_ms : 0L;
                 int baseUnlock = (cur != null) ? cur.unlock_count : 0;
-                int baseNotif = (cur != null) ? cur.notification_count : 0;
                 int baseSwitch = (cur != null) ? cur.app_switch_count : 0;
                 int baseUnique = (cur != null) ? cur.unique_apps_count : 0;
+                int baseNotif = (cur != null) ? cur.notification_count : 0;
 
                 long addScreen = (screenMsByHour != null && screenMsByHour.length == 24) ? screenMsByHour[h] : 0L;
                 int addUnlock = (unlockByHour != null && unlockByHour.length == 24) ? unlockByHour[h] : 0;
-                int addSwitch = (switchByHour != null && switchByHour.length == 24) ? switchByHour[h] : 0;
 
+                // ✅ notifs: SET desde raw aggregate
+                int newNotif = (notifByHour != null && notifByHour.length == 24) ? notifByHour[h] : baseNotif;
+
+                // switches: tu lógica original
+                int addSwitch = (switchByHour != null && switchByHour.length == 24) ? switchByHour[h] : 0;
                 int newSwitch = (switchByHour == null) ? baseSwitch : addSwitch;
 
                 out.add(new HourlyMetricsEntity(
@@ -517,7 +567,7 @@ public class DailyAggregationWorker extends Worker {
                         h,
                         Math.max(0L, baseScreen + addScreen),
                         Math.max(0, baseUnlock + addUnlock),
-                        Math.max(0, baseNotif),
+                        Math.max(0, newNotif),
                         Math.max(0, newSwitch),
                         Math.max(0, baseUnique)
                 ));
@@ -554,8 +604,6 @@ public class DailyAggregationWorker extends Worker {
         cal.setTimeInMillis(ts);
         return cal.get(Calendar.HOUR_OF_DAY);
     }
-
-    // ===================== misc helpers =====================
 
     private String safePkg(BurnoutDatabase db, long appId) {
         try {
@@ -605,9 +653,6 @@ public class DailyAggregationWorker extends Worker {
         return Math.max(0L, e - s);
     }
 
-    // =========================================================
-    // ✅ App resolution
-    // =========================================================
     private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
         if (pkg == null || pkg.trim().isEmpty()) return -1L;
 

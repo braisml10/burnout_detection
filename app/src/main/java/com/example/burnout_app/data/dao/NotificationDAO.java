@@ -30,4 +30,24 @@ public interface NotificationDAO {
 
     @Query("SELECT app_id, COUNT(*) AS c FROM notification_event WHERE date = :date GROUP BY app_id ORDER BY c DESC LIMIT :limit")
     Cursor topAppsCursor(int date, int limit);
+
+    @Query(
+            "SELECT " +
+                    "  CASE " +
+                    "    WHEN a.category IS NULL OR TRIM(a.category) = '' THEN 'OTHER' " +
+                    "    ELSE UPPER(a.category) " +
+                    "  END AS app_category, " +
+                    "  COUNT(*) AS c " +
+                    "FROM notification_event ne " +
+                    "JOIN app a ON ne.app_id = a.app_id " +
+                    "WHERE ne.date = :date " +
+                    "  AND a.is_ignored = 0 " +
+                    "GROUP BY " +
+                    "  CASE " +
+                    "    WHEN a.category IS NULL OR TRIM(a.category) = '' THEN 'OTHER' " +
+                    "    ELSE UPPER(a.category) " +
+                    "  END " +
+                    "ORDER BY c DESC"
+    )
+    Cursor countByAppCategoryCursor(int date);
 }

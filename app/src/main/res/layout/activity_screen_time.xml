@@ -409,7 +409,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="Actividad nocturna (22h–06h)"
+            android:text="Uso nocturno (22:00–06:00)"
             android:textColor="@android:color/white"
             android:textStyle="bold"
             android:textSize="16sp"
@@ -420,8 +420,8 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardNightBars"
             android:layout_width="0dp"
-            android:layout_height="130dp"
-            android:layout_marginTop="2dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
             app:cardCornerRadius="18dp"
             app:cardElevation="0dp"
@@ -434,35 +434,33 @@
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:paddingTop="14dp"
-                android:paddingBottom="2dp">
+                android:paddingBottom="14dp">
 
-                <!-- Strip (altura fija) -->
+                <!-- Strip (timeline) -->
                 <com.github.mikephil.charting.charts.BarChart
                     android:id="@+id/barChartNight"
                     android:layout_width="0dp"
                     android:layout_height="26dp"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toTopOf="@id/nightLabelsRow"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent" />
 
-                <!-- Labels (más cerca del strip) -->
+                <!-- Labels -->
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:id="@+id/nightLabelsRow"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     app:layout_constraintTop_toBottomOf="@id/barChartNight"
-                    app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent">
 
                     <TextView
-                        android:id="@+id/tvNightStart"
+                        android:id="@+id/tvNight22"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="22:00"
@@ -472,7 +470,19 @@
                         app:layout_constraintTop_toTopOf="parent" />
 
                     <TextView
-                        android:id="@+id/tvNightMid"
+                        android:id="@+id/tvNight00"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="00:00"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintHorizontal_bias="0.25"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/tvNight02"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="02:00"
@@ -480,10 +490,23 @@
                         android:textSize="12sp"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintHorizontal_bias="0.5"
                         app:layout_constraintTop_toTopOf="parent" />
 
                     <TextView
-                        android:id="@+id/tvNightEnd"
+                        android:id="@+id/tvNight04"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="04:00"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintHorizontal_bias="0.75"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/tvNight06"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="06:00"
@@ -493,10 +516,41 @@
                         app:layout_constraintTop_toTopOf="parent" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
+                <!-- Summary (si no hay pantalla detalle) -->
+                <LinearLayout
+                    android:id="@+id/nightSummary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical"
+                    app:layout_constraintTop_toBottomOf="@id/nightLabelsRow"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent">
+
+                    <TextView
+                        android:id="@+id/tvNightTotal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Uso total: --"
+                        android:textColor="#CBD5E1"
+                        android:textSize="13sp"
+                        tools:ignore="HardcodedText" />
+
+                    <TextView
+                        android:id="@+id/tvNightActiveHours"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Horas activas: --"
+                        android:textColor="#CBD5E1"
+                        android:textSize="13sp"
+                        tools:ignore="HardcodedText" />
+
+                </LinearLayout>
+
             </androidx.constraintlayout.widget.ConstraintLayout>
 
         </com.google.android.material.card.MaterialCardView>
-
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

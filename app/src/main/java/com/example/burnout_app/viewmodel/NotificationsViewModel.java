@@ -27,18 +27,23 @@ public class NotificationsViewModel extends AndroidViewModel {
         public final int[] notifsByHour; // 24
         public final List<NotificationRepository.TopNotifAppRow> topApps;
 
+        // ✅ NUEVO: distribución por tipo (category)
+        public final List<NotificationRepository.CategoryCountRow> byCategory;
+
         public UiState(int date,
                        int totalDaily,
                        int avgPerHour,
                        String mostIntrusiveApp,
                        int[] notifsByHour,
-                       List<NotificationRepository.TopNotifAppRow> topApps) {
+                       List<NotificationRepository.TopNotifAppRow> topApps,
+                       List<NotificationRepository.CategoryCountRow> byCategory) {
             this.date = date;
             this.totalDaily = totalDaily;
             this.avgPerHour = avgPerHour;
             this.mostIntrusiveApp = mostIntrusiveApp;
             this.notifsByHour = notifsByHour;
             this.topApps = topApps;
+            this.byCategory = byCategory;
         }
     }
 
@@ -77,13 +82,15 @@ public class NotificationsViewModel extends AndroidViewModel {
 
             List<NotificationRepository.TopNotifAppRow> top =
                     repo.getTopAppsByNotificationsForDay(date, 8);
+            if (top == null) top = Collections.emptyList();
 
             String mostIntrusive = "—";
-            if (top != null && !top.isEmpty()) {
-                mostIntrusive = top.get(0).name;
-            }
+            if (!top.isEmpty()) mostIntrusive = top.get(0).name;
 
-            if (top == null) top = Collections.emptyList();
+            // ✅ NUEVO: notificaciones por tipo (category)
+            List<NotificationRepository.CategoryCountRow> byCategory =
+                    repo.getNotificationsByCategoryForDay(date);
+            if (byCategory == null) byCategory = Collections.emptyList();
 
             uiState.postValue(new UiState(
                     date,
@@ -91,7 +98,8 @@ public class NotificationsViewModel extends AndroidViewModel {
                     avg,
                     mostIntrusive,
                     byHour,
-                    top
+                    top,
+                    byCategory
             ));
         });
     }

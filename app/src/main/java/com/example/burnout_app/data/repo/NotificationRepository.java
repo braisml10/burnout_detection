@@ -99,6 +99,39 @@ public class NotificationRepository {
     }
 
     // =========================================================
+    // Notifs/Category
+    // =========================================================
+    public static class CategoryCountRow {
+        public final String category;
+        public final int count;
+
+        public CategoryCountRow(String category, int count) {
+            this.category = category;
+            this.count = count;
+        }
+    }
+
+    public List<CategoryCountRow> getNotificationsByCategoryForDay(int date) {
+        List<CategoryCountRow> out = new ArrayList<>();
+
+        Cursor c = db.notificationDao().countByAppCategoryCursor(date);
+        try {
+            int iCat = c.getColumnIndexOrThrow("app_category");
+            int iCnt = c.getColumnIndexOrThrow("c");
+
+            while (c.moveToNext()) {
+                String cat = c.getString(iCat);
+                int cnt = c.getInt(iCnt);
+                if (cat == null || cat.trim().isEmpty()) cat = "OTHER";
+                out.add(new CategoryCountRow(cat, cnt));
+            }
+        } finally {
+            c.close();
+        }
+        return out;
+    }
+
+    // =========================================================
     // AVERAGE/HOUR helper (opcional)
     // =========================================================
 

@@ -114,7 +114,14 @@ public final class TimeKey {
         return dateLabelFromTimestamp(tsLocal);
     }
 
+    public static String formatDurationMinutes(int totalMin) {
+        if (totalMin < 0) totalMin = 0;
 
+        int h = totalMin / 60;
+        int m = totalMin % 60;
 
+        if (h > 0) return h + "h " + m + "min";
+        return m + "min";
+    }
 
 }

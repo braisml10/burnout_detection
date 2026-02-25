@@ -548,13 +548,13 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Interruptions title -->
+        <!-- Notification types title -->
         <TextView
-            android:id="@+id/tvInterruptionsTitle"
+            android:id="@+id/tvNotifTypesTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="Horas con más interrupciones"
+            android:text="Notificaciones por tipo"
             android:textColor="@android:color/white"
             android:textStyle="bold"
             android:textSize="16sp"
@@ -563,9 +563,9 @@
             tools:ignore="HardcodedText" />
 
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardInterruptionsChart"
+            android:id="@+id/cardNotifTypesChart"
             android:layout_width="0dp"
-            android:layout_height="190dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
             app:cardCornerRadius="18dp"
@@ -573,16 +573,32 @@
             app:strokeWidth="1dp"
             app:strokeColor="#1E2A44"
             app:cardBackgroundColor="#0E1729"
-            app:layout_constraintTop_toBottomOf="@id/tvInterruptionsTitle"
+            app:layout_constraintTop_toBottomOf="@id/tvNotifTypesTitle"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
-            <com.github.mikephil.charting.charts.BarChart
-                android:id="@+id/barChartInterruptions"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="14dp"/>
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <com.github.mikephil.charting.charts.HorizontalBarChart
+                    android:id="@+id/chartNotifTypesStacked"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Mini-leyenda (1 línea) -->
+                <LinearLayout
+                    android:id="@+id/legendNotifTypes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" />
+
+            </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

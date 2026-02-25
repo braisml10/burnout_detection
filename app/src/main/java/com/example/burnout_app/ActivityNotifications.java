@@ -2,18 +2,23 @@ package com.example.burnout_app;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.example.burnout_app.data.repo.NotificationRepository;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.NotificationsViewModel;
-import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.HorizontalBarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
@@ -21,8 +26,10 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.highlight.Highlight;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ActivityNotifications extends AppCompatActivity {
@@ -45,13 +52,41 @@ public class ActivityNotifications extends AppCompatActivity {
     // Chart 1: tendencia (LINE)
     private LineChart chartNotifs;
 
-    // ✅ Chart 2: Horas con más interrupciones (BAR 3h como MainActivity)
-    private BarChart barChartInterruptions;
+    // Chart 2: una barra horizontal segmentada por tipo
+    private HorizontalBarChart chartNotifTypesStacked;
+
+    // Leyenda custom
+    private LinearLayout legendNotifTypes;
+
+    // cache para tooltip por segmento (stackIndex)
+    private List<NotifTypeSeg> lastTypeSegs;
 
     // Top apps (3)
     private TextView tvApp1Name, tvApp2Name, tvApp3Name;
     private ProgressBar pbApp1, pbApp2, pbApp3;
     private TextView tvApp1Pct, tvApp2Pct, tvApp3Pct;
+
+    // ✅ Categorías fijas (siempre aparecen aunque estén a 0)
+    private static final String[] FIXED_CATEGORIES = new String[]{
+            "WORK", "ENTERTAINMENT", "SOCIAL", "COMMUNICATION", "OTHER"
+    };
+
+    // -------------------------
+    // Modelo interno para leyenda/tooltip
+    // -------------------------
+    private static class NotifTypeSeg {
+        final String label;
+        final int count;
+        final int pct;
+        final int color;
+
+        NotifTypeSeg(String label, int count, int pct, int color) {
+            this.label = label;
+            this.count = count;
+            this.pct = pct;
+            this.color = color;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,34 +97,32 @@ public class ActivityNotifications extends AppCompatActivity {
 
         vm = new ViewModelProvider(this).get(NotificationsViewModel.class);
 
-        // -------------------
         // KPIs
-        // -------------------
         tvTotalNotifs = findViewById(R.id.tvTotalNotifsValue);
         tvAvgPerHour = findViewById(R.id.tvAvgPerHourValue);
         tvMostIntrusive = findViewById(R.id.tvMostIntrusiveValue);
 
-        // -------------------
-        // Chart 1 (LINE): tendencia
-        // -------------------
+        // Chart 1 (LINE)
         chartNotifs = findViewById(R.id.chartNotifs);
         if (chartNotifs == null) {
             throw new IllegalStateException("chartNotifs NULL: falta R.id.chartNotifs en el layout");
         }
         setupNotifsLineChart(chartNotifs);
 
-        // -------------------
-        // ✅ Chart 2 (BAR): interrupciones 3h
-        // -------------------
-        barChartInterruptions = findViewById(R.id.barChartInterruptions);
-        if (barChartInterruptions == null) {
-            throw new IllegalStateException("barChartInterruptions NULL: falta R.id.barChartInterruptions en el layout");
+        // Chart 2 (STACKED)
+        chartNotifTypesStacked = findViewById(R.id.chartNotifTypesStacked);
+        if (chartNotifTypesStacked == null) {
+            throw new IllegalStateException("chartNotifTypesStacked NULL: falta R.id.chartNotifTypesStacked en el layout");
         }
-        setup3hBarChart(barChartInterruptions);
+        setupTypeStrip(chartNotifTypesStacked);
 
-        // -------------------
+        // Leyenda
+        legendNotifTypes = findViewById(R.id.legendNotifTypes);
+        if (legendNotifTypes == null) {
+            throw new IllegalStateException("legendNotifTypes NULL: falta R.id.legendNotifTypes en el layout");
+        }
+
         // Top apps
-        // -------------------
         tvApp1Name = findViewById(R.id.tvApp1Name);
         tvApp2Name = findViewById(R.id.tvApp2Name);
         tvApp3Name = findViewById(R.id.tvApp3Name);
@@ -102,9 +135,7 @@ public class ActivityNotifications extends AppCompatActivity {
         tvApp2Pct = findViewById(R.id.tvApp2Pct);
         tvApp3Pct = findViewById(R.id.tvApp3Pct);
 
-        // -------------------
         // Day selector
-        // -------------------
         btnPrevDay = findViewById(R.id.btnPrevDay);
         btnNextDay = findViewById(R.id.btnNextDay);
         tvDayLabel = findViewById(R.id.tvDayLabel);
@@ -126,25 +157,19 @@ public class ActivityNotifications extends AppCompatActivity {
             }
         });
 
-        // -------------------
         // Observers
-        // -------------------
         vm.getUiState().observe(this, s -> {
             if (s == null) return;
 
-            // KPIs
             tvTotalNotifs.setText(String.valueOf(s.totalDaily));
             tvAvgPerHour.setText(String.valueOf(s.avgPerHour));
             tvMostIntrusive.setText(prettyName(s.mostIntrusiveApp));
 
-            // Chart 1: tendencia por hora (line)
             renderNotifsLineChart(chartNotifs, s.notifsByHour);
 
-            // ✅ Chart 2: interrupciones 3h (bar igual que MainActivity)
-            long[] buckets = aggregate3hBucketsFromNotifsByHour(s.notifsByHour);
-            render3hBars(barChartInterruptions, buckets);
+            // ✅ barra segmentada + leyenda + tooltip
+            renderTypeStrip(chartNotifTypesStacked, s.byCategory);
 
-            // Top apps (3)
             renderTopApps(s.totalDaily, s.topApps);
         });
 
@@ -154,7 +179,6 @@ public class ActivityNotifications extends AppCompatActivity {
 
     private void applyDayUi() {
         String label;
-
         if (selectedDay == todayDay) label = "Hoy";
         else if (selectedDay == todayDay - 1) label = "Ayer";
         else label = TimeKey.dateLabelFromEpochDay(selectedDay);
@@ -210,9 +234,7 @@ public class ActivityNotifications extends AppCompatActivity {
         }
 
         List<Entry> entries = new ArrayList<>(25);
-        for (int h = 0; h < 24; h++) {
-            entries.add(new Entry(h, notifsByHour[h]));
-        }
+        for (int h = 0; h < 24; h++) entries.add(new Entry(h, notifsByHour[h]));
         entries.add(new Entry(24f, notifsByHour[23]));
 
         LineDataSet ds = new LineDataSet(entries, "Notificaciones");
@@ -228,10 +250,10 @@ public class ActivityNotifications extends AppCompatActivity {
     }
 
     // =========================================================
-    // ✅ BAR CHART 3h (Horas con más interrupciones) - igual MainActivity
+    // TYPE STRIP (1 barra segmentada proporcional + tooltip + leyenda)
     // =========================================================
 
-    private void setup3hBarChart(BarChart c) {
+    private void setupTypeStrip(HorizontalBarChart c) {
         c.getDescription().setEnabled(false);
         c.getLegend().setEnabled(false);
         c.setNoDataText("Sin datos");
@@ -240,87 +262,231 @@ public class ActivityNotifications extends AppCompatActivity {
         c.setPinchZoom(false);
         c.setScaleEnabled(false);
 
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularityEnabled(true);
-        x.setGranularity(1f);
-        x.setAxisMinimum(-0.5f);
-        x.setAxisMaximum(7.5f);
-        x.setAvoidFirstLastClipping(true);
-        x.setDrawGridLines(false);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setTextSize(12f);
+        c.setDrawGridBackground(false);
+        c.setDrawBorders(false);
 
-        x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
-                int i = Math.round(value);
-                switch (i) {
-                    case 0: return "03";
-                    case 1: return "06";
-                    case 2: return "09";
-                    case 3: return "12";
-                    case 4: return "15";
-                    case 5: return "18";
-                    case 6: return "21";
-                    case 7: return "24";
-                    default: return "";
-                }
-            }
-        });
-
-        c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setGranularity(5f);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
-
+        // Barra “full width”
+        c.setViewPortOffsets(0f, 0f, 0f, 0f);
+        c.setExtraOffsets(0f, 0f, 0f, 0f);
         c.setFitBars(true);
-        c.setExtraOffsets(4f, 2f, 6f, 6f);
+
+        // Ejes invisibles
+        c.getAxisRight().setEnabled(false);
+
+        YAxis left = c.getAxisLeft();
+        left.setEnabled(true);
+        left.setDrawAxisLine(false);
+        left.setDrawGridLines(false);
+        left.setDrawLabels(false);
+        left.setAxisMinimum(0f);
+
+        XAxis x = c.getXAxis();
+        x.setEnabled(true);
+        x.setDrawAxisLine(false);
+        x.setDrawGridLines(false);
+        x.setDrawLabels(false);
+        x.setAxisMinimum(-0.5f);
+        x.setAxisMaximum(0.5f); // 1 barra
+
+        // ✅ Tooltip por segmento usando stackIndex
+        c.setOnChartValueSelectedListener(new com.github.mikephil.charting.listener.OnChartValueSelectedListener() {
+            @Override public void onValueSelected(Entry e, Highlight h) {
+                if (!(e instanceof BarEntry)) return;
+                if (lastTypeSegs == null || lastTypeSegs.isEmpty()) return;
+
+                int stackIdx = h.getStackIndex();
+                if (stackIdx < 0 || stackIdx >= lastTypeSegs.size()) return;
+
+                NotifTypeSeg seg = lastTypeSegs.get(stackIdx);
+
+                // ✅ SOLO label + porcentaje (sin el count)
+                Toast.makeText(
+                        ActivityNotifications.this,
+                        seg.label + " (" + seg.pct + "%)",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                chartNotifTypesStacked.highlightValues(null);
+                chartNotifTypesStacked.invalidate();
+            }
+
+            @Override public void onNothingSelected() { }
+        });
     }
 
-    private long[] aggregate3hBucketsFromNotifsByHour(int[] notifsByHour) {
-        long[] buckets = new long[8];
-        if (notifsByHour == null || notifsByHour.length != 24) return buckets;
+    private void renderTypeStrip(HorizontalBarChart chart,
+                                 List<NotificationRepository.CategoryCountRow> rows) {
 
-        for (int h = 0; h < 24; h++) {
-            int bucket = h / 3; // 0..7
-            buckets[bucket] += notifsByHour[h];
-        }
-        return buckets;
-    }
-
-    private void render3hBars(BarChart chart, long[] buckets) {
-        if (buckets == null || buckets.length != 8) {
-            chart.clear();
-            chart.invalidate();
-            return;
+        int total = 0;
+        for (String cat : FIXED_CATEGORIES) {
+            total += countForCat(rows, cat);
         }
 
-        List<BarEntry> entries = new ArrayList<>(8);
-        for (int i = 0; i < 8; i++) {
-            entries.add(new BarEntry(i, (float) buckets[i]));
+        List<NotifTypeSeg> segs = new ArrayList<>(FIXED_CATEGORIES.length);
+        for (String cat : FIXED_CATEGORIES) {
+            int cnt = countForCat(rows, cat);
+            int pct = (total > 0) ? Math.round((cnt * 100f) / total) : 0;
+            segs.add(new NotifTypeSeg(cat, cnt, pct, colorForCategory(cat)));
+        }
+        lastTypeSegs = segs;
+
+        float[] stack = new float[segs.size()];
+        List<Integer> colors = new ArrayList<>(segs.size());
+        String[] stackLabels = new String[segs.size()];
+
+        if (total <= 0) {
+            for (int i = 0; i < segs.size(); i++) {
+                stack[i] = (i == 0) ? 1f : 0f;
+                colors.add(Color.TRANSPARENT);
+                stackLabels[i] = segs.get(i).label;
+            }
+            colors.set(0, Color.parseColor("#1E2A44"));
+        } else {
+            for (int i = 0; i < segs.size(); i++) {
+                stack[i] = segs.get(i).count;
+                colors.add(segs.get(i).color);
+                stackLabels[i] = segs.get(i).label;
+            }
         }
 
-        BarDataSet ds = new BarDataSet(entries, "Notificaciones");
-        ds.setColor(Color.parseColor("#F97316")); // naranja como tu mock
+        List<BarEntry> entries = new ArrayList<>(1);
+        entries.add(new BarEntry(0f, stack));
+
+        BarDataSet ds = new BarDataSet(entries, "");
         ds.setDrawValues(false);
+        ds.setColors(colors);
+        ds.setStackLabels(stackLabels);
+
+        ds.setBarBorderWidth(0.8f);
+        ds.setBarBorderColor(Color.parseColor("#0B1220"));
+        ds.setHighlightEnabled(true);
+        ds.setHighLightColor(Color.TRANSPARENT);
 
         BarData data = new BarData(ds);
-        data.setBarWidth(0.7f);
+
+        // ✅ más gruesa (0.45–0.65 es buen rango con una sola barra)
+        data.setBarWidth(0.55f);
 
         chart.setData(data);
 
-        float maxY = data.getYMax();
-        chart.getAxisLeft().setAxisMaximum(Math.max(5f, maxY * 1.25f));
+        float max = (total > 0) ? (float) total : 1f;
+        chart.getAxisLeft().setAxisMinimum(0f);
+        chart.getAxisLeft().setAxisMaximum(max);
 
         chart.invalidate();
+
+        renderTypeLegend(segs);
+    }
+
+    private int countForCat(List<NotificationRepository.CategoryCountRow> rows, String cat) {
+        if (rows == null || rows.isEmpty()) return 0;
+        String target = safeCatLabel(cat);
+        for (NotificationRepository.CategoryCountRow r : rows) {
+            if (r == null) continue;
+            String c = safeCatLabel(r.category);
+            if (target.equals(c)) return Math.max(0, r.count);
+        }
+        return 0;
+    }
+
+    private void renderTypeLegend(List<NotifTypeSeg> segs) {
+        if (legendNotifTypes == null) return;
+        legendNotifTypes.removeAllViews();
+
+        if (segs == null || segs.isEmpty()) return;
+
+        List<NotifTypeSeg> nonZero = new ArrayList<>();
+        for (NotifTypeSeg s : segs) {
+            if (s != null && s.count > 0) nonZero.add(s);
+        }
+
+        if (nonZero.isEmpty()) {
+            NotifTypeSeg first = segs.get(0);
+            nonZero.add(new NotifTypeSeg(first.label, 0, 0, first.color));
+        }
+
+        Collections.sort(nonZero, (a, b) -> Integer.compare(b.count, a.count));
+
+        final int MAX_ITEMS = 3;
+
+        int shown = Math.min(MAX_ITEMS, nonZero.size());
+        for (int i = 0; i < shown; i++) {
+            legendNotifTypes.addView(makeLegendItem(nonZero.get(i)));
+        }
+
+        int remaining = nonZero.size() - shown;
+        if (remaining > 0) {
+            TextView more = new TextView(this);
+            more.setText("+" + remaining);
+            more.setTextColor(Color.parseColor("#94A3B8"));
+            more.setTextSize(12f);
+            more.setPadding(10, 2, 0, 0);
+            more.setSingleLine(true);
+            legendNotifTypes.addView(more);
+        }
+    }
+
+    private View makeLegendItem(NotifTypeSeg seg) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.HORIZONTAL);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        lp.rightMargin = 18;
+        item.setLayoutParams(lp);
+
+        View dot = new View(this);
+        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(12, 12);
+        dotLp.rightMargin = 8;
+        dot.setLayoutParams(dotLp);
+        dot.setBackgroundColor(seg.color);
+
+        TextView tv = new TextView(this);
+        tv.setText(seg.label + " " + seg.pct + "%");
+        tv.setTextColor(Color.parseColor("#E2E8F0"));
+        tv.setTextSize(12f);
+        tv.setSingleLine(true);
+
+        item.addView(dot);
+        item.addView(tv);
+
+        return item;
+    }
+
+    // ✅ Paleta diferente a la superior (evitamos cyan/verde similares a top apps)
+    private int colorForCategory(String cat) {
+        if (cat == null) return Color.parseColor("#94A3B8");
+        cat = cat.trim().toUpperCase();
+
+        switch (cat) {
+            case "WORK":
+                return Color.parseColor("#8B5CF6"); // purple
+            case "ENTERTAINMENT":
+                return Color.parseColor("#F59E0B"); // amber
+            case "SOCIAL":
+                return Color.parseColor("#EC4899"); // pink
+            case "COMMUNICATION":
+                return Color.parseColor("#60A5FA"); // blue
+            case "OTHER":
+            default:
+                return Color.parseColor("#94A3B8"); // gray-blue
+        }
+    }
+
+    private String safeCatLabel(String cat) {
+        if (cat == null) return "OTHER";
+        cat = cat.trim();
+        if (cat.isEmpty()) return "OTHER";
+        return cat.toUpperCase();
     }
 
     // =========================================================
-    // Top apps (igual que tú)
+    // Top apps
     // =========================================================
 
-    private void renderTopApps(int totalDaily, List<com.example.burnout_app.data.repo.NotificationRepository.TopNotifAppRow> top) {
+    private void renderTopApps(int totalDaily, List<NotificationRepository.TopNotifAppRow> top) {
         setTopRow(1, "--", 0, 0, totalDaily);
         setTopRow(2, "--", 0, 0, totalDaily);
         setTopRow(3, "--", 0, 0, totalDaily);
@@ -333,9 +499,9 @@ public class ActivityNotifications extends AppCompatActivity {
         if (top.size() >= 3) setTopRow(3, top.get(2).name, top.get(2).count, mx, totalDaily);
     }
 
-    private int maxCount(List<com.example.burnout_app.data.repo.NotificationRepository.TopNotifAppRow> top) {
+    private int maxCount(List<NotificationRepository.TopNotifAppRow> top) {
         int m = 0;
-        for (com.example.burnout_app.data.repo.NotificationRepository.TopNotifAppRow r : top) {
+        for (NotificationRepository.TopNotifAppRow r : top) {
             if (r != null) m = Math.max(m, r.count);
         }
         return m;

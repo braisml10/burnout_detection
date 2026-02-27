@@ -5,6 +5,7 @@
     android:id="@+id/notificationsScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     android:background="#0B1220"
     android:fillViewport="true">
 

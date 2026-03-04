@@ -1,10 +1,11 @@
 package com.example.burnout_app;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
@@ -13,6 +14,7 @@ import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DailyDetailViewModel;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.MarkerView;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
@@ -22,6 +24,8 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+import com.github.mikephil.charting.utils.MPPointF;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +52,7 @@ public class ActivityScreenTime extends AppCompatActivity {
     private int todayDay;
     private int selectedDay;
 
-    // cache para tooltip
+    // cache para marker
     private int[] lastNightMinutes8;
 
     @Override
@@ -100,7 +104,6 @@ public class ActivityScreenTime extends AppCompatActivity {
 
             // ✅ “Uso total” abajo usa EXACTAMENTE el mismo valor del KPI
             if (tvNightTotal != null) {
-
                 int totalMinutes = Integer.parseInt(safeText(tvNight));  // ejemplo: "127 min" o "127"
                 tvNightTotal.setText("Uso total: " + TimeKey.formatDurationMinutes(totalMinutes));
             }
@@ -136,6 +139,10 @@ public class ActivityScreenTime extends AppCompatActivity {
         vm.getNightMinutes22to6().observe(this, minutes -> {
             if (minutes == null || minutes.length != 8) {
                 lastNightMinutes8 = null;
+
+                // quitar marker si no hay datos
+                barChartNight.setMarker(null);
+
                 barChartNight.clear();
                 barChartNight.invalidate();
                 setNightActiveHours(null);
@@ -143,10 +150,13 @@ public class ActivityScreenTime extends AppCompatActivity {
             }
 
             lastNightMinutes8 = minutes;
+
+            NightMarkerView mv = new NightMarkerView(this);
+            mv.setChartView(barChartNight);
+            barChartNight.setMarker(mv);
+
             renderNightTimeline(barChartNight, minutes);
             setNightActiveHours(minutes);
-
-            // (Uso total YA viene del KPI arriba; no recalculamos aquí)
         });
 
         // Flechas
@@ -243,31 +253,19 @@ public class ActivityScreenTime extends AppCompatActivity {
         c.setDrawGridBackground(false);
         c.setDrawBorders(false);
 
-        c.setViewPortOffsets(0f, 0f, 0f, 0f);
+        float topPx = dp(28); // espacio para que el marker “quepa” dentro del chart
+        c.setViewPortOffsets(0f, topPx, 0f, 0f);
         c.setExtraOffsets(0f, 0f, 0f, 0f);
         c.setFitBars(true);
 
-        // Tooltip sin highlight “pegajoso”
-        c.setOnChartValueSelectedListener(new com.github.mikephil.charting.listener.OnChartValueSelectedListener() {
+        // ✅ importante para mostrar MarkerView
+        c.setDrawMarkers(true);
+
+        // ✅ ya NO toast, dejamos que el Marker haga el trabajo
+        c.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override public void onValueSelected(Entry e, Highlight h) {
-                if (!(e instanceof BarEntry)) return;
-                if (lastNightMinutes8 == null || lastNightMinutes8.length != 8) return;
-
-                int idx = Math.round(e.getX()); // 0..7
-                if (idx < 0 || idx > 7) return;
-
-                String label = nightSlotLabel(idx);
-                int m = lastNightMinutes8[idx];
-
-                Toast.makeText(
-                        ActivityScreenTime.this,
-                        label + ": " + m + " min de uso",
-                        Toast.LENGTH_SHORT
-                ).show();
-
-                // ✅ limpia highlight inmediatamente
-                barChartNight.highlightValues(null);
-                barChartNight.invalidate();
+                // NO limpiar highlight aquí
+                // Si limpias highlight -> el marker desaparece al instante.
             }
 
             @Override public void onNothingSelected() { }
@@ -323,7 +321,8 @@ public class ActivityScreenTime extends AppCompatActivity {
         return c3;
     }
 
-    private String nightSlotLabel(int idx) {
+    // ✅ ahora PUBLIC para que lo use el marker interno si lo necesitas fuera
+    public String nightSlotLabel(int idx) {
         switch (idx) {
             case 0: return "22:00–23:00";
             case 1: return "23:00–00:00";
@@ -351,12 +350,49 @@ public class ActivityScreenTime extends AppCompatActivity {
         }
         tvNightActiveHours.setText("Horas activas: " + activeHours);
     }
+
+    // =========================
+// MarkerView interno (0 clases nuevas)
+// =========================
+    private class NightMarkerView extends MarkerView {
+
+        private final TextView tv;
+
+        public NightMarkerView(Context context) {
+            super(context, R.layout.marker_night);
+            tv = findViewById(R.id.tvMarkerText);
+        }
+
+        @Override
+        public void refreshContent(Entry e, Highlight highlight) {
+            int idx = Math.round(e.getX()); // 0..7
+
+            if (lastNightMinutes8 != null && lastNightMinutes8.length == 8 && idx >= 0 && idx < 8) {
+                String label = nightSlotLabel(idx);
+                int m = lastNightMinutes8[idx];
+                tv.setText(label + ": " + m + " min de uso");
+            } else {
+                tv.setText("--");
+            }
+
+            // ✅ asegura que getWidth()/getHeight() sean correctos en el draw del marker
+            measure(
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            );
+            layout(0, 0, getMeasuredWidth(), getMeasuredHeight());
+
+            super.refreshContent(e, highlight);
+        }
+
+        @Override
+        public MPPointF getOffset() {
+            // tu diseño original: centrado y arriba
+            return new MPPointF(-(getWidth() / 2f), -getHeight() - 12f);
+        }
+    }
+    private float dp(float v) {
+        return v * getResources().getDisplayMetrics().density;
+    }
+
 }
-
-
-
-
-
-
-
-

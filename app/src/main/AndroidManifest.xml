@@ -18,22 +18,26 @@
     <!-- Foreground services -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-    <!-- (Opcional) -->
-    <!-- <uses-permission android:name="android.permission.READ_PHONE_STATE" /> -->
+    <!-- Comms permissions (runtime) -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_SMS" />
 
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <!-- ⚠️ No necesario para contar llamadas con CallLog si ya tienes READ_CALL_LOG -->
+    <!-- <uses-permission android:name="android.permission.READ_PHONE_STATE" /> -->
 
     <!-- ========================= -->
     <!-- ===== PACKAGE VISIBILITY -->
     <!-- ========================= -->
-
-    <!-- Necesario para que PackageManager vea otras apps (Android 11+) -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
     </queries>
-
 
     <!-- ========================= -->
     <!-- ===== APPLICATION ======= -->
@@ -64,7 +68,7 @@
         <activity android:name=".ActivityScreenTime" />
         <activity android:name=".ActivityMultitask" />
         <activity android:name=".ActivityNotifications" />
-
+        <activity android:name=".ActivityCommunications" />
 
         <!-- ========================= -->
         <!-- ===== RECEIVERS ========= -->
@@ -80,7 +84,6 @@
             </intent-filter>
         </receiver>
 
-
         <!-- ========================= -->
         <!-- ===== SERVICES ========= -->
         <!-- ========================= -->
@@ -94,7 +97,6 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
-
         </service>
 
     </application>

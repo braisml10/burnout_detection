@@ -1,7 +1,10 @@
 package com.example.burnout_app;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -9,7 +12,10 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
@@ -23,14 +29,13 @@ import com.example.burnout_app.data.entity.HourlyMetricsEntity;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DashboardViewModel;
 import com.example.burnout_app.worker.DailyAggregationWorker;
-import com.google.android.material.card.MaterialCardView;
-
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.google.android.material.card.MaterialCardView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +46,17 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final String WORK_DAILY_AGG = "daily_aggregation_work";
 
+    // Runtime perms (se piden 1 vez; Android no vuelve a mostrar el diálogo si ya están concedidos)
+    private static final int REQ_COMM_PERMS = 1001;
+    private static final String[] COMM_PERMS = new String[] {
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.READ_SMS
+    };
+
+    // Para no insistir si el usuario los deniega (evita que vuelva a “salir el mensaje”)
+    private static final String PREFS = "burnout_runtime";
+    private static final String KEY_ASKED_COMM_PERMS = "asked_comm_perms_once";
+
     private BarChart barChart3h;
 
     @Override
@@ -49,12 +65,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // ---------------------------------------------------------
-        // NAVIGATION
+        // NAVIGATION (cards grandes)
         // ---------------------------------------------------------
         setupCardNavigation(R.id.cardScreenTime, ActivityScreenTime.class, "cardScreenTime");
         setupCardNavigation(R.id.cardMultitask, ActivityMultitask.class, "cardMultitask");
         setupCardNavigation(R.id.cardNotifications, ActivityNotifications.class, "cardNotifications");
-        // (si más adelante activas Communication, añades aquí)
+        setupCardNavigation(R.id.cardCommunication, ActivityCommunications.class, "cardCommunication");
 
         // ---------------------------------------------------------
         // DATE LABEL
@@ -72,10 +88,24 @@ public class MainActivity extends AppCompatActivity {
 
         DashboardViewModel vm = new ViewModelProvider(this).get(DashboardViewModel.class);
         vm.getUiState().observe(this, s -> {
-            value1.setText(s.screenTime);
-            value2.setText(s.notifications);
-            value3.setText(s.multitask);
-            value4.setText(s.communication);
+            if (s == null) return;
+            if (value1 != null) value1.setText(s.screenTime);
+            if (value2 != null) value2.setText(s.notifications);
+            if (value3 != null) value3.setText(s.multitask);
+            if (value4 != null) {
+                int calls = 0;
+                try {
+                    // s.communication debería ser "0", "12", etc. Si ya viene con texto, esto fallará y caerá al catch.
+                    calls = Integer.parseInt(s.communication.trim());
+                } catch (Exception ignored) {}
+
+                String callsText = getResources().getQuantityString(
+                        R.plurals.kpi_calls,
+                        calls,
+                        calls
+                );
+                value4.setText(callsText);
+            } // llamadas / comm KPI
         });
 
         // ---------------------------------------------------------
@@ -96,29 +126,44 @@ public class MainActivity extends AppCompatActivity {
         // ---------------------------------------------------------
         // PERMISSIONS / SPECIAL ACCESS
         // ---------------------------------------------------------
-        ensureSpecialAccess();
+        ensureSpecialAccessAndRuntimePerms();
     }
 
     /**
-     * 1) Si no hay Usage Access -> abre ajustes.
-     * 2) Si no hay Notification Listener -> abre ajustes.
-     * 3) Si ambos OK -> schedule WorkManager.
+     * Flujo:
+     * 1) Pide runtime perms (READ_CALL_LOG, READ_SMS) SOLO 1 vez.
+     * 2) Luego gestiona special access (Usage + NotificationListener).
+     * 3) Si todo OK -> schedule WorkManager.
      */
-    private void ensureSpecialAccess() {
+    private void ensureSpecialAccessAndRuntimePerms() {
 
+        // 0) Runtime perms (solo 1 vez; si ya concedidos, no sale diálogo)
+        if (!hasAllCommPermissions()) {
+            SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            boolean askedOnce = prefs.getBoolean(KEY_ASKED_COMM_PERMS, false);
+
+            if (!askedOnce) {
+                Log.d(TAG, "Comm runtime permissions missing -> requesting (first time)");
+                prefs.edit().putBoolean(KEY_ASKED_COMM_PERMS, true).apply();
+                ActivityCompat.requestPermissions(this, COMM_PERMS, REQ_COMM_PERMS);
+                return;
+            } else {
+                // Ya se pidió una vez y el usuario lo denegó => no insistimos
+                Log.w(TAG, "Comm perms missing but already asked once -> not requesting again");
+                // Aun así, seguimos con special access y worker (calls/sms quedarán en 0)
+            }
+        }
+
+        // 1) Usage Access (special)
         boolean usageOk = UsageStatsProvider.hasUsageAccess(this);
-        boolean notifOk = isNotificationListenerEnabled();
-
-        Log.d(TAG, "Special access -> usageOk=" + usageOk + " notifListenerOk=" + notifOk);
-
-        // 1) Usage Access
         if (!usageOk) {
             Log.d(TAG, "Usage Access NOT granted -> opening settings");
             startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
             return;
         }
 
-        // 2) Notification Listener
+        // 2) Notification Listener (special)
+        boolean notifOk = isNotificationListenerEnabled();
         if (!notifOk) {
             Log.d(TAG, "Notification Listener NOT enabled -> opening settings");
             startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
@@ -126,8 +171,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // 3) Todo OK -> schedule
-        Log.d(TAG, "All access granted -> scheduling aggregation worker");
+        Log.d(TAG, "All required access OK -> scheduling aggregation worker");
         ensureAggregationWorkScheduled();
+    }
+
+    private boolean hasAllCommPermissions() {
+        for (String p : COMM_PERMS) {
+            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -148,6 +202,31 @@ public class MainActivity extends AppCompatActivity {
 
         // El string suele contener "pkg/class:pkg/class:..."
         return enabled.contains(me.flattenToString());
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQ_COMM_PERMS) {
+            boolean allGranted = true;
+
+            if (grantResults.length == 0) {
+                allGranted = false;
+            } else {
+                for (int r : grantResults) {
+                    if (r != PackageManager.PERMISSION_GRANTED) {
+                        allGranted = false;
+                        break;
+                    }
+                }
+            }
+
+            Log.d(TAG, "Comm perms result -> allGranted=" + allGranted);
+
+            // Continúa el flujo (si no los conceden, calls/sms quedan en 0, pero la app funciona)
+            ensureSpecialAccessAndRuntimePerms();
+        }
     }
 
     private void setupCardNavigation(int cardId, Class<?> targetActivity, String labelForLogs) {

@@ -5,11 +5,14 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
+import com.example.burnout_app.data.entity.DailyCommMetricsEntity;
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
+import com.example.burnout_app.data.repo.CommunicationRepository;
 import com.example.burnout_app.data.repo.UserActivityRepository;
 import com.example.burnout_app.helpers.TimeKey;
 
@@ -21,7 +24,7 @@ public class DashboardViewModel extends AndroidViewModel {
         public final String screenTime;
         public final String notifications;
         public final String multitask;
-        public final String communication;
+        public final String communication; // ✅ nº llamadas
 
         public UiState(String screenTime, String notifications, String multitask, String communication) {
             this.screenTime = screenTime;
@@ -31,62 +34,80 @@ public class DashboardViewModel extends AndroidViewModel {
         }
     }
 
-    private final UserActivityRepository repo;
+    private final UserActivityRepository userRepo;
+    private final CommunicationRepository commRepo;
 
     private final MutableLiveData<Integer> selectedDay = new MutableLiveData<>();
 
-    private final LiveData<UiState> uiState;
-
-    // ✅ Para la gráfica del dashboard (MainActivity): hourly_metric del día
     private final LiveData<List<HourlyMetricsEntity>> hourlyMetrics;
+
+    // ✅ UiState combinado sin observeForever
+    private final MediatorLiveData<UiState> uiState = new MediatorLiveData<>();
+
+    private LiveData<DailyMetricsEntity> dailySrc;
+    private LiveData<DailyCommMetricsEntity> commSrc;
+
+    private DailyMetricsEntity lastDaily;
+    private DailyCommMetricsEntity lastComm;
 
     public DashboardViewModel(@NonNull Application app) {
         super(app);
 
-        repo = new UserActivityRepository(app);
+        userRepo = new UserActivityRepository(app);
+        commRepo = new CommunicationRepository(app);
 
         int today = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay.setValue(today);
 
-        // Daily metrics del día seleccionado (para KPIs)
-        LiveData<DailyMetricsEntity> src = Transformations.switchMap(selectedDay, repo::observeDailyMetrics);
+        // KPI 1-3 (daily_metric)
+        dailySrc = Transformations.switchMap(selectedDay, userRepo::observeDailyMetrics);
 
-        uiState = Transformations.map(src, m -> {
-            long screenMs = (m != null) ? m.screen_ms : 0L;
+        // KPI 4 (daily_comm_metric)
+        commSrc = Transformations.switchMap(selectedDay, commRepo::observeDaily);
 
-            int notif = (m != null) ? m.notification_count : 0;
-            int switches = (m != null) ? m.app_switch_count : 0;
-
-            // Comunicación (placeholder temporal)
-            int comm = (m != null) ? m.session_count : 0;
-
-            return new UiState(
-                    formatScreenTime(screenMs),
-                    String.valueOf(notif),
-                    String.valueOf(switches),
-                    String.valueOf(comm)
-            );
+        // ✅ combiner
+        uiState.addSource(dailySrc, d -> {
+            lastDaily = d;
+            uiState.setValue(build());
         });
 
-        // Hourly metrics del día seleccionado (para el BarChart 3h en MainActivity)
-        hourlyMetrics = Transformations.switchMap(selectedDay, repo::observeHourlyMetrics);
+        uiState.addSource(commSrc, c -> {
+            lastComm = c;
+            uiState.setValue(build());
+        });
+
+        // Gráfica 3h del dashboard (hourly_metric)
+        hourlyMetrics = Transformations.switchMap(selectedDay, userRepo::observeHourlyMetrics);
     }
 
     public LiveData<UiState> getUiState() {
         return uiState;
     }
 
-    // ✅ MainActivity observará esto para pintar la gráfica (y agrupar 3h)
     public LiveData<List<HourlyMetricsEntity>> getHourlyMetrics() {
         return hourlyMetrics;
     }
 
-    // (Opcional) por si más adelante metes selector de día en dashboard
     public void loadDay(int epochDay) {
         Integer cur = selectedDay.getValue();
         if (cur == null || cur != epochDay) {
             selectedDay.setValue(epochDay);
         }
+    }
+
+    private UiState build() {
+        long screenMs = (lastDaily != null) ? lastDaily.screen_ms : 0L;
+        int notif = (lastDaily != null) ? lastDaily.notification_count : 0;
+        int switches = (lastDaily != null) ? lastDaily.app_switch_count : 0;
+
+        int calls = (lastComm != null) ? lastComm.calls_count : 0;
+
+        return new UiState(
+                formatScreenTime(screenMs),
+                String.valueOf(Math.max(0, notif)),
+                String.valueOf(Math.max(0, switches)),
+                String.valueOf(Math.max(0, calls)) // ✅ KPI4 = llamadas
+        );
     }
 
     private static String formatScreenTime(long ms) {

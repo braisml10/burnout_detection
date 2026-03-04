@@ -1,5 +1,6 @@
 package com.example.burnout_app.data.dao;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -13,17 +14,37 @@ import java.util.List;
 @Dao
 public interface CommunicationDAO {
 
-    //DAILY
+    // --- DAILY ---
+    @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
+    LiveData<DailyCommMetricsEntity> observeDailyComm(int epochDay);
+
+    @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
+    DailyCommMetricsEntity getDailySync(int epochDay);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void upsertDailyCommMetric(DailyCommMetricsEntity m);
+    void upsertDaily(DailyCommMetricsEntity row);
 
-    @Query("SELECT * FROM daily_comm_metric WHERE date = :date LIMIT 1")
-    DailyCommMetricsEntity getDailyCommMetric(int date);
+    // ✅ sin video_ms
+    @Query("INSERT OR IGNORE INTO daily_comm_metric(date,calls_count,messages_count,total_comm_ms,voice_ms,text_ms) " +
+            "VALUES(:epochDay,0,0,0,0,0)")
+    void insertDailyIfMissing(int epochDay);
 
-    //HOURLY
+    @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
+    DailyCommMetricsEntity getDailyComm(int epochDay);
+
+    // --- HOURLY ---
+    @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
+    LiveData<List<HourlyCommMetricsEntity>> observeHourly(int epochDay);
+
+    @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
+    List<HourlyCommMetricsEntity> getHourlySync(int epochDay);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void upsertHourlyCommMetric(HourlyCommMetricsEntity m);
+    void upsertHourly(List<HourlyCommMetricsEntity> rows);
 
-    @Query("SELECT * FROM hourly_comm_metric WHERE date = :date ORDER BY date")
-    List<HourlyCommMetricsEntity> getHourlyCommMetricsByDate(int date);
+    @Query("DELETE FROM hourly_comm_metric WHERE date = :epochDay")
+    void deleteHourlyForDay(int epochDay);
+
+    @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
+    List<HourlyCommMetricsEntity> getHourlyCommByDate(int epochDay);
 }

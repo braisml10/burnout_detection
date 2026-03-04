@@ -1,12 +1,17 @@
 package com.example.burnout_app.worker;
 
+import android.Manifest;
 import android.app.usage.UsageEvents;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.provider.CallLog;
+import android.provider.Telephony;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -15,7 +20,9 @@ import com.example.burnout_app.data.db.BurnoutDatabase;
 import com.example.burnout_app.data.entity.AppEntity;
 import com.example.burnout_app.data.entity.AppUsageEventEntity;
 import com.example.burnout_app.data.entity.DailyAppMetricsEntity;
+import com.example.burnout_app.data.entity.DailyCommMetricsEntity;
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
+import com.example.burnout_app.data.entity.HourlyCommMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
 import com.example.burnout_app.helpers.AppCategoryResolver;
 import com.example.burnout_app.helpers.RetentionPolicy;
@@ -33,6 +40,7 @@ import java.util.Map;
 public class DailyAggregationWorker extends Worker {
 
     private static final String TAG = "DailyAggregationWorker";
+    private static final String TAG_COMM = "CommAgg";
 
     private static final String PREFS = "burnout_runtime";
     private static final String KEY_LAST_USAGE_CAPTURE_TS = "last_usage_capture_ts";
@@ -111,7 +119,6 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Raw events total=" + (rawAll != null ? rawAll.size() : 0));
 
         // ✅ IMPORTANTE: NO hacemos return si rawAll está vacío.
-        // Las notificaciones pueden existir igualmente.
         if (rawAll == null) rawAll = new ArrayList<>();
 
         // debug resumen por tipos (system vs pkg)
@@ -403,7 +410,7 @@ public class DailyAggregationWorker extends Worker {
                 .apply();
 
         // ============================
-        // ✅ NOTIFICATIONS (NUEVO)
+        // ✅ NOTIFICATIONS
         // ============================
         int[] notifByHourToday = new int[24];
         int[] notifByHourPrev  = new int[24];
@@ -506,6 +513,35 @@ public class DailyAggregationWorker extends Worker {
         // 10) HOURLY persist: ayer + hoy (✅ con notifs)
         persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, notifByHourPrev, null);
         persistHourly(db, today, screenMsByHourToday, unlockByHourToday, notifByHourToday, switchByHour);
+
+        // ============================
+        // ✅ COMMUNICATIONS (NEW)
+        // ============================
+        try {
+            db.communicationDao().insertDailyIfMissing(yesterday);
+            db.communicationDao().insertDailyIfMissing(today);
+
+            // ✅ HOY siempre
+            CommAggResult tRes = computeCommForDay(ctx, today);
+            persistCommMetricsForDay(db, today, tRes);
+
+            // ✅ AYER solo “grace window” (p.ej. hasta las 02:00)
+            long startOfTodayMs = TimeKey.startOfDayMsFromEpochDay(today);
+            long graceEndMs = startOfTodayMs + 2L * 60L * 60_000L; // 02:00
+
+            if (now <= graceEndMs) {
+                CommAggResult yRes = computeCommForDay(ctx, yesterday);
+                persistCommMetricsForDay(db, yesterday, yRes);
+                Log.d(TAG_COMM, "Saved comm metrics y=" + yesterday + " calls=" + yRes.callsTotal + " msgs=" + yRes.msgsTotal);
+            } else {
+                Log.d(TAG_COMM, "Skipping yesterday comm recompute (frozen) y=" + yesterday);
+            }
+
+            Log.d(TAG_COMM, "Saved comm metrics t=" + today + " calls=" + tRes.callsTotal + " msgs=" + tRes.msgsTotal);
+
+        } catch (Exception ex) {
+            Log.e(TAG_COMM, "Comm aggregation failed: " + ex.getMessage(), ex);
+        }
 
         // 11) retención
         int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
@@ -652,6 +688,157 @@ public class DailyAggregationWorker extends Worker {
         long e = Math.min(aEnd, bEnd);
         return Math.max(0L, e - s);
     }
+
+    // ===================== COMM METRICS =====================
+
+    private boolean hasPermission(Context ctx, String perm) {
+        return ContextCompat.checkSelfPermission(ctx, perm) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private static class CommAggResult {
+        int callsTotal;
+        long callsDurationMs;
+        int[] callsByHour = new int[24];
+
+        int msgsTotal;          // SMS recibidos (Inbox)
+        int[] msgsByHour = new int[24];
+    }
+
+    private CommAggResult computeCommForDay(Context ctx, int epochDay) {
+        CommAggResult out = new CommAggResult();
+
+        long startMs = TimeKey.startOfDayMsFromEpochDay(epochDay);
+        long endMs = startMs + 24L * 60L * 60_000L;
+
+        // ---- CALLS ----
+        if (hasPermission(ctx, Manifest.permission.READ_CALL_LOG)) {
+            Cursor c = null;
+            try {
+                String[] proj = new String[]{
+                        CallLog.Calls.DATE,
+                        CallLog.Calls.DURATION
+                };
+                String sel = CallLog.Calls.DATE + ">=? AND " + CallLog.Calls.DATE + "<?";
+                String[] args = new String[]{String.valueOf(startMs), String.valueOf(endMs)};
+
+                c = ctx.getContentResolver().query(CallLog.Calls.CONTENT_URI, proj, sel, args, null);
+                if (c != null) {
+                    int iDate = c.getColumnIndex(CallLog.Calls.DATE);
+                    int iDur = c.getColumnIndex(CallLog.Calls.DURATION);
+
+                    while (c.moveToNext()) {
+                        long ts = c.getLong(iDate);
+                        long durSec = c.getLong(iDur);
+                        long durMs = Math.max(0L, durSec) * 1000L;
+
+                        out.callsTotal++;
+                        out.callsDurationMs += durMs;
+
+                        int h = TimeKey.hourOfDayLocal(ts);
+                        if (h >= 0 && h <= 23) out.callsByHour[h]++;
+                    }
+                }
+            } catch (Exception ex) {
+                Log.e(TAG_COMM, "CallLog query failed: " + ex.getMessage(), ex);
+            } finally {
+                if (c != null) c.close();
+            }
+        } else {
+            Log.w(TAG_COMM, "READ_CALL_LOG not granted -> calls=0");
+        }
+
+        // ---- SMS RECEIVED (Inbox) ----
+        if (hasPermission(ctx, Manifest.permission.READ_SMS)) {
+            Cursor c = null;
+            try {
+                String[] proj = new String[]{Telephony.Sms.DATE};
+                String sel = Telephony.Sms.DATE + ">=? AND " + Telephony.Sms.DATE + "<?";
+                String[] args = new String[]{String.valueOf(startMs), String.valueOf(endMs)};
+
+                c = ctx.getContentResolver().query(Telephony.Sms.Inbox.CONTENT_URI, proj, sel, args, null);
+                if (c != null) {
+                    int iDate = c.getColumnIndex(Telephony.Sms.DATE);
+                    while (c.moveToNext()) {
+                        long ts = c.getLong(iDate);
+                        out.msgsTotal++;
+
+                        int h = TimeKey.hourOfDayLocal(ts);
+                        if (h >= 0 && h <= 23) out.msgsByHour[h]++;
+                    }
+                }
+            } catch (Exception ex) {
+                Log.e(TAG_COMM, "SMS query failed: " + ex.getMessage(), ex);
+            } finally {
+                if (c != null) c.close();
+            }
+        } else {
+            Log.w(TAG_COMM, "READ_SMS not granted -> messages=0");
+        }
+
+        return out;
+    }
+
+    private long getMessagingMsForDay(BurnoutDatabase db, int epochDay) {
+        long ms = 0L;
+        Cursor c = null;
+        try {
+            c = db.usageDao().getCategoryTotalsMsForDay(epochDay); // el mismo que usa UsageRepository
+            int iCat = c.getColumnIndexOrThrow("category");
+            int iMs  = c.getColumnIndexOrThrow("total_ms");
+
+            while (c.moveToNext()) {
+                String cat = c.getString(iCat);
+                if ("MESSAGING".equalsIgnoreCase(cat)) {
+                    ms = c.getLong(iMs);
+                    break;
+                }
+            }
+        } finally {
+            if (c != null) c.close();
+        }
+        return Math.max(0L, ms);
+    }
+
+    private void persistCommMetricsForDay(BurnoutDatabase db, int epochDay, CommAggResult r) {
+        try {
+            db.communicationDao().insertDailyIfMissing(epochDay);
+
+            // ✅ Reutiliza el tiempo de MESSAGING ya calculado en DailyAppMetric/App join
+            long messagingMs = getMessagingMsForDay(db, epochDay);
+
+            long voiceMs = Math.max(0L, r.callsDurationMs);
+            long textMs  = messagingMs;
+            long totalMs = voiceMs + textMs;
+
+            db.communicationDao().upsertDaily(
+                    new DailyCommMetricsEntity(
+                            epochDay,
+                            Math.max(0, r.callsTotal),
+                            Math.max(0, r.msgsTotal), // (si ya estás sumando sms inbox + notif mensajería)
+                            totalMs,
+                            voiceMs,
+                            textMs
+                    )
+            );
+
+            // Ver comentario abajo.
+            ArrayList<HourlyCommMetricsEntity> rows = new ArrayList<>(24);
+            for (int h = 0; h < 24; h++) {
+                long voiceVal = 0L; // aquí debería ser ms/hora, NO count
+                long textVal  = 0L; // aquí debería ser ms/hora, NO count
+                long totalVal = voiceVal + textVal;
+                rows.add(new HourlyCommMetricsEntity(epochDay, h, totalVal, voiceVal, textVal));
+            }
+            db.communicationDao().upsertHourly(rows);
+
+        } catch (Exception ex) {
+            Log.e(TAG_COMM, "persistCommMetricsForDay failed: " + ex.getMessage(), ex);
+        }
+    }
+
+
+
+    // ===================== APP HELPERS =====================
 
     private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
         if (pkg == null || pkg.trim().isEmpty()) return -1L;

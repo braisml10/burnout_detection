@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">burnout_app</string>
+    <plurals name="kpi_calls">
+        <item quantity="one">%d llamada</item>
+        <item quantity="other">%d llamadas</item>
+    </plurals>
 </resources>

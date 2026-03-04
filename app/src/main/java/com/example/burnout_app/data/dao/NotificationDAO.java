@@ -50,4 +50,14 @@ public interface NotificationDAO {
                     "ORDER BY c DESC"
     )
     Cursor countByAppCategoryCursor(int date);
+
+    @Query(
+            "SELECT COUNT(*) " +
+                    "FROM notification_event ne " +
+                    "JOIN app a ON ne.app_id = a.app_id " +
+                    "WHERE ne.date = :date " +
+                    "  AND a.is_ignored = 0 " +
+                    "  AND UPPER(a.category) = 'MESSAGING'"
+    )
+    int countMessagingByDate(int date);
 }

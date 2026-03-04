@@ -359,7 +359,7 @@ public class ActivityScreenTime extends AppCompatActivity {
         private final TextView tv;
 
         public NightMarkerView(Context context) {
-            super(context, R.layout.marker_night);
+            super(context, R.layout.marker);
             tv = findViewById(R.id.tvMarkerText);
         }
 

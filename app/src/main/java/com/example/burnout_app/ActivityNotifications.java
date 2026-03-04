@@ -1,5 +1,6 @@
 package com.example.burnout_app;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -7,7 +8,6 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
@@ -17,6 +17,7 @@ import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.NotificationsViewModel;
 import com.github.mikephil.charting.charts.HorizontalBarChart;
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.MarkerView;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.BarData;
@@ -27,6 +28,8 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+import com.github.mikephil.charting.utils.MPPointF;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -167,7 +170,7 @@ public class ActivityNotifications extends AppCompatActivity {
 
             renderNotifsLineChart(chartNotifs, s.notifsByHour);
 
-            // ✅ barra segmentada + leyenda + tooltip
+            // ✅ barra segmentada + leyenda + tooltip (marker)
             renderTypeStrip(chartNotifTypesStacked, s.byCategory);
 
             renderTopApps(s.totalDaily, s.topApps);
@@ -288,28 +291,12 @@ public class ActivityNotifications extends AppCompatActivity {
         x.setAxisMinimum(-0.5f);
         x.setAxisMaximum(0.5f); // 1 barra
 
-        // ✅ Tooltip por segmento usando stackIndex
-        c.setOnChartValueSelectedListener(new com.github.mikephil.charting.listener.OnChartValueSelectedListener() {
-            @Override public void onValueSelected(Entry e, Highlight h) {
-                if (!(e instanceof BarEntry)) return;
-                if (lastTypeSegs == null || lastTypeSegs.isEmpty()) return;
+        // ✅ importante para marker
+        c.setDrawMarkers(true);
 
-                int stackIdx = h.getStackIndex();
-                if (stackIdx < 0 || stackIdx >= lastTypeSegs.size()) return;
-
-                NotifTypeSeg seg = lastTypeSegs.get(stackIdx);
-
-                // ✅ SOLO label + porcentaje (sin el count)
-                Toast.makeText(
-                        ActivityNotifications.this,
-                        seg.label + " (" + seg.pct + "%)",
-                        Toast.LENGTH_SHORT
-                ).show();
-
-                chartNotifTypesStacked.highlightValues(null);
-                chartNotifTypesStacked.invalidate();
-            }
-
+        // ✅ igual que en screen_time: NO limpiar highlight aquí
+        c.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override public void onValueSelected(Entry e, Highlight h) { }
             @Override public void onNothingSelected() { }
         });
     }
@@ -363,8 +350,6 @@ public class ActivityNotifications extends AppCompatActivity {
         ds.setHighLightColor(Color.TRANSPARENT);
 
         BarData data = new BarData(ds);
-
-        // ✅ más gruesa (0.45–0.65 es buen rango con una sola barra)
         data.setBarWidth(0.55f);
 
         chart.setData(data);
@@ -372,6 +357,12 @@ public class ActivityNotifications extends AppCompatActivity {
         float max = (total > 0) ? (float) total : 1f;
         chart.getAxisLeft().setAxisMinimum(0f);
         chart.getAxisLeft().setAxisMaximum(max);
+
+        // ✅ Reutiliza EXACTAMENTE el mismo marker layout que screen_time
+        //    (visual idéntico)
+        TypeMarkerView mv = new TypeMarkerView(this);
+        mv.setChartView(chart);          // 🔑 CLAVE (igual que en screen_time)
+        chart.setMarker(mv);
 
         chart.invalidate();
 
@@ -480,6 +471,85 @@ public class ActivityNotifications extends AppCompatActivity {
         cat = cat.trim();
         if (cat.isEmpty()) return "OTHER";
         return cat.toUpperCase();
+    }
+
+    // =========================
+    // MarkerView interno (MISMA SOLUCIÓN que screen_time)
+    // Reutiliza R.layout.marker_night + bg_marker (idéntico visual)
+    // =========================
+    private class TypeMarkerView extends MarkerView {
+
+        private final TextView tv;
+
+        public TypeMarkerView(Context context) {
+            super(context, R.layout.marker); // ✅ reutilizamos el mismo
+            tv = findViewById(R.id.tvMarkerText);
+        }
+
+        @Override
+        public void refreshContent(Entry e, Highlight highlight) {
+            if (lastTypeSegs == null || lastTypeSegs.isEmpty() || highlight == null) {
+                tv.setText("--");
+            } else {
+                int stackIdx = highlight.getStackIndex();
+                if (stackIdx >= 0 && stackIdx < lastTypeSegs.size()) {
+                    NotifTypeSeg seg = lastTypeSegs.get(stackIdx);
+                    tv.setText(seg.label + " (" + seg.pct + "%)");
+                } else {
+                    tv.setText("--");
+                }
+            }
+
+            // ✅ asegura que getWidth()/getHeight() sean correctos (igual que screen_time)
+            measure(
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            );
+            layout(0, 0, getMeasuredWidth(), getMeasuredHeight());
+
+            super.refreshContent(e, highlight);
+        }
+
+        @Override
+        public MPPointF getOffset() {
+            return new MPPointF(-(getMeasuredWidth() / 2f), -getMeasuredHeight() - dp(8));
+        }
+
+        @Override
+        public MPPointF getOffsetForDrawingAtPoint(float posX, float posY) {
+            MPPointF base = getOffset();
+            float x = base.x;
+            float y = base.y;
+
+            float w = getMeasuredWidth() > 0 ? getMeasuredWidth() : getWidth();
+            float h = getMeasuredHeight() > 0 ? getMeasuredHeight() : getHeight();
+
+            View cv = getChartView();
+            if (cv == null) return new MPPointF(x, y);
+
+            float chartW = cv.getWidth();
+            float chartH = cv.getHeight();
+
+            float pad = dp(6);
+
+            // clamp horizontal al VIEW (0..chartW)
+            if (posX + x < pad) {
+                x = pad - posX;
+            } else if (posX + x + w > chartW - pad) {
+                x = (chartW - pad) - posX - w;
+            }
+
+            // clamp vertical (si se sale por arriba, lo bajamos dentro)
+            if (posY + y < pad) {
+                y = pad - posY;
+            }
+
+            return new MPPointF(x, y);
+        }
+    }
+
+    private float dp(float v) {
+        return v * getResources().getDisplayMetrics().density;
     }
 
     // =========================================================

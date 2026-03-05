@@ -60,4 +60,13 @@ public interface NotificationDAO {
                     "  AND UPPER(a.category) = 'MESSAGING'"
     )
     int countMessagingByDate(int date);
+
+    @Query("SELECT COUNT(*) FROM notification_event WHERE date = :epochDay AND app_id IN (" +
+                "SELECT app_id FROM app WHERE category = 'MESSAGING')")
+    int countMessagingNotifsByDate(int epochDay);
+
+    @Query("SELECT hour, COUNT(*) AS c FROM notification_event " +
+            "WHERE date = :epochDay AND app_id IN (SELECT app_id FROM app WHERE category = 'MESSAGING') " +
+            "GROUP BY hour")
+    Cursor countMessagingNotifsByHourCursor(int epochDay);
 }

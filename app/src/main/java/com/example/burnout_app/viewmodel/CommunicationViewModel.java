@@ -10,31 +10,23 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.burnout_app.data.entity.DailyCommMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyCommMetricsEntity;
 import com.example.burnout_app.data.repo.CommunicationRepository;
-import com.example.burnout_app.data.repo.UsageRepository;
 import com.example.burnout_app.helpers.TimeKey;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class CommunicationViewModel extends AndroidViewModel {
 
-    // ---------------------------
-    // UI STATE
-    // ---------------------------
     public static class UiState {
         public final int date;
 
-        // KPIs
         public final int callsCount;
         public final int messagesCount;
         public final long totalCommMs;
         public final String dominantChannel; // "Voz" | "Texto" | "—"
 
-        // Series 24h
-        // OJO: estos valores (según tu worker actual) son "valores por hora" (pueden ser counts o ms).
         public final long[] totalByHour; // 24
         public final long[] voiceByHour; // 24
         public final long[] textByHour;  // 24
@@ -59,7 +51,6 @@ public class CommunicationViewModel extends AndroidViewModel {
     }
 
     private final CommunicationRepository repo;
-    private final UsageRepository usageRepo;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final MutableLiveData<UiState> uiState = new MutableLiveData<>();
@@ -69,7 +60,6 @@ public class CommunicationViewModel extends AndroidViewModel {
     public CommunicationViewModel(@NonNull Application app) {
         super(app);
         repo = new CommunicationRepository(app);
-        usageRepo = new UsageRepository(app);
 
         currentDay = TimeKey.epochDayLocal(System.currentTimeMillis());
         loadDay(currentDay);
@@ -80,40 +70,36 @@ public class CommunicationViewModel extends AndroidViewModel {
     }
 
     public void loadDay(int date) {
+        // OJO: esto puede evitar refrescar aunque la DB cambie.
+        // Si quieres siempre refrescar, elimina este if.
         if (date == currentDay && uiState.getValue() != null) return;
+
         currentDay = date;
 
         io.execute(() -> {
 
             // ---------------------------
-            // Daily
+            // Daily (usa lo guardado en DB)
             // ---------------------------
             DailyCommMetricsEntity d = repo.getDailyCommForDay(date);
 
             int calls = (d != null) ? d.calls_count : 0;
             int msgs  = (d != null) ? d.messages_count : 0;
 
-            long voiceDay = (d != null) ? d.voice_ms : 0L;
+            long voiceDay = (d != null) ? Math.max(0L, d.voice_ms) : 0L;
+            long textDay  = (d != null) ? Math.max(0L, d.text_ms)  : 0L;
 
-            // ✅ KPI tiempo en comunicaciones: reutiliza Multitask (categoría MESSAGING)
-            long textDay = 0L;
-            try {
-                Map<String, Long> cats = usageRepo.getCategoryTotalsMsForDay(date);
-                if (cats != null) {
-                    Long m = cats.get("MESSAGING");
-                    textDay = (m != null) ? Math.max(0L, m) : 0L;
-                }
-            } catch (Exception ignored) {}
+            long totalDay;
+            if (d != null) {
+                totalDay = Math.max(0L, d.total_comm_ms);
+                if (totalDay <= 0L) totalDay = voiceDay + textDay; // fallback
+            } else {
+                totalDay = 0L;
+            }
 
-            // ✅ total = llamadas + mensajería (ms)
-            long totalDay = Math.max(0L, voiceDay + textDay);
-
-            // Dominant channel (solo Voz vs Texto)
             String dominant = "—";
-            long max = 0L;
-            if (voiceDay > max) { max = voiceDay; dominant = "Voz"; }
-            if (textDay  > max) { max = textDay;  dominant = "Texto"; }
-            if (max <= 0L) dominant = "—";
+            long max = Math.max(voiceDay, textDay);
+            if (max > 0L) dominant = (voiceDay >= textDay) ? "Voz" : "Texto";
 
             // ---------------------------
             // Hourly (24h)

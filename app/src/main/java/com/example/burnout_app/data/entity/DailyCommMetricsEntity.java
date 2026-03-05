@@ -9,10 +9,9 @@ public class DailyCommMetricsEntity {
     @PrimaryKey
     public int date;
 
-    public int calls_count;
-    public int messages_count;
+    public int calls_count; //nº de llamadas
+    public int messages_count; // nº de SMS recibidos + notificaciones de apps de mensajería
 
-    // ✅ total = voice + text (ms)
     public long total_comm_ms;
     public long voice_ms;
     public long text_ms;

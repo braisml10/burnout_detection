@@ -19,32 +19,25 @@ public interface CommunicationDAO {
     LiveData<DailyCommMetricsEntity> observeDailyComm(int epochDay);
 
     @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
-    DailyCommMetricsEntity getDailySync(int epochDay);
+    DailyCommMetricsEntity getDailyComm(int epochDay);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDaily(DailyCommMetricsEntity row);
 
-    // ✅ sin video_ms
     @Query("INSERT OR IGNORE INTO daily_comm_metric(date,calls_count,messages_count,total_comm_ms,voice_ms,text_ms) " +
             "VALUES(:epochDay,0,0,0,0,0)")
     void insertDailyIfMissing(int epochDay);
-
-    @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
-    DailyCommMetricsEntity getDailyComm(int epochDay);
 
     // --- HOURLY ---
     @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
     LiveData<List<HourlyCommMetricsEntity>> observeHourly(int epochDay);
 
     @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
-    List<HourlyCommMetricsEntity> getHourlySync(int epochDay);
+    List<HourlyCommMetricsEntity> getHourlyCommByDate(int epochDay);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertHourly(List<HourlyCommMetricsEntity> rows);
 
     @Query("DELETE FROM hourly_comm_metric WHERE date = :epochDay")
     void deleteHourlyForDay(int epochDay);
-
-    @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
-    List<HourlyCommMetricsEntity> getHourlyCommByDate(int epochDay);
 }

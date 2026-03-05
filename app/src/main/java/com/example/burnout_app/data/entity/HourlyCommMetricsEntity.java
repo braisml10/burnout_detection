@@ -8,10 +8,9 @@ public class HourlyCommMetricsEntity {
     public int date;
     public int hour;
 
-    // ✅ total = voice + text (ms o “unidad” que decidas)
-    public long total_value;
-    public long voice_value;
-    public long text_value;
+    public long total_value; // suma de los tiempos de llamadas y apps
+    public long voice_value; // tiempo en llamadas
+    public long text_value; // tiempo en apps de mensajería
 
     public HourlyCommMetricsEntity(int date,
                                    int hour,
@@ -24,4 +23,5 @@ public class HourlyCommMetricsEntity {
         this.voice_value = voice_value;
         this.text_value = text_value;
     }
+
 }

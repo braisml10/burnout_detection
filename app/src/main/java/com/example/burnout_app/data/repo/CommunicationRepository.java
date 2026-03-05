@@ -20,7 +20,6 @@ public class CommunicationRepository {
         dao = db.communicationDao();
     }
 
-    // LiveData
     public LiveData<DailyCommMetricsEntity> observeDaily(int epochDay) {
         return dao.observeDailyComm(epochDay);
     }
@@ -29,7 +28,6 @@ public class CommunicationRepository {
         return dao.observeHourly(epochDay);
     }
 
-    // Sync
     public DailyCommMetricsEntity getDailyCommForDay(int epochDay) {
         return dao.getDailyComm(epochDay);
     }

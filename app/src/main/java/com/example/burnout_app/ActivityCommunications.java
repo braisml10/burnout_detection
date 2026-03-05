@@ -102,13 +102,14 @@ public class ActivityCommunications extends AppCompatActivity {
                 return;
             }
 
+            // ✅ KPIs desde DAILY (daily_comm_metric)
             tvCallsValue.setText(String.valueOf(Math.max(0, s.callsCount)));
             tvMessagesValue.setText(String.valueOf(Math.max(0, s.messagesCount)));
 
-            // KPI duración total en minutos (sin unidades)
+            // ✅ KPI duración total: SOLO número en minutos (sin texto/unidades)
             tvTotalCommValue.setText(String.valueOf(msToMinutes(Math.max(0L, s.totalCommMs))));
 
-            // Charts en minutos
+            // ✅ Charts desde HOURLY (hourly_comm_metric)
             renderIntensityLine(chartIntensity, s.totalByHour);
             renderChannelStacked(chartChannelStacked, s.voiceByHour, s.textByHour);
         });
@@ -177,7 +178,7 @@ public class ActivityCommunications extends AppCompatActivity {
         c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
         c.getAxisLeft().setDrawGridLines(true);
 
-        // Opcional: mostrar el sufijo "m" en el eje Y
+        // (solo eje Y) si quieres mantener "m" en el eje
         c.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override public String getFormattedValue(float value) {
                 return ((int) value) + "m";
@@ -193,10 +194,13 @@ public class ActivityCommunications extends AppCompatActivity {
         }
 
         List<Entry> entries = new ArrayList<>(25);
+
+        long maxMin = 0;
         for (int h = 0; h < 24; h++) {
-            entries.add(new Entry(h, (float) msToMinutes(totalByHourMs[h])));
+            long m = msToMinutes(totalByHourMs[h]);
+            if (m > maxMin) maxMin = m;
+            entries.add(new Entry(h, (float) m));
         }
-        // cierre en 24 con el último valor
         entries.add(new Entry(24f, (float) msToMinutes(Math.max(0L, totalByHourMs[23]))));
 
         LineDataSet ds = new LineDataSet(entries, "Comunicación (min)");
@@ -208,12 +212,14 @@ public class ActivityCommunications extends AppCompatActivity {
         ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
 
         chart.setData(new LineData(ds));
+
+        chart.getAxisLeft().setAxisMaximum(Math.max(10f, (float) (maxMin * 1.2)));
+
         chart.invalidate();
     }
 
     // =========================================================
     // BAR CHART (stacked: voz/texto por hora) - MINUTOS
-    // EJE X IGUAL AL LINE CHART (0..24, labels cada 6h)
     // =========================================================
 
     private void setupChannelStackedChart(BarChart c) {
@@ -235,12 +241,9 @@ public class ActivityCommunications extends AppCompatActivity {
         XAxis x = c.getXAxis();
         x.setPosition(XAxis.XAxisPosition.BOTTOM);
         x.setGranularity(1f);
-
-        // MISMO rango/labels que el line
         x.setAxisMinimum(0f);
         x.setAxisMaximum(24f);
         x.setLabelCount(5, true);
-
         x.setTextColor(Color.parseColor("#94A3B8"));
         x.setDrawGridLines(false);
         x.setValueFormatter(new ValueFormatter() {
@@ -258,7 +261,6 @@ public class ActivityCommunications extends AppCompatActivity {
         c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
         c.getAxisLeft().setDrawGridLines(true);
 
-        // Opcional: sufijo minutos en el eje Y
         c.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override public String getFormattedValue(float value) {
                 return ((int) value) + "m";
@@ -293,11 +295,10 @@ public class ActivityCommunications extends AppCompatActivity {
         );
 
         BarData data = new BarData(ds);
-        data.setBarWidth(0.70f); // un pelín menos para que no recorte en bordes
+        data.setBarWidth(0.70f);
 
         chart.setData(data);
 
-        // Ajusta el máximo del eje Y al contenido
         float maxY = data.getYMax();
         chart.getAxisLeft().setAxisMaximum(Math.max(10f, maxY * 1.2f));
 

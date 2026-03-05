@@ -10,12 +10,15 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
@@ -36,6 +39,7 @@ import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.navigation.NavigationView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,10 +63,54 @@ public class MainActivity extends AppCompatActivity {
 
     private BarChart barChart3h;
 
+    // Drawer
+    private DrawerLayout drawerLayout;
+    private NavigationView navView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // ---------------------------------------------------------
+        // DRAWER (menú lateral) -> usamos tu botón btnMenu (arriba derecha)
+        // ---------------------------------------------------------
+        drawerLayout = findViewById(R.id.drawerLayout);
+        navView = findViewById(R.id.navView);
+
+        drawerLayout = findViewById(R.id.drawerLayout);
+        MaterialCardView avatarCard = findViewById(R.id.avatarCard);
+
+        if (avatarCard != null && drawerLayout != null) {
+            avatarCard.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
+        }
+
+        if (navView != null && drawerLayout != null) {
+            navView.setNavigationItemSelectedListener(item -> {
+                int id = item.getItemId();
+
+                if (id == R.id.nav_main) {
+                    // Actividad hoy == Main (ya estás aquí)
+                } else if (id == R.id.nav_screen_time) {
+                    startActivity(new Intent(this, ActivityScreenTime.class));
+                } else if (id == R.id.nav_notifications) {
+                    startActivity(new Intent(this, ActivityNotifications.class));
+                } else if (id == R.id.nav_multitask) {
+                    startActivity(new Intent(this, ActivityMultitask.class));
+                } else if (id == R.id.nav_communication) {
+                    startActivity(new Intent(this, ActivityCommunications.class));
+                } else if (id == R.id.nav_settings) {
+                    // TODO más adelante
+                    // startActivity(new Intent(this, ActivitySettings.class));
+                } else if (id == R.id.nav_logout) {
+                    // TODO más adelante
+                    // logout();
+                }
+
+                drawerLayout.closeDrawer(GravityCompat.START);
+                return true;
+            });
+        }
 
         // ---------------------------------------------------------
         // NAVIGATION (cards grandes)
@@ -127,6 +175,15 @@ public class MainActivity extends AppCompatActivity {
         // PERMISSIONS / SPECIAL ACCESS
         // ---------------------------------------------------------
         ensureSpecialAccessAndRuntimePerms();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
     }
 
     /**

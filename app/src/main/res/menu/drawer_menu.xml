@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:checkableBehavior="single">
+
+        <item
+            android:id="@+id/nav_main"
+            android:icon="@drawable/ic_activity_today"
+            android:title="Actividad hoy" />
+
+        <item
+            android:id="@+id/nav_screen_time"
+            android:icon="@drawable/ic_phone"
+            android:title="Tiempo de pantalla" />
+
+        <item
+            android:id="@+id/nav_notifications"
+            android:icon="@drawable/ic_notifications"
+            android:title="Notificaciones" />
+
+        <item
+            android:id="@+id/nav_multitask"
+            android:icon="@drawable/ic_sync"
+            android:title="Multitarea" />
+
+        <item
+            android:id="@+id/nav_communication"
+            android:icon="@drawable/ic_call"
+            android:title="Comunicación" />
+
+        <item
+            android:id="@+id/nav_settings"
+            android:icon="@drawable/ic_settings"
+            android:title="Configuración" />
+    </group>
+
+    <item
+        android:id="@+id/nav_logout"
+        android:icon="@drawable/ic_logout"
+        android:title="Cerrar Sesión" />
+
+</menu>

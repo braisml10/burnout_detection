@@ -500,13 +500,18 @@
          ========================= -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navView"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:fitsSystemWindows="true"
+        android:clipToPadding="false"
+        android:paddingTop="16dp"
+        android:background="#0B0F1A"
         app:headerLayout="@layout/drawer_header"
         app:menu="@menu/drawer_menu"
         app:itemIconTint="@null"
         app:itemTextColor="@android:color/white"
-        android:background="#0B0F1A" />
+        app:itemHorizontalPadding="20dp"
+        app:itemIconPadding="16dp" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

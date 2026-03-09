@@ -26,9 +26,6 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
-    <!-- ⚠️ No necesario para contar llamadas con CallLog si ya tienes READ_CALL_LOG -->
-    <!-- <uses-permission android:name="android.permission.READ_PHONE_STATE" /> -->
-
     <!-- ========================= -->
     <!-- ===== PACKAGE VISIBILITY -->
     <!-- ========================= -->
@@ -57,7 +54,7 @@
         <!-- ===== ACTIVITIES ===== -->
 
         <activity
-            android:name=".MainActivity"
+            android:name=".WelcomeActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -65,6 +62,14 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".LoginActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".RegisterActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".MainActivity" />
+        <activity android:name=".ProfileActivity" />
         <activity android:name=".ActivityScreenTime" />
         <activity android:name=".ActivityMultitask" />
         <activity android:name=".ActivityNotifications" />
@@ -88,12 +93,10 @@
         <!-- ===== SERVICES ========= -->
         <!-- ========================= -->
 
-        <!-- Notification Listener -->
         <service
             android:name=".collectors.BurnoutNotificationListenerService"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="false">
-
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>

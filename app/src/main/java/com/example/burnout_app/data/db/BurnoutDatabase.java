@@ -10,6 +10,7 @@ import com.example.burnout_app.data.dao.CommunicationDAO;
 import com.example.burnout_app.data.dao.NotificationDAO;
 import com.example.burnout_app.data.dao.UsageDAO;
 import com.example.burnout_app.data.dao.UserActivityDAO;
+import com.example.burnout_app.data.dao.UserProfileDAO;
 import com.example.burnout_app.data.entity.AppEntity;
 import com.example.burnout_app.data.entity.AppUsageEventEntity;
 import com.example.burnout_app.data.entity.DailyAppMetricsEntity;
@@ -19,6 +20,7 @@ import com.example.burnout_app.data.entity.HourlyCommMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
 import com.example.burnout_app.data.entity.NotificationEventEntity;
 import com.example.burnout_app.data.entity.ScreenEventEntity;
+import com.example.burnout_app.data.entity.UserProfileEntity;
 
 @Database(
         entities = {
@@ -30,7 +32,8 @@ import com.example.burnout_app.data.entity.ScreenEventEntity;
                 HourlyCommMetricsEntity.class,
                 HourlyMetricsEntity.class,
                 NotificationEventEntity.class,
-                ScreenEventEntity.class
+                ScreenEventEntity.class,
+                UserProfileEntity.class
         },
         version = 1,
         exportSchema = false
@@ -58,4 +61,6 @@ public abstract class BurnoutDatabase extends RoomDatabase {
     public abstract NotificationDAO notificationDao();
     public abstract UsageDAO usageDao();
     public abstract CommunicationDAO communicationDao();
+
+    public abstract UserProfileDAO userProfileDAO();
 }

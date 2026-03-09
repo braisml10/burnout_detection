@@ -1,37 +1,22 @@
 package com.example.burnout_app;
 
-import android.Manifest;
-import android.content.ComponentName;
+import android.app.AlertDialog;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.provider.Settings;
-import android.text.TextUtils;
 import android.util.Log;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.work.Constraints;
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.ExistingWorkPolicy;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
 
-import com.example.burnout_app.collectors.UsageStatsProvider;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
+import com.example.burnout_app.helpers.SessionManager;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DashboardViewModel;
-import com.example.burnout_app.worker.DailyAggregationWorker;
+import com.example.burnout_app.viewmodel.ProfileViewModel;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
@@ -43,27 +28,13 @@ import com.google.android.material.navigation.NavigationView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-    private static final String WORK_DAILY_AGG = "daily_aggregation_work";
-
-    // Runtime perms (se piden 1 vez; Android no vuelve a mostrar el diálogo si ya están concedidos)
-    private static final int REQ_COMM_PERMS = 1001;
-    private static final String[] COMM_PERMS = new String[] {
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_SMS
-    };
-
-    // Para no insistir si el usuario los deniega (evita que vuelva a “salir el mensaje”)
-    private static final String PREFS = "burnout_runtime";
-    private static final String KEY_ASKED_COMM_PERMS = "asked_comm_perms_once";
 
     private BarChart barChart3h;
 
-    // Drawer
     private DrawerLayout drawerLayout;
     private NavigationView navView;
 
@@ -72,25 +43,61 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // ---------------------------------------------------------
-        // DRAWER (menú lateral) -> usamos tu botón btnMenu (arriba derecha)
-        // ---------------------------------------------------------
         drawerLayout = findViewById(R.id.drawerLayout);
         navView = findViewById(R.id.navView);
-
-        drawerLayout = findViewById(R.id.drawerLayout);
         MaterialCardView avatarCard = findViewById(R.id.avatarCard);
+        TextView tvAvatarMain = findViewById(R.id.tvAvatar);
+
+        TextView tvHeaderAvatar = null;
+
+
+        if (navView != null) {
+            android.view.View headerView = navView.getHeaderView(0);
+
+            if (headerView != null) {
+                tvHeaderAvatar = headerView.findViewById(R.id.tvHeaderAvatar);
+
+                TextView finalTvHeaderAvatar = tvHeaderAvatar;
+                if (finalTvHeaderAvatar != null && drawerLayout != null) {
+                    finalTvHeaderAvatar.setOnClickListener(v -> {
+                        drawerLayout.closeDrawer(GravityCompat.START);
+                        startActivity(new Intent(MainActivity.this, ProfileActivity.class));
+                    });
+                }
+            }
+        }
 
         if (avatarCard != null && drawerLayout != null) {
             avatarCard.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
         }
+
+        TextView finalTvHeaderAvatar1 = tvHeaderAvatar;
+
+        ProfileViewModel profileVM = new ViewModelProvider(this).get(ProfileViewModel.class);
+        profileVM.getProfile().observe(this, profile -> {
+            if (profile == null) return;
+
+            String nombre = profile.nombre != null ? profile.nombre : "";
+            String apellidos = profile.apellidos != null ? profile.apellidos : "";
+            String fullName = (nombre + " " + apellidos).trim();
+            String initials = getInitials(nombre, apellidos);
+
+            if (tvAvatarMain != null) {
+                tvAvatarMain.setText(initials);
+            }
+
+            if (finalTvHeaderAvatar1 != null) {
+                finalTvHeaderAvatar1.setText(initials);
+            }
+
+        });
 
         if (navView != null && drawerLayout != null) {
             navView.setNavigationItemSelectedListener(item -> {
                 int id = item.getItemId();
 
                 if (id == R.id.nav_main) {
-                    // Actividad hoy == Main (ya estás aquí)
+                    // Ya estás aquí
                 } else if (id == R.id.nav_screen_time) {
                     startActivity(new Intent(this, ActivityScreenTime.class));
                 } else if (id == R.id.nav_notifications) {
@@ -101,10 +108,20 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(new Intent(this, ActivityCommunications.class));
                 } else if (id == R.id.nav_settings) {
                     // TODO más adelante
-                    // startActivity(new Intent(this, ActivitySettings.class));
                 } else if (id == R.id.nav_logout) {
-                    // TODO más adelante
-                    // logout();
+                    new AlertDialog.Builder(this)
+                            .setTitle("Cerrar sesión")
+                            .setMessage("¿Está seguro de que quiere cerrar sesión?")
+                            .setPositiveButton("Sí, cerrar", (dialog, which) -> {
+                                SessionManager sessionManager = new SessionManager(MainActivity.this);
+                                sessionManager.logout();
+
+                                Intent intent = new Intent(MainActivity.this, WelcomeActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(intent);
+                            })
+                            .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                            .show();
                 }
 
                 drawerLayout.closeDrawer(GravityCompat.START);
@@ -112,23 +129,14 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        // ---------------------------------------------------------
-        // NAVIGATION (cards grandes)
-        // ---------------------------------------------------------
         setupCardNavigation(R.id.cardScreenTime, ActivityScreenTime.class, "cardScreenTime");
         setupCardNavigation(R.id.cardMultitask, ActivityMultitask.class, "cardMultitask");
         setupCardNavigation(R.id.cardNotifications, ActivityNotifications.class, "cardNotifications");
         setupCardNavigation(R.id.cardCommunication, ActivityCommunications.class, "cardCommunication");
 
-        // ---------------------------------------------------------
-        // DATE LABEL
-        // ---------------------------------------------------------
         TextView tvDate = findViewById(R.id.tvDate);
         tvDate.setText("| " + TimeKey.dateLabelFromTimestamp(System.currentTimeMillis()));
 
-        // ---------------------------------------------------------
-        // KPI BINDINGS
-        // ---------------------------------------------------------
         TextView value1 = findViewById(R.id.value1);
         TextView value2 = findViewById(R.id.value2);
         TextView value3 = findViewById(R.id.value3);
@@ -137,15 +145,17 @@ public class MainActivity extends AppCompatActivity {
         DashboardViewModel vm = new ViewModelProvider(this).get(DashboardViewModel.class);
         vm.getUiState().observe(this, s -> {
             if (s == null) return;
+
             if (value1 != null) value1.setText(s.screenTime);
             if (value2 != null) value2.setText(s.notifications);
             if (value3 != null) value3.setText(s.multitask);
+
             if (value4 != null) {
                 int calls = 0;
                 try {
-                    // s.communication debería ser "0", "12", etc. Si ya viene con texto, esto fallará y caerá al catch.
                     calls = Integer.parseInt(s.communication.trim());
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
 
                 String callsText = getResources().getQuantityString(
                         R.plurals.kpi_calls,
@@ -153,12 +163,9 @@ public class MainActivity extends AppCompatActivity {
                         calls
                 );
                 value4.setText(callsText);
-            } // llamadas / comm KPI
+            }
         });
 
-        // ---------------------------------------------------------
-        // CHART (3h buckets: 00-02, 03-05, ... 21-23)
-        // ---------------------------------------------------------
         barChart3h = findViewById(R.id.barChart3h);
         if (barChart3h == null) {
             Log.e(TAG, "barChart3h is NULL -> revisa activity_main.xml: falta @+id/barChart3h");
@@ -170,11 +177,6 @@ public class MainActivity extends AppCompatActivity {
                 render3hBars(barChart3h, bucketsMs);
             });
         }
-
-        // ---------------------------------------------------------
-        // PERMISSIONS / SPECIAL ACCESS
-        // ---------------------------------------------------------
-        ensureSpecialAccessAndRuntimePerms();
     }
 
     @Override
@@ -183,106 +185,6 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.closeDrawer(GravityCompat.START);
         } else {
             super.onBackPressed();
-        }
-    }
-
-    /**
-     * Flujo:
-     * 1) Pide runtime perms (READ_CALL_LOG, READ_SMS) SOLO 1 vez.
-     * 2) Luego gestiona special access (Usage + NotificationListener).
-     * 3) Si todo OK -> schedule WorkManager.
-     */
-    private void ensureSpecialAccessAndRuntimePerms() {
-
-        // 0) Runtime perms (solo 1 vez; si ya concedidos, no sale diálogo)
-        if (!hasAllCommPermissions()) {
-            SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-            boolean askedOnce = prefs.getBoolean(KEY_ASKED_COMM_PERMS, false);
-
-            if (!askedOnce) {
-                Log.d(TAG, "Comm runtime permissions missing -> requesting (first time)");
-                prefs.edit().putBoolean(KEY_ASKED_COMM_PERMS, true).apply();
-                ActivityCompat.requestPermissions(this, COMM_PERMS, REQ_COMM_PERMS);
-                return;
-            } else {
-                // Ya se pidió una vez y el usuario lo denegó => no insistimos
-                Log.w(TAG, "Comm perms missing but already asked once -> not requesting again");
-                // Aun así, seguimos con special access y worker (calls/sms quedarán en 0)
-            }
-        }
-
-        // 1) Usage Access (special)
-        boolean usageOk = UsageStatsProvider.hasUsageAccess(this);
-        if (!usageOk) {
-            Log.d(TAG, "Usage Access NOT granted -> opening settings");
-            startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
-            return;
-        }
-
-        // 2) Notification Listener (special)
-        boolean notifOk = isNotificationListenerEnabled();
-        if (!notifOk) {
-            Log.d(TAG, "Notification Listener NOT enabled -> opening settings");
-            startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
-            return;
-        }
-
-        // 3) Todo OK -> schedule
-        Log.d(TAG, "All required access OK -> scheduling aggregation worker");
-        ensureAggregationWorkScheduled();
-    }
-
-    private boolean hasAllCommPermissions() {
-        for (String p : COMM_PERMS) {
-            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Comprueba si tu NotificationListenerService está en enabled_notification_listeners.
-     */
-    private boolean isNotificationListenerEnabled() {
-        String enabled = Settings.Secure.getString(
-                getContentResolver(),
-                "enabled_notification_listeners"
-        );
-
-        if (TextUtils.isEmpty(enabled)) return false;
-
-        ComponentName me = new ComponentName(
-                this,
-                com.example.burnout_app.collectors.BurnoutNotificationListenerService.class
-        );
-
-        // El string suele contener "pkg/class:pkg/class:..."
-        return enabled.contains(me.flattenToString());
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == REQ_COMM_PERMS) {
-            boolean allGranted = true;
-
-            if (grantResults.length == 0) {
-                allGranted = false;
-            } else {
-                for (int r : grantResults) {
-                    if (r != PackageManager.PERMISSION_GRANTED) {
-                        allGranted = false;
-                        break;
-                    }
-                }
-            }
-
-            Log.d(TAG, "Comm perms result -> allGranted=" + allGranted);
-
-            // Continúa el flujo (si no los conceden, calls/sms quedan en 0, pero la app funciona)
-            ensureSpecialAccessAndRuntimePerms();
         }
     }
 
@@ -304,10 +206,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // =========================================================
-    // CHART HELPERS
-    // =========================================================
-
     private void setup3hBarChart(BarChart c) {
         c.getDescription().setEnabled(false);
         c.getLegend().setEnabled(false);
@@ -319,20 +217,18 @@ public class MainActivity extends AppCompatActivity {
 
         XAxis x = c.getXAxis();
         x.setPosition(XAxis.XAxisPosition.BOTTOM);
-
         x.setGranularityEnabled(true);
         x.setGranularity(1f);
-
         x.setAxisMinimum(-0.5f);
         x.setAxisMaximum(7.5f);
-
         x.setAvoidFirstLastClipping(true);
         x.setDrawGridLines(false);
         x.setTextColor(Color.parseColor("#94A3B8"));
         x.setTextSize(12f);
 
         x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
+            @Override
+            public String getFormattedValue(float value) {
                 int i = Math.round(value);
                 switch (i) {
                     case 0: return "03";
@@ -358,7 +254,8 @@ public class MainActivity extends AppCompatActivity {
         c.getAxisLeft().setDrawGridLines(true);
 
         c.getAxisLeft().setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
+            @Override
+            public String getFormattedValue(float value) {
                 return ((int) value) + "m";
             }
         });
@@ -410,35 +307,17 @@ public class MainActivity extends AppCompatActivity {
         chart.invalidate();
     }
 
-    // =========================================================
-    // WORKMANAGER
-    // =========================================================
+    private String getInitials(String nombre, String apellidos) {
+        String initials = "";
 
-    private void ensureAggregationWorkScheduled() {
+        if (nombre != null && !nombre.trim().isEmpty()) {
+            initials += nombre.trim().substring(0, 1).toUpperCase();
+        }
 
-        Constraints constraints = new Constraints.Builder()
-                .setRequiresBatteryNotLow(true)
-                .build();
+        if (apellidos != null && !apellidos.trim().isEmpty()) {
+            initials += apellidos.trim().substring(0, 1).toUpperCase();
+        }
 
-        PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(
-                DailyAggregationWorker.class,
-                1, TimeUnit.HOURS
-        ).setConstraints(constraints).build();
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-                WORK_DAILY_AGG,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                periodic
-        );
-
-        OneTimeWorkRequest now = new OneTimeWorkRequest.Builder(DailyAggregationWorker.class)
-                .setConstraints(constraints)
-                .build();
-
-        WorkManager.getInstance(this).enqueueUniqueWork(
-                WORK_DAILY_AGG + "_kickoff",
-                ExistingWorkPolicy.REPLACE,
-                now
-        );
+        return initials;
     }
 }

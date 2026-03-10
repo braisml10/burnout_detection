@@ -107,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
                 } else if (id == R.id.nav_communication) {
                     startActivity(new Intent(this, ActivityCommunications.class));
                 } else if (id == R.id.nav_settings) {
-                    // TODO más adelante
+                    startActivity(new Intent(this, SettingsActivity.class));
                 } else if (id == R.id.nav_logout) {
                     new AlertDialog.Builder(this)
                             .setTitle("Cerrar sesión")

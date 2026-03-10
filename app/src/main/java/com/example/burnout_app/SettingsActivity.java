@@ -1,18 +1,16 @@
 package com.example.burnout_app;
 
 import android.Manifest;
-import android.app.AppOpsManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.os.Build;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.Switch;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -20,19 +18,12 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import android.widget.TextView;
-import android.widget.Toast;
+import java.util.Map;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    private Switch switchNotifications;
-    private Switch switchCalls;
-    private Switch switchSms;
-    private Switch switchUsage;
-
     private LinearLayout rowNotifications;
-    private LinearLayout rowCalls;
-    private LinearLayout rowSms;
+    private LinearLayout rowCommunication;
     private LinearLayout rowUsage;
     private LinearLayout rowLanguage;
 
@@ -41,8 +32,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private SharedPreferences prefs;
 
-    private ActivityResultLauncher<String> callPermissionLauncher;
-    private ActivityResultLauncher<String> smsPermissionLauncher;
+    private ActivityResultLauncher<String[]> communicationPermissionsLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,28 +44,20 @@ public class SettingsActivity extends AppCompatActivity {
         initViews();
         initLaunchers();
         setupListeners();
-        refreshPermissionStates();
         loadSavedLanguage();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        refreshPermissionStates();
         loadSavedLanguage();
     }
 
     private void initViews() {
         btnBack = findViewById(R.id.btnBack);
 
-        switchNotifications = findViewById(R.id.switchNotifications);
-        switchCalls = findViewById(R.id.switchCalls);
-        switchSms = findViewById(R.id.switchSms);
-        switchUsage = findViewById(R.id.switchUsage);
-
         rowNotifications = findViewById(R.id.rowNotifications);
-        rowCalls = findViewById(R.id.rowCalls);
-        rowSms = findViewById(R.id.rowSms);
+        rowCommunication = findViewById(R.id.rowCommunication);
         rowUsage = findViewById(R.id.rowUsage);
         rowLanguage = findViewById(R.id.rowLanguage);
 
@@ -83,14 +65,20 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void initLaunchers() {
-        callPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                isGranted -> refreshPermissionStates()
-        );
+        communicationPermissionsLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                result -> {
+                    boolean callGranted = Boolean.TRUE.equals(result.get(Manifest.permission.READ_CALL_LOG));
+                    boolean smsGranted = Boolean.TRUE.equals(result.get(Manifest.permission.READ_SMS));
 
-        smsPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                isGranted -> refreshPermissionStates()
+                    if (callGranted && smsGranted) {
+                        Toast.makeText(this, "Permisos de comunicación concedidos", Toast.LENGTH_SHORT).show();
+                    } else if (callGranted || smsGranted) {
+                        Toast.makeText(this, "Solo se concedió uno de los permisos", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "Permisos de comunicación denegados", Toast.LENGTH_SHORT).show();
+                    }
+                }
         );
     }
 
@@ -98,31 +86,9 @@ public class SettingsActivity extends AppCompatActivity {
         btnBack.setOnClickListener(v -> goBackToMain());
 
         rowNotifications.setOnClickListener(v -> openNotificationAccessSettings());
-        rowCalls.setOnClickListener(v -> handleCallsPermission());
-        rowSms.setOnClickListener(v -> handleSmsPermission());
+        rowCommunication.setOnClickListener(v -> handleCommunicationPermissions());
         rowUsage.setOnClickListener(v -> openUsageAccessSettings());
         rowLanguage.setOnClickListener(v -> showLanguageDialog());
-
-        switchNotifications.setOnClickListener(v -> {
-            switchNotifications.setChecked(isNotificationAccessEnabled());
-            openNotificationAccessSettings();
-        });
-
-        switchCalls.setOnClickListener(v -> handleCallsPermission());
-
-        switchSms.setOnClickListener(v -> handleSmsPermission());
-
-        switchUsage.setOnClickListener(v -> {
-            switchUsage.setChecked(hasUsageAccess());
-            openUsageAccessSettings();
-        });
-    }
-
-    private void refreshPermissionStates() {
-        switchNotifications.setChecked(isNotificationAccessEnabled());
-        switchCalls.setChecked(hasCallsPermission());
-        switchSms.setChecked(hasSmsPermission());
-        switchUsage.setChecked(hasUsageAccess());
     }
 
     private boolean hasCallsPermission() {
@@ -139,39 +105,20 @@ public class SettingsActivity extends AppCompatActivity {
         ) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private boolean hasUsageAccess() {
-        try {
-            AppOpsManager appOps = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
-            if (appOps == null) return false;
-
-            int mode;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                mode = appOps.unsafeCheckOpNoThrow(
-                        AppOpsManager.OPSTR_GET_USAGE_STATS,
-                        android.os.Process.myUid(),
-                        getPackageName()
-                );
-            } else {
-                mode = appOps.checkOpNoThrow(
-                        AppOpsManager.OPSTR_GET_USAGE_STATS,
-                        android.os.Process.myUid(),
-                        getPackageName()
-                );
-            }
-
-            return mode == AppOpsManager.MODE_ALLOWED;
-        } catch (Exception e) {
-            return false;
-        }
+    private boolean hasAllCommunicationPermissions() {
+        return hasCallsPermission() && hasSmsPermission();
     }
 
-    private boolean isNotificationAccessEnabled() {
-        String enabledListeners = Settings.Secure.getString(
-                getContentResolver(),
-                "enabled_notification_listeners"
-        );
+    private void handleCommunicationPermissions() {
+        if (hasAllCommunicationPermissions()) {
+            openAppPermissionSettings();
+            return;
+        }
 
-        return enabledListeners != null && enabledListeners.contains(getPackageName());
+        communicationPermissionsLauncher.launch(new String[]{
+                Manifest.permission.READ_CALL_LOG,
+                Manifest.permission.READ_SMS
+        });
     }
 
     private void openNotificationAccessSettings() {
@@ -192,24 +139,14 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 
-    private void handleCallsPermission() {
-        if (hasCallsPermission()) {
-            Toast.makeText(this, "Permiso de llamadas ya concedido", Toast.LENGTH_SHORT).show();
-            refreshPermissionStates();
-            return;
+    private void openAppPermissionSettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "No se pudieron abrir los ajustes de la app", Toast.LENGTH_SHORT).show();
         }
-
-        callPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG);
-    }
-
-    private void handleSmsPermission() {
-        if (hasSmsPermission()) {
-            Toast.makeText(this, "Permiso de mensajes ya concedido", Toast.LENGTH_SHORT).show();
-            refreshPermissionStates();
-            return;
-        }
-
-        smsPermissionLauncher.launch(Manifest.permission.READ_SMS);
     }
 
     private void showLanguageDialog() {
@@ -227,8 +164,6 @@ public class SettingsActivity extends AppCompatActivity {
                             "Idioma seleccionado: " + selected,
                             Toast.LENGTH_SHORT
                     ).show();
-
-                    // Aquí más adelante puedes aplicar el cambio real de locale
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -246,8 +181,4 @@ public class SettingsActivity extends AppCompatActivity {
         finish();
     }
 
-    @Override
-    public void onBackPressed() {
-        goBackToMain();
-    }
 }

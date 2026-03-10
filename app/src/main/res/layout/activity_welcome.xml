@@ -9,7 +9,7 @@
     android:background="#081229"
     android:paddingStart="24dp"
     android:paddingEnd="24dp"
-    android:paddingTop="32dp"
+    android:paddingTop="50dp"
     android:paddingBottom="32dp"
     tools:context=".WelcomeActivity">
 
@@ -24,23 +24,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="96dp"
-            android:layout_height="96dp"
+        <ImageView
+            android:id="@+id/imgLogo"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
             android:layout_marginBottom="28dp"
-            app:cardCornerRadius="48dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#0C3650">
-
-            <ImageView
-                android:id="@+id/imgLogo"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="18dp"
-                android:src="@drawable/ic_burnout_app_background"
-                android:scaleType="centerInside"
-                android:contentDescription="Logo app" />
-        </com.google.android.material.card.MaterialCardView>
+            android:padding="1dp"
+            android:src="@mipmap/ic_burnout_app"
+            android:scaleType="centerInside"
+            android:contentDescription="Logo app" />
 
         <TextView
             android:id="@+id/tvTitle"

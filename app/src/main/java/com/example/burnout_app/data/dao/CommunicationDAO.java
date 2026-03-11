@@ -14,7 +14,7 @@ import java.util.List;
 @Dao
 public interface CommunicationDAO {
 
-    // --- DAILY ---
+    // ===================== DAILY_COMM_METRICS =====================
     @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
     LiveData<DailyCommMetricsEntity> observeDailyComm(int epochDay);
 
@@ -28,7 +28,10 @@ public interface CommunicationDAO {
             "VALUES(:epochDay,0,0,0,0,0)")
     void insertDailyIfMissing(int epochDay);
 
-    // --- HOURLY ---
+    @Query("DELETE FROM daily_comm_metric WHERE date < :cutoffDate")
+    int deleteDailyCommOlderThanDate(int cutoffDate);
+
+    // ===================== HOURLY_COMM_METRIC =====================
     @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
     LiveData<List<HourlyCommMetricsEntity>> observeHourly(int epochDay);
 
@@ -38,6 +41,6 @@ public interface CommunicationDAO {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertHourly(List<HourlyCommMetricsEntity> rows);
 
-    @Query("DELETE FROM hourly_comm_metric WHERE date = :epochDay")
-    void deleteHourlyForDay(int epochDay);
+    @Query("DELETE FROM hourly_comm_metric WHERE date < :cutoffDate")
+    int deleteHourlyCommOlderThanDate(int cutoffDate);
 }

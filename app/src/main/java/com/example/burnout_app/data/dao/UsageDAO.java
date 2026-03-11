@@ -16,10 +16,7 @@ import java.util.List;
 @Dao
 public interface UsageDAO {
 
-    // =========================================================
-    // APP
-    // =========================================================
-
+    // ===================== APP =====================
     @Query("SELECT app_id FROM app WHERE package_name = :pkg LIMIT 1")
     Long getAppIdByPackageName(String pkg);
 
@@ -71,10 +68,7 @@ public interface UsageDAO {
     @Query("SELECT app_id, category, is_ignored FROM app")
     Cursor getAppCategoryMap();
 
-    // =========================================================
-    // APP_USAGE_EVENT
-    // =========================================================
-
+    // ===================== APP_USAGE_EVENTS =====================
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertUsageEvents(List<AppUsageEventEntity> events);
 
@@ -87,10 +81,7 @@ public interface UsageDAO {
     @Query("DELETE FROM app_usage_event WHERE date < :cutoffDate")
     int deleteUsageEventsOlderThanDate(int cutoffDate);
 
-    // =========================================================
-    // DAILY_APP_METRIC
-    // =========================================================
-
+    // ===================== DAILY_APP_METRICS =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDailyAppMetrics(List<DailyAppMetricsEntity> rows);
 
@@ -117,7 +108,7 @@ public interface UsageDAO {
                     "CASE " +
                     "  WHEN a.name IS NULL OR TRIM(a.name) = '' THEN a.package_name " +
                     "  ELSE a.name " +
-                    "END AS name, " +                      // <-- display_name en 'name'
+                    "END AS name, " +
                     "a.package_name AS package_name, " +
                     "SUM(dam.foreground_ms) AS total_ms " +
                     "FROM daily_app_metric dam " +

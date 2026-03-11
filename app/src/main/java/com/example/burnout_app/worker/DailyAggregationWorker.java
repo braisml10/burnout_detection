@@ -108,7 +108,7 @@ public class DailyAggregationWorker extends Worker {
                                      int today,
                                      int tomorrow) {
 
-        int cutoffDate = today - RetentionPolicy.RAW_EVENTS_RETENTION_DAYS;
+        int cutoffDate = today - RetentionPolicy.DATA_RETENTION_DAYS;
 
         UsageWindow usageWindow = initUsageWindow(prefs, now);
         List<UsageStatsProvider.RawEvent> rawAll = collectRawEvents(ctx, usageWindow.start, usageWindow.end);
@@ -671,15 +671,26 @@ public class DailyAggregationWorker extends Worker {
 
     private void runUsageRetention(BurnoutDatabase db, int cutoffDate) {
         int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
+        int delDailyApp = db.usageDao().deleteDailyAppMetricsOlderThanDate(cutoffDate);
+
         int delScreen = db.userActivityDao().deleteScreenEventsOlderThanDate(cutoffDate);
-        int delNotif = db.notificationDao().deleteNotificationEventsOlderThanDate(cutoffDate);
+        int delDailyMetrics = db.userActivityDao().deleteDailyMetricsOlderThanDate(cutoffDate);
         int delHourly = db.userActivityDao().deleteHourlyMetricsOlderThanDate(cutoffDate);
+
+        int delNotif = db.notificationDao().deleteNotificationEventsOlderThanDate(cutoffDate);
+
+        int delDailyComm = db.communicationDao().deleteDailyCommOlderThanDate(cutoffDate);
+        int delHourlyComm = db.communicationDao().deleteHourlyCommOlderThanDate(cutoffDate);
 
         Log.d(TAG, "Retention: cutoffDate=" + cutoffDate
                 + " deletedUsage=" + delUsage
+                + " deletedDailyApp=" + delDailyApp
                 + " deletedScreen=" + delScreen
+                + " deletedDailyMetrics=" + delDailyMetrics
+                + " deletedHourly=" + delHourly
                 + " deletedNotif=" + delNotif
-                + " deletedHourly=" + delHourly);
+                + " deletedDailyComm=" + delDailyComm
+                + " deletedHourlyComm=" + delHourlyComm);
     }
 
     // ===================== HOURLY HELPERS =====================

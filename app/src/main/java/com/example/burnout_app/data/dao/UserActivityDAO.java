@@ -17,51 +17,30 @@ import java.util.List;
 @Dao
 public interface UserActivityDAO {
 
-    // SCREEN_EVENT
+    // ===================== SCREEN EVENTS =====================
     @Insert
     void insertScreenEvent(ScreenEventEntity event);
-
-    @Insert
-    void insertScreenEvents(List<ScreenEventEntity> events);
-
-    @Query("SELECT COUNT(*) FROM screen_event WHERE date = :date")
-    int countScreenEventsByDate(int date);
-
-    @Query("SELECT * FROM screen_event WHERE date = :date ORDER BY timestamp ASC")
-    List<ScreenEventEntity> getScreenEventsByDate(int date);
 
     @Query("DELETE FROM screen_event WHERE date < :cutoffDate")
     int deleteScreenEventsOlderThanDate(int cutoffDate);
 
-    @Query("SELECT * FROM screen_event WHERE timestamp >= :start AND timestamp < :end ORDER BY timestamp ASC")
-    List<ScreenEventEntity> getScreenEventsBetween(long start, long end);
-
-    @Query("SELECT * FROM screen_event WHERE timestamp < :ts ORDER BY timestamp DESC LIMIT 1")
-    ScreenEventEntity getLastScreenEventBefore(long ts);
-
-    @Query("SELECT COUNT(*) FROM screen_event WHERE timestamp >= :start AND timestamp < :end AND state = :type")
-    int countScreenEventsOfType(long start, long end, int type);
-
-    // DAILY_METRIC
+    // ===================== DAILY_METRICS =====================
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertDailyIfMissing(DailyMetricsEntity dailyMetrics);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDailyMetrics(DailyMetricsEntity dailyMetrics);
 
-    @Query("UPDATE daily_metrics SET unlock_count = unlock_count + :inc WHERE date = :date")
-    int incDailyUnlocks(int date, int inc);
-
-    @Query("UPDATE daily_metrics SET screen_ms = screen_ms + :delta WHERE date = :date")
-    int addDailyScreenMs(int date, long delta);
-
     @Query("SELECT * FROM daily_metrics WHERE date = :date LIMIT 1")
     DailyMetricsEntity getDailyMetricsByDate(int date);
 
-    @Query("SELECT * FROM daily_metrics WHERE date = :epochDay")
+    @Query("SELECT * FROM daily_metrics WHERE date = :epochDay LIMIT 1")
     LiveData<DailyMetricsEntity> observeDailyMetrics(int epochDay);
 
-    // HOURLY_METRIC
+    @Query("DELETE FROM daily_metrics WHERE date < :cutoffDate")
+    int deleteDailyMetricsOlderThanDate(int cutoffDate);
+
+    // ===================== HOURLY METRICS =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertHourlyMetrics(List<HourlyMetricsEntity> rows);
 
@@ -93,7 +72,7 @@ public interface UserActivityDAO {
     @Query("SELECT hour, notification_count AS notifs FROM hourly_metric WHERE date = :date ORDER BY hour")
     Cursor getNotificationsPerHourForDay(int date);
 
-    @Query("SELECT COUNT(*) AS active_hours FROM hourly_metric WHERE date = :date AND screen_ms > 0")
+    @Query("SELECT COUNT(*) FROM hourly_metric WHERE date = :date AND screen_ms > 0")
     Cursor getActiveHoursForDay(int date);
 
 

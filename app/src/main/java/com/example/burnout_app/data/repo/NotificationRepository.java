@@ -30,7 +30,6 @@ public class NotificationRepository {
     // HOURLY TREND (hourly_metric)
     // =========================================================
 
-    /** notification_count por hora 0..23 desde hourly_metric */
     public int[] getNotificationsPerHourForDay(int date) {
 
         int[] out = new int[24];
@@ -130,10 +129,6 @@ public class NotificationRepository {
         }
         return out;
     }
-
-    // =========================================================
-    // AVERAGE/HOUR helper (opcional)
-    // =========================================================
 
     /**
      * Horas "activas" del día (screen_ms > 0) desde hourly_metric.

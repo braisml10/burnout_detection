@@ -9,43 +9,53 @@ import com.example.burnout_app.data.db.BurnoutDatabase;
 import com.example.burnout_app.data.entity.ScreenEventEntity;
 import com.example.burnout_app.helpers.TimeKey;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ScreenStateReceiver extends BroadcastReceiver {
 
     private static final String TAG = "ScreenStateReceiver";
+    private static final String SOURCE = "broadcast";
+
+    private static final ExecutorService DB_EXECUTOR = Executors.newSingleThreadExecutor();
 
     public static final int STATE_OFF = 0;
     public static final int STATE_ON = 1;
-    public static final int STATE_UNLOCK = 2; // ACTION_USER_PRESENT
+    public static final int STATE_UNLOCK = 2;
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || intent.getAction() == null) return;
 
         final String action = intent.getAction();
+        final int state = resolveState(action);
+        if (state < 0) return;
+
         final long ts = System.currentTimeMillis();
         final int day = TimeKey.epochDayLocal(ts);
         final int hour = TimeKey.hourOfDayLocal(ts);
-
-        final int state;
-        if (Intent.ACTION_SCREEN_ON.equals(action)) {
-            state = STATE_ON;
-        } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
-            state = STATE_OFF;
-        } else if (Intent.ACTION_USER_PRESENT.equals(action)) {
-            state = STATE_UNLOCK;
-        } else {
-            return;
-        }
+        final Context appContext = context.getApplicationContext();
 
         Log.d(TAG, "onReceive action=" + action + " state=" + state + " ts=" + ts);
 
-        Executors.newSingleThreadExecutor().execute(() -> {
-            BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
+        DB_EXECUTOR.execute(() -> {
+            BurnoutDatabase db = BurnoutDatabase.getInstance(appContext);
             db.userActivityDao().insertScreenEvent(
-                    new ScreenEventEntity(ts, state, "broadcast", day, hour)
+                    new ScreenEventEntity(ts, state, SOURCE, day, hour)
             );
         });
+    }
+
+    private int resolveState(String action) {
+        if (Intent.ACTION_SCREEN_ON.equals(action)) {
+            return STATE_ON;
+        }
+        if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+            return STATE_OFF;
+        }
+        if (Intent.ACTION_USER_PRESENT.equals(action)) {
+            return STATE_UNLOCK;
+        }
+        return -1;
     }
 }

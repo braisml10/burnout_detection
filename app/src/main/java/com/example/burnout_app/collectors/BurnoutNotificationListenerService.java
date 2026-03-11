@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.content.Context;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
+import android.util.Log;
 
 import com.example.burnout_app.data.db.BurnoutDatabase;
 import com.example.burnout_app.data.entity.AppEntity;
@@ -16,19 +17,23 @@ import java.util.concurrent.Executors;
 
 public class BurnoutNotificationListenerService extends NotificationListenerService {
 
+    private static final String TAG = "NotifListener";
     private static final String SOURCE = "nls";
-    private ExecutorService dbExec;
+
+    private ExecutorService dbExecutor;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        dbExec = Executors.newSingleThreadExecutor();
+        dbExecutor = Executors.newSingleThreadExecutor();
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (dbExec != null) dbExec.shutdown();
+        if (dbExecutor != null) {
+            dbExecutor.shutdown();
+        }
     }
 
     @Override
@@ -38,35 +43,42 @@ public class BurnoutNotificationListenerService extends NotificationListenerServ
         final String pkg = sbn.getPackageName();
         if (pkg == null || pkg.trim().isEmpty()) return;
 
-        final Notification n = sbn.getNotification();
-        if (n == null) return;
+        final Notification notification = sbn.getNotification();
+        if (notification == null) return;
 
-        // 🔒 Ignorar notificaciones persistentes (USB, carga, etc.)
-        final boolean ongoing = (n.flags & Notification.FLAG_ONGOING_EVENT) != 0;
+        // Ignore persistent notifications such as charging or USB state.
+        final boolean ongoing = (notification.flags & Notification.FLAG_ONGOING_EVENT) != 0;
         if (ongoing) return;
 
-        // 🔒 Ignorar group summaries
-        final boolean isGroupSummary = (n.flags & Notification.FLAG_GROUP_SUMMARY) != 0;
+        // Ignore notification group summaries.
+        final boolean isGroupSummary = (notification.flags & Notification.FLAG_GROUP_SUMMARY) != 0;
         if (isGroupSummary) return;
 
         final long ts = sbn.getPostTime() > 0 ? sbn.getPostTime() : System.currentTimeMillis();
         final int date = TimeKey.epochDayLocal(ts);
         final int hour = TimeKey.hourOfDayLocal(ts);
+        final String category = (notification.category != null) ? notification.category : "unknown";
 
-        final String category = (n.category != null) ? n.category : "unknown";
+        if (dbExecutor == null) return;
 
-        dbExec.execute(() -> {
-            Context ctx = getApplicationContext();
+        final Context ctx = getApplicationContext();
+        dbExecutor.execute(() -> {
             BurnoutDatabase db = BurnoutDatabase.getInstance(ctx);
 
             long appId = ensureAppId(db, ctx, pkg);
             if (appId <= 0) return;
 
-            NotificationEventEntity e = new NotificationEventEntity(
-                    ts, date, hour, appId, category, ongoing, SOURCE
+            NotificationEventEntity event = new NotificationEventEntity(
+                    ts,
+                    date,
+                    hour,
+                    appId,
+                    category,
+                    ongoing,
+                    SOURCE
             );
 
-            db.notificationDao().insertNotificationEvent(e);
+            db.notificationDao().insertNotificationEvent(event);
         });
     }
 
@@ -76,17 +88,23 @@ public class BurnoutNotificationListenerService extends NotificationListenerServ
             if (existing != null && existing > 0) return existing;
 
             String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
-            if (label == null || label.trim().isEmpty()) label = pkg;
+            if (label == null || label.trim().isEmpty()) {
+                label = pkg;
+            }
 
             String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
-            if (cat == null) cat = AppCategoryResolver.OTHER;
+            if (cat == null) {
+                cat = AppCategoryResolver.OTHER;
+            }
 
             long inserted = db.usageDao().insertApp(new AppEntity(pkg, label, cat, false));
             if (inserted > 0) return inserted;
 
             Long after = db.usageDao().getAppIdByPackageName(pkg);
             return (after != null) ? after : -1L;
-        } catch (Throwable t) {
+
+        } catch (Exception ex) {
+            Log.e(TAG, "ensureAppId failed for pkg=" + pkg, ex);
             return -1L;
         }
     }

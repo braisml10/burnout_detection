@@ -44,16 +44,19 @@ public class DailyAggregationWorker extends Worker {
 
     private static final String PREFS = "burnout_runtime";
     private static final String KEY_LAST_USAGE_CAPTURE_TS = "last_usage_capture_ts";
-
-    // incremental screen/unlock (state)
     private static final String KEY_SCREEN_IS_ON = "screen_is_on";
     private static final String KEY_LAST_UNLOCK_EVENT_TS = "last_unlock_event_ts";
-
-    // ✅ monotonic cursor for screen accounting (prevents double count)
     private static final String KEY_LAST_SCREEN_ACCOUNTED_TS = "last_screen_accounted_ts";
 
-    private static final long FIRST_LOOKBACK_MS = 2 * 60 * 60_000L; // 2h
+    // Time constants used throughout the worker to avoid repeated literal conversions.
+    private static final long MINUTE_MS = 60_000L;
+    private static final long HOUR_MS = 60L * MINUTE_MS;
+    private static final long DAY_MS = 24L * HOUR_MS;
+
+    private static final long FIRST_LOOKBACK_MS = 2L * HOUR_MS;
+    private static final long FIRST_RUN_BACKFILL_MS = 30L * MINUTE_MS;
     private static final long FG_DEBOUNCE_MS = 500L;
+    private static final long COMM_YESTERDAY_GRACE_MS = 2L * HOUR_MS;
 
     private static final String PKG_SELF = "com.example.burnout_app";
     private static final String PKG_LAUNCHER = "com.android.launcher";
@@ -65,503 +68,618 @@ public class DailyAggregationWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-
         Context ctx = getApplicationContext();
         BurnoutDatabase db = BurnoutDatabase.getInstance(ctx);
+        SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
 
         long now = System.currentTimeMillis();
         int today = TimeKey.epochDayLocal(now);
         int yesterday = today - 1;
         int tomorrow = today + 1;
 
-        int cutoffDate = today - RetentionPolicy.RAW_EVENTS_RETENTION_DAYS;
-
-        Log.d(TAG, "================ doWork START ================");
-        Log.d(TAG, "now=" + now + " today=" + today + " y=" + yesterday + " tmr=" + tomorrow);
+        ensureDailyRows(db, yesterday, today, tomorrow);
 
         boolean hasUsage = UsageStatsProvider.hasUsageAccess(ctx);
-        if (!hasUsage) {
+        if (hasUsage) {
+            runUsageAggregation(ctx, db, prefs, now, yesterday, today, tomorrow);
+        } else {
             Log.w(TAG, "No Usage Access -> skipping USAGE/SCREEN/NOTIF/HOURLY/RETENTION(usage), but COMM will run");
         }
 
-        SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        runCommunicationAggregation(ctx, db, now, yesterday, today);
 
-        // 0) asegurar filas daily (ayer, hoy + mañana para nocturno) -> siempre
+        Log.d(TAG, "================ doWork END ================");
+        return Result.success();
+    }
+
+    // ===================== MAIN ORCHESTRATION HELPERS =====================
+
+    private void ensureDailyRows(BurnoutDatabase db, int yesterday, int today, int tomorrow) {
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(yesterday, 0L, 0, 0L, 0, 0, 0, 0, 0L));
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(today, 0L, 0, 0L, 0, 0, 0, 0, 0L));
         db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(tomorrow, 0L, 0, 0L, 0, 0, 0, 0, 0L));
+    }
 
-        // ============================================================
-        // ✅ USAGE / SCREEN / NOTIF / HOURLY (solo si hay Usage Access)
-        // ============================================================
-        if (hasUsage) {
+    private void runUsageAggregation(Context ctx,
+                                     BurnoutDatabase db,
+                                     SharedPreferences prefs,
+                                     long now,
+                                     int yesterday,
+                                     int today,
+                                     int tomorrow) {
 
-            // ------------------------------------------------------------------
-            // ✅ FIX: tras pm clear / reinstalación, NO rellenar con histórico.
-            // Primera ejecución => lookback corto.
-            // ------------------------------------------------------------------
-            long lastTs = prefs.getLong(KEY_LAST_USAGE_CAPTURE_TS, -1L);
-            boolean firstRunAfterClear = !prefs.contains(KEY_LAST_USAGE_CAPTURE_TS);
-            if (firstRunAfterClear) {
-                Log.d(TAG, "First run after clear -> init last_usage_capture_ts with short lookback (no backfill huge)");
-                lastTs = now - 30 * 60_000L; // 30 min
-                prefs.edit()
-                        .putLong(KEY_LAST_USAGE_CAPTURE_TS, lastTs)
-                        .putBoolean(KEY_SCREEN_IS_ON, false)
-                        .putLong(KEY_LAST_UNLOCK_EVENT_TS, TimeKey.startOfDayMs(now))
-                        .putLong(KEY_LAST_SCREEN_ACCOUNTED_TS, Math.max(TimeKey.startOfDayMs(now), lastTs))
-                        .apply();
+        int cutoffDate = today - RetentionPolicy.RAW_EVENTS_RETENTION_DAYS;
+
+        UsageWindow usageWindow = initUsageWindow(prefs, now);
+        List<UsageStatsProvider.RawEvent> rawAll = collectRawEvents(ctx, usageWindow.start, usageWindow.end);
+
+        Map<String, Long> appIdCache = buildAppIdCache(db, ctx, rawAll);
+        insertUsageEvents(db, prefs, rawAll, appIdCache, usageWindow.start, usageWindow.end, today);
+
+        ForegroundAggResult fgResult = aggregateForegroundMetrics(db, today, now);
+        ScreenAggResult screenResult = aggregateScreenUnlockAndNightMetrics(
+                prefs,
+                rawAll,
+                usageWindow.start,
+                usageWindow.end,
+                yesterday,
+                today,
+                tomorrow,
+                now
+        );
+
+        NotificationAggResult notifResult = loadNotificationMetrics(db, yesterday, today);
+
+        db.runInTransaction(new Runnable() {
+            @Override
+            public void run() {
+                saveDailyMetrics(db, yesterday, today, tomorrow, fgResult, screenResult, notifResult);
+                saveDailyAppMetrics(db, today, fgResult.fgMsByApp, fgResult.openCountByApp);
+                saveHourlyMetrics(db, yesterday, today, fgResult.switchByHour, screenResult, notifResult);
             }
-
-            // 1) captura incremental SIN solape
-            long start = (lastTs > 0) ? (lastTs + 1) : Math.max(0L, now - FIRST_LOOKBACK_MS);
-            long end = now;
-
-            Log.d(TAG, "Capture range: start=" + start + " end=" + end + " lastTs=" + lastTs);
-
-            List<UsageStatsProvider.RawEvent> rawAll = UsageStatsProvider.collectEvents(ctx, start, end);
-            Log.d(TAG, "Raw events total=" + (rawAll != null ? rawAll.size() : 0));
-
-            // ✅ IMPORTANTE: NO hacemos return si rawAll está vacío.
-            if (rawAll == null) rawAll = new ArrayList<>();
-
-            // debug resumen por tipos (system vs pkg)
-            int cntSys = 0, cntPkg = 0;
-            Map<Integer, Integer> typeCount = new HashMap<>();
-            for (UsageStatsProvider.RawEvent r : rawAll) {
-                if (r == null) continue;
-                if (r.pkg == null) cntSys++; else cntPkg++;
-                typeCount.put(r.type, typeCount.getOrDefault(r.type, 0) + 1);
-            }
-            Log.d(TAG, "Raw split: pkg=" + cntPkg + " sys=" + cntSys + " typeCount=" + typeCount);
-
-            // ------------------------------------------------------------------
-            // ✅ OPT: resolver appId SOLO 1 vez por package
-            // ------------------------------------------------------------------
-            HashSet<String> uniquePkgs = new HashSet<>();
-            for (UsageStatsProvider.RawEvent r : rawAll) {
-                if (r != null && r.pkg != null) uniquePkgs.add(r.pkg);
-            }
-
-            Map<String, Long> appIdCache = new HashMap<>(Math.max(16, uniquePkgs.size() * 2));
-            for (String pkg : uniquePkgs) {
-                long appId = resolveAppId(db, ctx, pkg);
-                if (appId > 0) appIdCache.put(pkg, appId);
-            }
-
-            // 2) insertar FG/BG en app_usage_event (solo pkg != null)
-            HashSet<String> seen = new HashSet<>();
-            List<AppUsageEventEntity> toInsert = new ArrayList<>();
-
-            for (UsageStatsProvider.RawEvent r : rawAll) {
-                if (r == null) continue;
-                if (r.pkg == null) continue;
-                if (r.ts < start || r.ts > end) continue;
-
-                Long appIdObj = appIdCache.get(r.pkg);
-                long appId = (appIdObj != null) ? appIdObj : -1L;
-                if (appId <= 0) continue;
-
-                String key = appId + "|" + r.type + "|" + r.ts;
-                if (!seen.add(key)) continue;
-
-                toInsert.add(new AppUsageEventEntity(appId, r.type, r.ts, "usm", r.date));
-            }
-
-            if (!toInsert.isEmpty()) {
-                db.usageDao().insertUsageEvents(toInsert);
-            }
-            prefs.edit().putLong(KEY_LAST_USAGE_CAPTURE_TS, end).apply();
-
-            Log.d(TAG, "Usage insert: inserted=" + toInsert.size()
-                    + " todayCount=" + db.usageDao().countUsageEventsByDate(today));
-
-            // 3) agregación foreground por apps (hoy) + switches
-            List<AppUsageEventEntity> eventsToday = db.usageDao().getUsageEventsByDate(today);
-
-            long foregroundMs = 0L;
-            int fgSessionCount = 0;
-
-            Map<Long, Long> fgMsByApp = new HashMap<>();
-            Map<Long, Integer> openCountByApp = new HashMap<>();
-
-            Long currentFgAppId = null;
-            long openFgTs = -1L;
-            long lastFgTs = -1L;
-
-            // ================= SWITCH COUNT =================
-            int appSwitchCount = 0;
-            long lastSwitchTs = -1L;
-
-            Long lastRealFgAppId = null;
-            long lastRealFgTs = -1L;
-
-            int[] switchByHour = new int[24];
-
-            final int SWITCH_DEBUG_LIMIT = 15;
-            ArrayList<String> switchDebug = new ArrayList<>();
-            // =================================================
-
-            for (AppUsageEventEntity e : eventsToday) {
-
-                if (e.event_type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-
-                    if (currentFgAppId != null
-                            && currentFgAppId.equals(e.app_id)
-                            && lastFgTs > 0
-                            && (e.timestamp - lastFgTs) < FG_DEBOUNCE_MS) {
-                        lastFgTs = e.timestamp;
-                        continue;
-                    }
-
-                    // -------- SWITCH --------
-                    String toPkg = safePkg(db, e.app_id);
-                    if (!isNoisePackage(toPkg)) {
-
-                        if (lastRealFgAppId == null) {
-                            lastRealFgAppId = e.app_id;
-                            lastRealFgTs = e.timestamp;
-                        } else if (!lastRealFgAppId.equals(e.app_id)) {
-
-                            if (lastSwitchTs <= 0 || (e.timestamp - lastSwitchTs) >= FG_DEBOUNCE_MS) {
-                                appSwitchCount++;
-                                lastSwitchTs = e.timestamp;
-
-                                int h = hourOfTsLocal(e.timestamp);
-                                if (h >= 0 && h <= 23) switchByHour[h]++;
-
-                                if (switchDebug.size() < SWITCH_DEBUG_LIMIT) {
-                                    String fromPkg = safePkg(db, lastRealFgAppId);
-                                    switchDebug.add("FG(real)->FG(real) " + fromPkg + " -> " + toPkg
-                                            + " @ " + e.timestamp + " (gap=" + (e.timestamp - lastRealFgTs) + "ms)");
-                                }
-                            }
-
-                            lastRealFgAppId = e.app_id;
-                            lastRealFgTs = e.timestamp;
-                        } else {
-                            lastRealFgTs = e.timestamp;
-                        }
-                    }
-                    // ------------------------
-
-                    if (currentFgAppId != null && openFgTs > 0 && e.timestamp > openFgTs) {
-                        long delta = e.timestamp - openFgTs;
-                        foregroundMs += delta;
-                        fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
-                    }
-
-                    fgSessionCount++;
-                    openCountByApp.put(e.app_id, openCountByApp.getOrDefault(e.app_id, 0) + 1);
-
-                    currentFgAppId = e.app_id;
-                    openFgTs = e.timestamp;
-                    lastFgTs = e.timestamp;
-
-                } else if (e.event_type == UsageEvents.Event.MOVE_TO_BACKGROUND) {
-
-                    if (currentFgAppId != null
-                            && e.app_id == currentFgAppId
-                            && openFgTs > 0
-                            && e.timestamp > openFgTs) {
-
-                        long delta = e.timestamp - openFgTs;
-                        foregroundMs += delta;
-                        fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
-
-                        currentFgAppId = null;
-                        openFgTs = -1L;
-                    }
-                }
-            }
-
-            if (currentFgAppId != null && openFgTs > 0 && now > openFgTs) {
-                long delta = now - openFgTs;
-                foregroundMs += delta;
-                fgMsByApp.put(currentFgAppId, fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
-            }
-
-            int uniqueAppsWithRealFg = 0;
-            for (long ms : fgMsByApp.values()) if (ms > 0) uniqueAppsWithRealFg++;
-
-            Log.d(TAG, "FG agg: foregroundMs=" + foregroundMs
-                    + " fgSessionCount=" + fgSessionCount
-                    + " uniqueAppsWithRealFg=" + uniqueAppsWithRealFg
-                    + " eventsToday=" + eventsToday.size());
-
-            Log.d(TAG, "SWITCH agg (real FG changes): appSwitchCount=" + appSwitchCount
-                    + " debugSeq=" + switchDebug);
-
-            // 4) ventanas nocturnas (ATRIBUCIÓN A DÍA DE FIN)
-            long nightStartEndingToday = atLocalHourMs(yesterday, 22, 0);
-            long nightEndEndingToday   = atLocalHourMs(today, 6, 0);
-
-            long nightStartEndingTomorrow = atLocalHourMs(today, 22, 0);
-            long nightEndEndingTomorrow   = atLocalHourMs(tomorrow, 6, 0);
-
-            // 5) SCREEN + UNLOCK incremental (cursor-based) + HOURLY
-            long startOfDayToday = TimeKey.startOfDayMs(now);
-            long startOfDayYesterday = TimeKey.startOfDayMsFromEpochDay(yesterday);
-            long endOfDayYesterday = startOfDayToday;
-            long endOfDayToday = startOfDayToday + 24L * 60L * 60_000L;
-
-            boolean screenIsOn = prefs.getBoolean(KEY_SCREEN_IS_ON, false);
-
-            long lastUnlockEventTs = prefs.getLong(KEY_LAST_UNLOCK_EVENT_TS, start);
-
-            long lastAccountedTs = prefs.getLong(KEY_LAST_SCREEN_ACCOUNTED_TS, start);
-            if (lastAccountedTs < start) lastAccountedTs = start;
-            if (lastAccountedTs > end) lastAccountedTs = end;
-
-            long screenMsDeltaPrev  = 0L;
-            long screenMsDeltaToday = 0L;
-
-            int unlockDelta = 0;
-
-            long nightDeltaToday = 0L;
-            long nightDeltaTomorrow = 0L;
-
-            long[] screenMsByHourPrev = new long[24];
-            long[] screenMsByHourToday = new long[24];
-
-            int[] unlockByHourToday = new int[24];
-            int[] unlockByHourPrev  = new int[24];
-
-            ArrayList<UsageStatsProvider.RawEvent> sys = new ArrayList<>();
-            for (UsageStatsProvider.RawEvent r : rawAll) {
-                if (r == null) continue;
-                if (r.pkg != null) continue;
-                if (r.ts < start || r.ts > end) continue;
-                sys.add(r);
-            }
-            Collections.sort(sys, new Comparator<UsageStatsProvider.RawEvent>() {
-                @Override public int compare(UsageStatsProvider.RawEvent a, UsageStatsProvider.RawEvent b) {
-                    return Long.compare(a.ts, b.ts);
-                }
-            });
-
-            long cursor = lastAccountedTs;
-
-            for (UsageStatsProvider.RawEvent r : sys) {
-
-                if (r.ts > cursor && screenIsOn) {
-                    long segStart = cursor;
-                    long segEnd = r.ts;
-
-                    long prevPart  = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
-                    long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
-                    screenMsDeltaPrev  += prevPart;
-                    screenMsDeltaToday += todayPart;
-
-                    if (segStart < endOfDayYesterday) {
-                        addScreenSegmentToHours(screenMsByHourPrev, yesterday, segStart, Math.min(segEnd, endOfDayYesterday));
-                    }
-                    if (segEnd > startOfDayToday) {
-                        addScreenSegmentToHours(screenMsByHourToday, today, Math.max(segStart, startOfDayToday), segEnd);
-                    }
-
-                    nightDeltaToday += overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
-                    nightDeltaTomorrow += overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
-                }
-
-                cursor = Math.max(cursor, r.ts);
-
-                if (r.type == UsageEvents.Event.SCREEN_INTERACTIVE) {
-                    screenIsOn = true;
-
-                } else if (r.type == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
-                    screenIsOn = false;
-
-                } else if (r.type == UsageEvents.Event.KEYGUARD_HIDDEN) {
-                    if (r.ts > lastUnlockEventTs) {
-                        unlockDelta++;
-                        lastUnlockEventTs = Math.max(lastUnlockEventTs, r.ts);
-
-                        int h = hourOfTsLocal(r.ts);
-                        int d = TimeKey.epochDayLocal(r.ts);
-                        if (h >= 0 && h <= 23) {
-                            if (d == today) unlockByHourToday[h]++;
-                            else if (d == yesterday) unlockByHourPrev[h]++;
-                        }
-                    }
-                }
-            }
-
-            if (end > cursor && screenIsOn) {
-                long segStart = cursor;
-                long segEnd = end;
-
-                long prevPart  = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
-                long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
-                screenMsDeltaPrev  += prevPart;
-                screenMsDeltaToday += todayPart;
-
-                if (segStart < endOfDayYesterday) {
-                    addScreenSegmentToHours(screenMsByHourPrev, yesterday, segStart, Math.min(segEnd, endOfDayYesterday));
-                }
-                if (segEnd > startOfDayToday) {
-                    addScreenSegmentToHours(screenMsByHourToday, today, Math.max(segStart, startOfDayToday), segEnd);
-                }
-
-                nightDeltaToday += overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
-                nightDeltaTomorrow += overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
-            }
-
-            prefs.edit()
-                    .putBoolean(KEY_SCREEN_IS_ON, screenIsOn)
-                    .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
-                    .putLong(KEY_LAST_SCREEN_ACCOUNTED_TS, end)
-                    .apply();
-
-            // ============================
-            // ✅ NOTIFICATIONS
-            // ============================
-            int[] notifByHourToday = new int[24];
-            int[] notifByHourPrev  = new int[24];
-
-            Cursor cToday = null;
-            try {
-                cToday = db.notificationDao().countByHourCursor(today);
-                if (cToday != null) {
-                    int iHour = cToday.getColumnIndex("hour");
-                    int iC = cToday.getColumnIndex("c");
-                    while (cToday.moveToNext()) {
-                        int h = cToday.getInt(iHour);
-                        int cnt = cToday.getInt(iC);
-                        if (h >= 0 && h <= 23) notifByHourToday[h] = cnt;
-                    }
-                }
-            } finally {
-                if (cToday != null) cToday.close();
-            }
-
-            Cursor cPrev = null;
-            try {
-                cPrev = db.notificationDao().countByHourCursor(yesterday);
-                if (cPrev != null) {
-                    int iHour = cPrev.getColumnIndex("hour");
-                    int iC = cPrev.getColumnIndex("c");
-                    while (cPrev.moveToNext()) {
-                        int h = cPrev.getInt(iHour);
-                        int cnt = cPrev.getInt(iC);
-                        if (h >= 0 && h <= 23) notifByHourPrev[h] = cnt;
-                    }
-                }
-            } finally {
-                if (cPrev != null) cPrev.close();
-            }
-
-            int notifTotalToday = db.notificationDao().countByDate(today);
-            int notifTotalPrev  = db.notificationDao().countByDate(yesterday);
-
-            // 6) SAVE YESTERDAY (screen split)
-            if (screenMsDeltaPrev > 0) {
-                DailyMetricsEntity prev = db.userActivityDao().getDailyMetricsByDate(yesterday);
-                if (prev != null) {
-                    prev.screen_ms = Math.max(0L, prev.screen_ms + screenMsDeltaPrev);
-                    db.userActivityDao().upsertDailyMetrics(prev);
-                }
-            }
-
-            // ✅ yesterday notifications (SET)
-            DailyMetricsEntity prevNotif = db.userActivityDao().getDailyMetricsByDate(yesterday);
-            if (prevNotif != null) {
-                prevNotif.notification_count = Math.max(0, notifTotalPrev);
-                db.userActivityDao().upsertDailyMetrics(prevNotif);
-            }
-
-            // 7) SAVE TODAY
-            DailyMetricsEntity cur = db.userActivityDao().getDailyMetricsByDate(today);
-            if (cur != null) {
-                cur.screen_ms = Math.max(0L, cur.screen_ms + screenMsDeltaToday);
-
-                cur.unlock_count = Math.max(0, cur.unlock_count + unlockDelta);
-                cur.session_count = cur.unlock_count;
-
-                cur.foreground_ms = foregroundMs;
-                cur.unique_apps_count = uniqueAppsWithRealFg;
-                cur.app_switch_count = appSwitchCount;
-
-                cur.night_ms = Math.max(0L, cur.night_ms + nightDeltaToday);
-
-                // ✅ today notifications (SET)
-                cur.notification_count = Math.max(0, notifTotalToday);
-
-                db.userActivityDao().upsertDailyMetrics(cur);
-            }
-
-            // 8) SAVE TOMORROW (night)
-            if (nightDeltaTomorrow > 0) {
-                DailyMetricsEntity tm = db.userActivityDao().getDailyMetricsByDate(tomorrow);
-                if (tm != null) {
-                    tm.night_ms = Math.max(0L, tm.night_ms + nightDeltaTomorrow);
-                    db.userActivityDao().upsertDailyMetrics(tm);
-                }
-            }
-
-            // 9) daily_app_metrics (today)
-            ArrayList<DailyAppMetricsEntity> rows = new ArrayList<>();
-            for (Map.Entry<Long, Long> entry : fgMsByApp.entrySet()) {
-                long appId = entry.getKey();
-                long fg = entry.getValue();
-                int openCount = openCountByApp.getOrDefault(appId, 0);
-
-                if (fg > 0) {
-                    rows.add(new DailyAppMetricsEntity(today, appId, fg, openCount, 0));
-                }
-            }
-            if (!rows.isEmpty()) {
-                db.usageDao().upsertDailyAppMetrics(rows);
-            }
-
-            // 10) HOURLY persist: ayer + hoy (✅ con notifs)
-            persistHourly(db, yesterday, screenMsByHourPrev, unlockByHourPrev, notifByHourPrev, null);
-            persistHourly(db, today, screenMsByHourToday, unlockByHourToday, notifByHourToday, switchByHour);
-
-            // 11) retención (solo usage/screen/notif/hourly)
-            int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
-            int delScreen = db.userActivityDao().deleteScreenEventsOlderThanDate(cutoffDate);
-            int delNotif = db.notificationDao().deleteNotificationEventsOlderThanDate(cutoffDate);
-            int delHourly = db.userActivityDao().deleteHourlyMetricsOlderThanDate(cutoffDate);
-
-            Log.d(TAG, "Retention: cutoffDate=" + cutoffDate
-                    + " deletedUsage=" + delUsage
-                    + " deletedScreen=" + delScreen
-                    + " deletedNotif=" + delNotif
-                    + " deletedHourly=" + delHourly);
-        }
-
-        // ============================
-        // ✅ COMMUNICATIONS (siempre)
-        // ============================
+        });
+
+        runUsageRetention(db, cutoffDate);
+    }
+
+    private void runCommunicationAggregation(Context ctx,
+                                             BurnoutDatabase db,
+                                             long now,
+                                             int yesterday,
+                                             int today) {
         try {
             db.communicationDao().insertDailyIfMissing(yesterday);
             db.communicationDao().insertDailyIfMissing(today);
 
-            // ✅ HOY siempre
-            CommAggResult tRes = computeCommForDay(ctx, today);
-            persistCommMetricsForDay(db, today, tRes);
+            CommAggResult todayResult = computeCommForDay(ctx, today);
+            persistCommMetricsForDay(db, today, todayResult);
 
-            // ✅ AYER solo “grace window” (p.ej. hasta las 02:00)
             long startOfTodayMs = TimeKey.startOfDayMsFromEpochDay(today);
-            long graceEndMs = startOfTodayMs + 2L * 60L * 60_000L; // 02:00
+            long graceEndMs = startOfTodayMs + COMM_YESTERDAY_GRACE_MS;
 
             if (now <= graceEndMs) {
-                CommAggResult yRes = computeCommForDay(ctx, yesterday);
-                persistCommMetricsForDay(db, yesterday, yRes);
-                Log.d(TAG_COMM, "Saved comm metrics y=" + yesterday + " calls=" + yRes.callsTotal + " msgs=" + yRes.msgsTotal);
+                CommAggResult yesterdayResult = computeCommForDay(ctx, yesterday);
+                persistCommMetricsForDay(db, yesterday, yesterdayResult);
+                Log.d(TAG_COMM, "Saved comm metrics y=" + yesterday
+                        + " calls=" + yesterdayResult.callsTotal
+                        + " msgs=" + yesterdayResult.msgsTotal);
             } else {
                 Log.d(TAG_COMM, "Skipping yesterday comm recompute (frozen) y=" + yesterday);
             }
 
-            Log.d(TAG_COMM, "Saved comm metrics t=" + today + " calls=" + tRes.callsTotal + " msgs=" + tRes.msgsTotal);
+            Log.d(TAG_COMM, "Saved comm metrics t=" + today
+                    + " calls=" + todayResult.callsTotal
+                    + " msgs=" + todayResult.msgsTotal);
 
         } catch (Exception ex) {
             Log.e(TAG_COMM, "Comm aggregation failed: " + ex.getMessage(), ex);
         }
+    }
 
-        Log.d(TAG, "================ doWork END ================");
-        return Result.success();
+    // ===================== USAGE CAPTURE =====================
+
+    private static class UsageWindow {
+        long start;
+        long end;
+    }
+
+    private UsageWindow initUsageWindow(SharedPreferences prefs, long now) {
+        long lastTs = prefs.getLong(KEY_LAST_USAGE_CAPTURE_TS, -1L);
+        boolean firstRunAfterClear = !prefs.contains(KEY_LAST_USAGE_CAPTURE_TS);
+
+        if (firstRunAfterClear) {
+            lastTs = now - FIRST_RUN_BACKFILL_MS;
+            prefs.edit()
+                    .putLong(KEY_LAST_USAGE_CAPTURE_TS, lastTs)
+                    .putBoolean(KEY_SCREEN_IS_ON, false)
+                    .putLong(KEY_LAST_UNLOCK_EVENT_TS, TimeKey.startOfDayMs(now))
+                    .putLong(KEY_LAST_SCREEN_ACCOUNTED_TS, Math.max(TimeKey.startOfDayMs(now), lastTs))
+                    .apply();
+        }
+
+        UsageWindow out = new UsageWindow();
+        out.start = (lastTs > 0) ? (lastTs + 1) : Math.max(0L, now - FIRST_LOOKBACK_MS);
+        out.end = now;
+        return out;
+    }
+
+    private List<UsageStatsProvider.RawEvent> collectRawEvents(Context ctx, long start, long end) {
+        List<UsageStatsProvider.RawEvent> rawAll = UsageStatsProvider.collectEvents(ctx, start, end);
+        Log.d(TAG, "Raw events total=" + (rawAll != null ? rawAll.size() : 0));
+        return (rawAll != null) ? rawAll : new ArrayList<UsageStatsProvider.RawEvent>();
+    }
+
+    private Map<String, Long> buildAppIdCache(BurnoutDatabase db,
+                                              Context ctx,
+                                              List<UsageStatsProvider.RawEvent> rawAll) {
+        HashSet<String> uniquePkgs = new HashSet<>();
+        for (UsageStatsProvider.RawEvent r : rawAll) {
+            if (r != null && r.pkg != null) {
+                uniquePkgs.add(r.pkg);
+            }
+        }
+
+        Map<String, Long> appIdCache = new HashMap<>(Math.max(16, uniquePkgs.size() * 2));
+        for (String pkg : uniquePkgs) {
+            long appId = resolveAppId(db, ctx, pkg);
+            if (appId > 0) {
+                appIdCache.put(pkg, appId);
+            }
+        }
+
+        return appIdCache;
+    }
+
+    private void insertUsageEvents(BurnoutDatabase db,
+                                   SharedPreferences prefs,
+                                   List<UsageStatsProvider.RawEvent> rawAll,
+                                   Map<String, Long> appIdCache,
+                                   long start,
+                                   long end,
+                                   int today) {
+
+        HashSet<String> seen = new HashSet<>();
+        List<AppUsageEventEntity> toInsert = new ArrayList<>();
+
+        for (UsageStatsProvider.RawEvent r : rawAll) {
+            if (r == null) continue;
+            if (r.pkg == null) continue;
+            if (r.ts < start || r.ts > end) continue;
+
+            Long appIdObj = appIdCache.get(r.pkg);
+            long appId = (appIdObj != null) ? appIdObj : -1L;
+            if (appId <= 0) continue;
+
+            String key = appId + "|" + r.type + "|" + r.ts;
+            if (!seen.add(key)) continue;
+
+            toInsert.add(new AppUsageEventEntity(appId, r.type, r.ts, "usm", r.date));
+        }
+
+        if (!toInsert.isEmpty()) {
+            db.usageDao().insertUsageEvents(toInsert);
+        }
+
+        prefs.edit().putLong(KEY_LAST_USAGE_CAPTURE_TS, end).apply();
+
+        Log.d(TAG, "Usage insert: inserted=" + toInsert.size()
+                + " todayCount=" + db.usageDao().countUsageEventsByDate(today));
+    }
+
+    // ===================== FOREGROUND AGGREGATION =====================
+
+    private static class ForegroundAggResult {
+        long foregroundMs;
+        int fgSessionCount;
+        int uniqueAppsWithRealFg;
+        int appSwitchCount;
+
+        Map<Long, Long> fgMsByApp = new HashMap<>();
+        Map<Long, Integer> openCountByApp = new HashMap<>();
+        int[] switchByHour = new int[24];
+        ArrayList<String> switchDebug = new ArrayList<>();
+        int eventsTodayCount;
+    }
+
+    private ForegroundAggResult aggregateForegroundMetrics(BurnoutDatabase db, int today, long now) {
+        List<AppUsageEventEntity> eventsToday = db.usageDao().getUsageEventsByDate(today);
+
+        ForegroundAggResult out = new ForegroundAggResult();
+        out.eventsTodayCount = eventsToday.size();
+
+        Long currentFgAppId = null;
+        long openFgTs = -1L;
+        long lastFgTs = -1L;
+
+        long lastSwitchTs = -1L;
+        Long lastRealFgAppId = null;
+        long lastRealFgTs = -1L;
+
+        final int SWITCH_DEBUG_LIMIT = 15;
+
+        for (AppUsageEventEntity e : eventsToday) {
+
+            if (e.event_type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+
+                if (currentFgAppId != null
+                        && currentFgAppId.equals(e.app_id)
+                        && lastFgTs > 0
+                        && (e.timestamp - lastFgTs) < FG_DEBOUNCE_MS) {
+                    lastFgTs = e.timestamp;
+                    continue;
+                }
+
+                String toPkg = safePkg(db, e.app_id);
+                if (!isNoisePackage(toPkg)) {
+                    if (lastRealFgAppId == null) {
+                        lastRealFgAppId = e.app_id;
+                        lastRealFgTs = e.timestamp;
+                    } else if (!lastRealFgAppId.equals(e.app_id)) {
+
+                        if (lastSwitchTs <= 0 || (e.timestamp - lastSwitchTs) >= FG_DEBOUNCE_MS) {
+                            out.appSwitchCount++;
+                            lastSwitchTs = e.timestamp;
+
+                            int h = hourOfTsLocal(e.timestamp);
+                            if (h >= 0 && h <= 23) {
+                                out.switchByHour[h]++;
+                            }
+
+                            if (out.switchDebug.size() < SWITCH_DEBUG_LIMIT) {
+                                String fromPkg = safePkg(db, lastRealFgAppId);
+                                out.switchDebug.add("FG(real)->FG(real) " + fromPkg + " -> " + toPkg
+                                        + " @ " + e.timestamp + " (gap=" + (e.timestamp - lastRealFgTs) + "ms)");
+                            }
+                        }
+
+                        lastRealFgAppId = e.app_id;
+                        lastRealFgTs = e.timestamp;
+                    } else {
+                        lastRealFgTs = e.timestamp;
+                    }
+                }
+
+                if (currentFgAppId != null && openFgTs > 0 && e.timestamp > openFgTs) {
+                    long delta = e.timestamp - openFgTs;
+                    out.foregroundMs += delta;
+                    out.fgMsByApp.put(currentFgAppId, out.fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+                }
+
+                out.fgSessionCount++;
+                out.openCountByApp.put(e.app_id, out.openCountByApp.getOrDefault(e.app_id, 0) + 1);
+
+                currentFgAppId = e.app_id;
+                openFgTs = e.timestamp;
+                lastFgTs = e.timestamp;
+
+            } else if (e.event_type == UsageEvents.Event.MOVE_TO_BACKGROUND) {
+
+                if (currentFgAppId != null
+                        && e.app_id == currentFgAppId
+                        && openFgTs > 0
+                        && e.timestamp > openFgTs) {
+
+                    long delta = e.timestamp - openFgTs;
+                    out.foregroundMs += delta;
+                    out.fgMsByApp.put(currentFgAppId, out.fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+
+                    currentFgAppId = null;
+                    openFgTs = -1L;
+                }
+            }
+        }
+
+        if (currentFgAppId != null && openFgTs > 0 && now > openFgTs) {
+            long delta = now - openFgTs;
+            out.foregroundMs += delta;
+            out.fgMsByApp.put(currentFgAppId, out.fgMsByApp.getOrDefault(currentFgAppId, 0L) + delta);
+        }
+
+        int uniqueAppsWithRealFg = 0;
+        for (long ms : out.fgMsByApp.values()) {
+            if (ms > 0) uniqueAppsWithRealFg++;
+        }
+        out.uniqueAppsWithRealFg = uniqueAppsWithRealFg;
+
+        Log.d(TAG, "FG agg: foregroundMs=" + out.foregroundMs
+                + " fgSessionCount=" + out.fgSessionCount
+                + " uniqueAppsWithRealFg=" + out.uniqueAppsWithRealFg
+                + " eventsToday=" + out.eventsTodayCount);
+
+        Log.d(TAG, "SWITCH agg (real FG changes): appSwitchCount=" + out.appSwitchCount
+                + " debugSeq=" + out.switchDebug);
+
+        return out;
+    }
+
+    // ===================== SCREEN / UNLOCK / NIGHT AGGREGATION =====================
+
+    private static class ScreenAggResult {
+        long screenMsDeltaPrev;
+        long screenMsDeltaToday;
+
+        int unlockDelta;
+
+        long nightDeltaToday;
+        long nightDeltaTomorrow;
+
+        long[] screenMsByHourPrev = new long[24];
+        long[] screenMsByHourToday = new long[24];
+
+        int[] unlockByHourToday = new int[24];
+        int[] unlockByHourPrev = new int[24];
+    }
+
+    private ScreenAggResult aggregateScreenUnlockAndNightMetrics(SharedPreferences prefs,
+                                                                 List<UsageStatsProvider.RawEvent> rawAll,
+                                                                 long start,
+                                                                 long end,
+                                                                 int yesterday,
+                                                                 int today,
+                                                                 int tomorrow,
+                                                                 long now) {
+
+        long nightStartEndingToday = atLocalHourMs(yesterday, 22, 0);
+        long nightEndEndingToday = atLocalHourMs(today, 6, 0);
+
+        long nightStartEndingTomorrow = atLocalHourMs(today, 22, 0);
+        long nightEndEndingTomorrow = atLocalHourMs(tomorrow, 6, 0);
+
+        long startOfDayToday = TimeKey.startOfDayMs(now);
+        long startOfDayYesterday = TimeKey.startOfDayMsFromEpochDay(yesterday);
+        long endOfDayYesterday = startOfDayToday;
+        long endOfDayToday = startOfDayToday + DAY_MS;
+
+        boolean screenIsOn = prefs.getBoolean(KEY_SCREEN_IS_ON, false);
+        long lastUnlockEventTs = prefs.getLong(KEY_LAST_UNLOCK_EVENT_TS, start);
+
+        long lastAccountedTs = prefs.getLong(KEY_LAST_SCREEN_ACCOUNTED_TS, start);
+        if (lastAccountedTs < start) lastAccountedTs = start;
+        if (lastAccountedTs > end) lastAccountedTs = end;
+
+        ArrayList<UsageStatsProvider.RawEvent> sys = new ArrayList<>();
+        for (UsageStatsProvider.RawEvent r : rawAll) {
+            if (r == null) continue;
+            if (r.pkg != null) continue;
+            if (r.ts < start || r.ts > end) continue;
+            sys.add(r);
+        }
+
+        Collections.sort(sys, new Comparator<UsageStatsProvider.RawEvent>() {
+            @Override
+            public int compare(UsageStatsProvider.RawEvent a, UsageStatsProvider.RawEvent b) {
+                return Long.compare(a.ts, b.ts);
+            }
+        });
+
+        ScreenAggResult out = new ScreenAggResult();
+        long cursor = lastAccountedTs;
+
+        for (UsageStatsProvider.RawEvent r : sys) {
+
+            if (r.ts > cursor && screenIsOn) {
+                long segStart = cursor;
+                long segEnd = r.ts;
+
+                long prevPart = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
+                long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
+
+                out.screenMsDeltaPrev += prevPart;
+                out.screenMsDeltaToday += todayPart;
+
+                if (segStart < endOfDayYesterday) {
+                    addScreenSegmentToHours(out.screenMsByHourPrev, yesterday, segStart, Math.min(segEnd, endOfDayYesterday));
+                }
+                if (segEnd > startOfDayToday) {
+                    addScreenSegmentToHours(out.screenMsByHourToday, today, Math.max(segStart, startOfDayToday), segEnd);
+                }
+
+                out.nightDeltaToday += overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
+                out.nightDeltaTomorrow += overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
+            }
+
+            cursor = Math.max(cursor, r.ts);
+
+            if (r.type == UsageEvents.Event.SCREEN_INTERACTIVE) {
+                screenIsOn = true;
+
+            } else if (r.type == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
+                screenIsOn = false;
+
+            } else if (r.type == UsageEvents.Event.KEYGUARD_HIDDEN) {
+                if (r.ts > lastUnlockEventTs) {
+                    out.unlockDelta++;
+                    lastUnlockEventTs = Math.max(lastUnlockEventTs, r.ts);
+
+                    int h = hourOfTsLocal(r.ts);
+                    int d = TimeKey.epochDayLocal(r.ts);
+                    if (h >= 0 && h <= 23) {
+                        if (d == today) out.unlockByHourToday[h]++;
+                        else if (d == yesterday) out.unlockByHourPrev[h]++;
+                    }
+                }
+            }
+        }
+
+        if (end > cursor && screenIsOn) {
+            long segStart = cursor;
+            long segEnd = end;
+
+            long prevPart = overlapMs(segStart, segEnd, startOfDayYesterday, endOfDayYesterday);
+            long todayPart = overlapMs(segStart, segEnd, startOfDayToday, endOfDayToday);
+
+            out.screenMsDeltaPrev += prevPart;
+            out.screenMsDeltaToday += todayPart;
+
+            if (segStart < endOfDayYesterday) {
+                addScreenSegmentToHours(out.screenMsByHourPrev, yesterday, segStart, Math.min(segEnd, endOfDayYesterday));
+            }
+            if (segEnd > startOfDayToday) {
+                addScreenSegmentToHours(out.screenMsByHourToday, today, Math.max(segStart, startOfDayToday), segEnd);
+            }
+
+            out.nightDeltaToday += overlapMs(segStart, segEnd, nightStartEndingToday, nightEndEndingToday);
+            out.nightDeltaTomorrow += overlapMs(segStart, segEnd, nightStartEndingTomorrow, nightEndEndingTomorrow);
+        }
+
+        prefs.edit()
+                .putBoolean(KEY_SCREEN_IS_ON, screenIsOn)
+                .putLong(KEY_LAST_UNLOCK_EVENT_TS, lastUnlockEventTs)
+                .putLong(KEY_LAST_SCREEN_ACCOUNTED_TS, end)
+                .apply();
+
+        return out;
+    }
+
+    // ===================== NOTIFICATION AGGREGATION =====================
+
+    private static class NotificationAggResult {
+        int[] notifByHourToday = new int[24];
+        int[] notifByHourPrev = new int[24];
+        int notifTotalToday;
+        int notifTotalPrev;
+    }
+
+    private NotificationAggResult loadNotificationMetrics(BurnoutDatabase db, int yesterday, int today) {
+        NotificationAggResult out = new NotificationAggResult();
+
+        Cursor cToday = null;
+        try {
+            cToday = db.notificationDao().countByHourCursor(today);
+            if (cToday != null) {
+                int iHour = cToday.getColumnIndex("hour");
+                int iC = cToday.getColumnIndex("c");
+                while (cToday.moveToNext()) {
+                    int h = cToday.getInt(iHour);
+                    int cnt = cToday.getInt(iC);
+                    if (h >= 0 && h <= 23) {
+                        out.notifByHourToday[h] = cnt;
+                    }
+                }
+            }
+        } finally {
+            if (cToday != null) cToday.close();
+        }
+
+        Cursor cPrev = null;
+        try {
+            cPrev = db.notificationDao().countByHourCursor(yesterday);
+            if (cPrev != null) {
+                int iHour = cPrev.getColumnIndex("hour");
+                int iC = cPrev.getColumnIndex("c");
+                while (cPrev.moveToNext()) {
+                    int h = cPrev.getInt(iHour);
+                    int cnt = cPrev.getInt(iC);
+                    if (h >= 0 && h <= 23) {
+                        out.notifByHourPrev[h] = cnt;
+                    }
+                }
+            }
+        } finally {
+            if (cPrev != null) cPrev.close();
+        }
+
+        out.notifTotalToday = db.notificationDao().countByDate(today);
+        out.notifTotalPrev = db.notificationDao().countByDate(yesterday);
+
+        return out;
+    }
+
+    // ===================== DAILY / HOURLY PERSISTENCE =====================
+
+    private void saveDailyMetrics(BurnoutDatabase db,
+                                  int yesterday,
+                                  int today,
+                                  int tomorrow,
+                                  ForegroundAggResult fgResult,
+                                  ScreenAggResult screenResult,
+                                  NotificationAggResult notifResult) {
+
+        DailyMetricsEntity yesterdayMetrics = db.userActivityDao().getDailyMetricsByDate(yesterday);
+        DailyMetricsEntity todayMetrics = db.userActivityDao().getDailyMetricsByDate(today);
+        DailyMetricsEntity tomorrowMetrics = db.userActivityDao().getDailyMetricsByDate(tomorrow);
+
+        if (yesterdayMetrics != null) {
+            if (screenResult.screenMsDeltaPrev > 0) {
+                yesterdayMetrics.screen_ms = Math.max(0L, yesterdayMetrics.screen_ms + screenResult.screenMsDeltaPrev);
+            }
+            yesterdayMetrics.notification_count = Math.max(0, notifResult.notifTotalPrev);
+            db.userActivityDao().upsertDailyMetrics(yesterdayMetrics);
+        }
+
+        if (todayMetrics != null) {
+            todayMetrics.screen_ms = Math.max(0L, todayMetrics.screen_ms + screenResult.screenMsDeltaToday);
+
+            todayMetrics.unlock_count = Math.max(0, todayMetrics.unlock_count + screenResult.unlockDelta);
+            todayMetrics.session_count = todayMetrics.unlock_count;
+
+            todayMetrics.foreground_ms = fgResult.foregroundMs;
+            todayMetrics.unique_apps_count = fgResult.uniqueAppsWithRealFg;
+            todayMetrics.app_switch_count = fgResult.appSwitchCount;
+
+            todayMetrics.night_ms = Math.max(0L, todayMetrics.night_ms + screenResult.nightDeltaToday);
+            todayMetrics.notification_count = Math.max(0, notifResult.notifTotalToday);
+
+            db.userActivityDao().upsertDailyMetrics(todayMetrics);
+        }
+
+        if (screenResult.nightDeltaTomorrow > 0 && tomorrowMetrics != null) {
+            tomorrowMetrics.night_ms = Math.max(0L, tomorrowMetrics.night_ms + screenResult.nightDeltaTomorrow);
+            db.userActivityDao().upsertDailyMetrics(tomorrowMetrics);
+        }
+    }
+
+    private void saveDailyAppMetrics(BurnoutDatabase db,
+                                     int today,
+                                     Map<Long, Long> fgMsByApp,
+                                     Map<Long, Integer> openCountByApp) {
+        ArrayList<DailyAppMetricsEntity> rows = new ArrayList<>();
+
+        for (Map.Entry<Long, Long> entry : fgMsByApp.entrySet()) {
+            long appId = entry.getKey();
+            long fg = entry.getValue();
+            int openCount = openCountByApp.getOrDefault(appId, 0);
+
+            if (fg > 0) {
+                rows.add(new DailyAppMetricsEntity(today, appId, fg, openCount, 0));
+            }
+        }
+
+        if (!rows.isEmpty()) {
+            db.usageDao().upsertDailyAppMetrics(rows);
+        }
+    }
+
+    private void saveHourlyMetrics(BurnoutDatabase db,
+                                   int yesterday,
+                                   int today,
+                                   int[] switchByHour,
+                                   ScreenAggResult screenResult,
+                                   NotificationAggResult notifResult) {
+        persistHourly(db, yesterday,
+                screenResult.screenMsByHourPrev,
+                screenResult.unlockByHourPrev,
+                notifResult.notifByHourPrev,
+                null);
+
+        persistHourly(db, today,
+                screenResult.screenMsByHourToday,
+                screenResult.unlockByHourToday,
+                notifResult.notifByHourToday,
+                switchByHour);
+    }
+
+    private void runUsageRetention(BurnoutDatabase db, int cutoffDate) {
+        int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
+        int delScreen = db.userActivityDao().deleteScreenEventsOlderThanDate(cutoffDate);
+        int delNotif = db.notificationDao().deleteNotificationEventsOlderThanDate(cutoffDate);
+        int delHourly = db.userActivityDao().deleteHourlyMetricsOlderThanDate(cutoffDate);
+
+        Log.d(TAG, "Retention: cutoffDate=" + cutoffDate
+                + " deletedUsage=" + delUsage
+                + " deletedScreen=" + delScreen
+                + " deletedNotif=" + delNotif
+                + " deletedHourly=" + delHourly);
     }
 
     // ===================== HOURLY HELPERS =====================
@@ -578,7 +696,9 @@ public class DailyAggregationWorker extends Worker {
 
             if (existing != null) {
                 for (HourlyMetricsEntity h : existing) {
-                    if (h != null && h.hour >= 0 && h.hour <= 23) byHour[h.hour] = h;
+                    if (h != null && h.hour >= 0 && h.hour <= 23) {
+                        byHour[h.hour] = h;
+                    }
                 }
             }
 
@@ -596,10 +716,7 @@ public class DailyAggregationWorker extends Worker {
                 long addScreen = (screenMsByHour != null && screenMsByHour.length == 24) ? screenMsByHour[h] : 0L;
                 int addUnlock = (unlockByHour != null && unlockByHour.length == 24) ? unlockByHour[h] : 0;
 
-                // ✅ notifs: SET desde raw aggregate
                 int newNotif = (notifByHour != null && notifByHour.length == 24) ? notifByHour[h] : baseNotif;
-
-                // switches: tu lógica original
                 int addSwitch = (switchByHour != null && switchByHour.length == 24) ? switchByHour[h] : 0;
                 int newSwitch = (switchByHour == null) ? baseSwitch : addSwitch;
 
@@ -626,7 +743,7 @@ public class DailyAggregationWorker extends Worker {
         if (segEnd <= segStart) return;
 
         long dayStart = TimeKey.startOfDayMsFromEpochDay(epochDay);
-        long dayEnd = dayStart + 24L * 60L * 60_000L;
+        long dayEnd = dayStart + DAY_MS;
 
         long s = Math.max(segStart, dayStart);
         long e = Math.min(segEnd, dayEnd);
@@ -634,7 +751,7 @@ public class DailyAggregationWorker extends Worker {
 
         for (int h = 0; h < 24; h++) {
             long hs = atLocalHourMs(epochDay, h, 0);
-            long he = hs + 60L * 60_000L;
+            long he = hs + HOUR_MS;
             long add = overlapMs(s, e, hs, he);
             if (add > 0) out24[h] += add;
         }
@@ -651,7 +768,7 @@ public class DailyAggregationWorker extends Worker {
             String pkg = db.usageDao().getPackageNameByAppId(appId);
             return (pkg != null) ? pkg : ("appId=" + appId);
         } catch (Exception ex) {
-            return ("appId=" + appId);
+            return "appId=" + appId;
         }
     }
 
@@ -694,7 +811,7 @@ public class DailyAggregationWorker extends Worker {
         return Math.max(0L, e - s);
     }
 
-    // ===================== COMM METRICS =====================
+    // ===================== COMMUNICATION METRICS =====================
 
     private boolean hasPermission(Context ctx, String perm) {
         return ContextCompat.checkSelfPermission(ctx, perm) == PackageManager.PERMISSION_GRANTED;
@@ -707,15 +824,12 @@ public class DailyAggregationWorker extends Worker {
         int[] callsByHour = new int[24];
         long[] callsDurationByHourMs = new long[24];
 
-        // SMS recibidos
         int smsTotal;
         int[] smsByHour = new int[24];
 
-        // Notifs de apps MESSAGING (cuentan como “mensajes”)
         int msgNotifsTotal;
         int[] msgNotifsByHour = new int[24];
 
-        // Total mensajes (SMS + notifs mensajería)
         int msgsTotal;
         int[] msgsByHour = new int[24];
     }
@@ -724,9 +838,8 @@ public class DailyAggregationWorker extends Worker {
         CommAggResult out = new CommAggResult();
 
         long startMs = TimeKey.startOfDayMsFromEpochDay(epochDay);
-        long endMs = startMs + 24L * 60L * 60_000L;
+        long endMs = startMs + DAY_MS;
 
-        // ---- CALLS ----
         if (hasPermission(ctx, Manifest.permission.READ_CALL_LOG)) {
             Cursor c = null;
             try {
@@ -766,8 +879,6 @@ public class DailyAggregationWorker extends Worker {
             Log.w(TAG_COMM, "READ_CALL_LOG not granted -> calls=0");
         }
 
-        // ---- SMS RECEIVED (Inbox) ----
-        // ---- SMS RECEIVED (Inbox) ----
         if (hasPermission(ctx, Manifest.permission.READ_SMS)) {
             Cursor c = null;
             try {
@@ -783,7 +894,9 @@ public class DailyAggregationWorker extends Worker {
                         out.smsTotal++;
 
                         int h = TimeKey.hourOfDayLocal(ts);
-                        if (h >= 0 && h <= 23) out.smsByHour[h]++;
+                        if (h >= 0 && h <= 23) {
+                            out.smsByHour[h]++;
+                        }
                     }
                 }
             } catch (Exception ex) {
@@ -803,8 +916,10 @@ public class DailyAggregationWorker extends Worker {
         Cursor c = null;
         try {
             c = db.usageDao().getCategoryTotalsMsForDay(epochDay);
+            if (c == null) return 0L;
+
             int iCat = c.getColumnIndexOrThrow("category");
-            int iMs  = c.getColumnIndexOrThrow("total_ms");
+            int iMs = c.getColumnIndexOrThrow("total_ms");
 
             while (c.moveToNext()) {
                 String cat = c.getString(iCat);
@@ -821,98 +936,101 @@ public class DailyAggregationWorker extends Worker {
 
     private void persistCommMetricsForDay(BurnoutDatabase db, int epochDay, CommAggResult r) {
         try {
-            db.communicationDao().insertDailyIfMissing(epochDay);
+            db.runInTransaction(new Runnable() {
+                @Override
+                public void run() {
+                    db.communicationDao().insertDailyIfMissing(epochDay);
 
-            // 1) Mensajería en tiempo (usage category)
-            long messagingMs = getMessagingMsForDay(db, epochDay);
+                    long messagingMs = getMessagingMsForDay(db, epochDay);
 
-            // 2) Notifs de apps de mensajería -> cuentan como “mensajes” (inbox + notifs)
-            int[] msgNotifsByHour = new int[24];
-            int msgNotifsTotal = 0;
+                    int[] msgNotifsByHour = new int[24];
+                    int msgNotifsTotal = 0;
 
-            Cursor c = null;
-            try {
-                c = db.notificationDao().countMessagingNotifsByHourCursor(epochDay);
-                if (c != null) {
-                    int iHour = c.getColumnIndex("hour");
-                    int iC = c.getColumnIndex("c");
-                    while (c.moveToNext()) {
-                        int h = c.getInt(iHour);
-                        int cnt = c.getInt(iC);
-                        if (h >= 0 && h <= 23) {
-                            msgNotifsByHour[h] = cnt;
-                            msgNotifsTotal += cnt;
+                    Cursor c = null;
+                    try {
+                        c = db.notificationDao().countMessagingNotifsByHourCursor(epochDay);
+                        if (c != null) {
+                            int iHour = c.getColumnIndex("hour");
+                            int iC = c.getColumnIndex("c");
+
+                            while (c.moveToNext()) {
+                                int h = c.getInt(iHour);
+                                int cnt = c.getInt(iC);
+                                if (h >= 0 && h <= 23) {
+                                    msgNotifsByHour[h] = cnt;
+                                    msgNotifsTotal += cnt;
+                                }
+                            }
                         }
+                    } finally {
+                        if (c != null) c.close();
                     }
+
+                    int msgNotifsTotalCheck = db.notificationDao().countMessagingNotifsByDate(epochDay);
+                    msgNotifsTotal = Math.max(msgNotifsTotal, msgNotifsTotalCheck);
+
+                    r.msgNotifsTotal = msgNotifsTotal;
+                    r.msgNotifsByHour = msgNotifsByHour;
+
+                    int msgsTotal = Math.max(0, r.smsTotal) + Math.max(0, r.msgNotifsTotal);
+                    int[] msgsByHour = new int[24];
+                    for (int h = 0; h < 24; h++) {
+                        msgsByHour[h] = Math.max(0, r.smsByHour[h]) + Math.max(0, r.msgNotifsByHour[h]);
+                    }
+
+                    r.msgsTotal = msgsTotal;
+                    r.msgsByHour = msgsByHour;
+
+                    long voiceMs = Math.max(0L, r.callsDurationMs);
+                    long textMs = Math.max(0L, messagingMs);
+                    long totalMs = voiceMs + textMs;
+
+                    DailyCommMetricsEntity daily = new DailyCommMetricsEntity(
+                            epochDay,
+                            Math.max(0, r.callsTotal),
+                            Math.max(0, r.msgsTotal),
+                            totalMs,
+                            voiceMs,
+                            textMs
+                    );
+                    db.communicationDao().upsertDaily(daily);
+
+                    long sumMsgs = 0L;
+                    for (int h = 0; h < 24; h++) {
+                        sumMsgs += Math.max(0, r.msgsByHour[h]);
+                    }
+
+                    ArrayList<HourlyCommMetricsEntity> rows = new ArrayList<>(24);
+                    for (int h = 0; h < 24; h++) {
+                        long voiceVal = (r.callsDurationByHourMs != null && r.callsDurationByHourMs.length == 24)
+                                ? Math.max(0L, r.callsDurationByHourMs[h])
+                                : 0L;
+
+                        long textVal = 0L;
+                        if (sumMsgs > 0) {
+                            textVal = (messagingMs * Math.max(0, r.msgsByHour[h])) / sumMsgs;
+                        }
+
+                        long totalVal = voiceVal + textVal;
+                        rows.add(new HourlyCommMetricsEntity(epochDay, h, totalVal, voiceVal, textVal));
+                    }
+
+                    db.communicationDao().upsertHourly(rows);
+
+                    Log.d(TAG_COMM, "COMM day=" + epochDay
+                            + " voiceMs=" + voiceMs
+                            + " textMs=" + textMs
+                            + " msgsTotal=" + msgsTotal
+                            + " (sms=" + r.smsTotal + " + msgNotifs=" + r.msgNotifsTotal + ")");
                 }
-            } finally {
-                if (c != null) c.close();
-            }
-
-            // (Más fiable que sumar el cursor, por si hay horas sin fila)
-            int msgNotifsTotalCheck = db.notificationDao().countMessagingNotifsByDate(epochDay);
-            // Usa el mayor por seguridad
-            msgNotifsTotal = Math.max(msgNotifsTotal, msgNotifsTotalCheck);
-
-            r.msgNotifsTotal = msgNotifsTotal;
-            r.msgNotifsByHour = msgNotifsByHour;
-
-            // 3) Construye msgsTotal y msgsByHour = SMS + notifs mensajería
-            int msgsTotal = Math.max(0, r.smsTotal) + Math.max(0, r.msgNotifsTotal);
-            int[] msgsByHour = new int[24];
-            for (int h = 0; h < 24; h++) {
-                msgsByHour[h] = Math.max(0, r.smsByHour[h]) + Math.max(0, r.msgNotifsByHour[h]);
-            }
-            r.msgsTotal = msgsTotal;
-            r.msgsByHour = msgsByHour;
-
-            // 4) Daily comm
-            long voiceMs = Math.max(0L, r.callsDurationMs);
-            long textMs  = Math.max(0L, messagingMs);
-            long totalMs = voiceMs + textMs;
-
-            // IMPORTANTE: aquí es donde tú quieres que messages_count sea SMS+notifs
-            DailyCommMetricsEntity daily = new DailyCommMetricsEntity(
-                    epochDay,
-                    Math.max(0, r.callsTotal),
-                    Math.max(0, r.msgsTotal),
-                    totalMs,
-                    voiceMs,
-                    textMs
-            );
-            db.communicationDao().upsertDaily(daily);
-
-            // 5) Hourly comm
-            long sumMsgs = 0L;
-            for (int h = 0; h < 24; h++) sumMsgs += Math.max(0, r.msgsByHour[h]);
-
-            ArrayList<HourlyCommMetricsEntity> rows = new ArrayList<>(24);
-            for (int h = 0; h < 24; h++) {
-                long voiceVal = (r.callsDurationByHourMs != null && r.callsDurationByHourMs.length == 24)
-                        ? Math.max(0L, r.callsDurationByHourMs[h])
-                        : 0L;
-
-                long textVal = 0L;
-                if (sumMsgs > 0) {
-                    textVal = (messagingMs * Math.max(0, r.msgsByHour[h])) / sumMsgs;
-                }
-                long totalVal = voiceVal + textVal;
-
-                rows.add(new HourlyCommMetricsEntity(epochDay, h, totalVal, voiceVal, textVal));
-            }
-
-            db.communicationDao().upsertHourly(rows);
-
-            Log.d(TAG_COMM, "COMM day=" + epochDay
-                    + " voiceMs=" + voiceMs + " textMs=" + textMs
-                    + " msgsTotal=" + msgsTotal + " (sms=" + r.smsTotal + " + msgNotifs=" + r.msgNotifsTotal + ")");
+            });
 
         } catch (Exception ex) {
             Log.e(TAG_COMM, "persistCommMetricsForDay failed: " + ex.getMessage(), ex);
         }
     }
 
-    // ===================== APP HELPERS =====================
+    // ===================== APP REGISTRY HELPERS =====================
 
     private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
         if (pkg == null || pkg.trim().isEmpty()) return -1L;
@@ -928,10 +1046,10 @@ public class DailyAggregationWorker extends Worker {
             }
 
             String curName = db.usageDao().getNameByAppId(existing);
-            String curCat  = db.usageDao().getCategoryByAppId(existing);
+            String curCat = db.usageDao().getCategoryByAppId(existing);
 
             boolean needsName = (curName == null || curName.trim().isEmpty() || curName.equals(pkg) || looksLikePackage(curName));
-            boolean needsCat  = (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat));
+            boolean needsCat = (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat));
 
             if (needsName) {
                 String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);

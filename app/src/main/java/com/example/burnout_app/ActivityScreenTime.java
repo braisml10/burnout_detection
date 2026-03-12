@@ -32,13 +32,12 @@ import java.util.List;
 
 public class ActivityScreenTime extends AppCompatActivity {
 
-    private DailyDetailViewModel vm;
+    private DailyDetailViewModel dailyDetailViewModel;
 
     private TextView tvTotal;
     private TextView tvSessions;
-    private TextView tvNight; // KPI (arriba)
+    private TextView tvNight;
 
-    // Summary abajo del strip (según tu XML)
     private TextView tvNightTotal;
     private TextView tvNightActiveHours;
 
@@ -52,8 +51,7 @@ public class ActivityScreenTime extends AppCompatActivity {
     private int todayDay;
     private int selectedDay;
 
-    // cache para marker
-    private int[] lastNightMinutes8;
+    private int[] lastNightMinutes9;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +60,6 @@ public class ActivityScreenTime extends AppCompatActivity {
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
-        // Charts
         lineChart = findViewById(R.id.lineChart);
         if (lineChart == null) {
             throw new IllegalStateException("lineChart NULL: falta R.id.lineChart en el layout");
@@ -75,18 +72,15 @@ public class ActivityScreenTime extends AppCompatActivity {
         }
         setupNightTimeline(barChartNight);
 
-        vm = new ViewModelProvider(this).get(DailyDetailViewModel.class);
+        dailyDetailViewModel = new ViewModelProvider(this).get(DailyDetailViewModel.class);
 
-        // KPIs
         tvTotal = findViewById(R.id.tvTotalValue);
         tvSessions = findViewById(R.id.tvSessionsValue);
         tvNight = findViewById(R.id.tvNightValue);
 
-        // Summary (tu XML)
         tvNightTotal = findViewById(R.id.tvNightTotal);
         tvNightActiveHours = findViewById(R.id.tvNightActiveHours);
 
-        // Day selector
         btnPrevDay = findViewById(R.id.btnPrevDay);
         btnNextDay = findViewById(R.id.btnNextDay);
         tvDayLabel = findViewById(R.id.tvDayLabel);
@@ -94,23 +88,21 @@ public class ActivityScreenTime extends AppCompatActivity {
         todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay = todayDay;
 
-        // KPIs
-        vm.getUiState().observe(this, s -> {
-            if (s == null) return;
+        dailyDetailViewModel.getUiState().observe(this, uiState -> {
+            if (uiState == null) return;
 
-            tvTotal.setText(s.totalScreenTime);
-            tvSessions.setText(s.sessions);
-            tvNight.setText(s.night);
+            tvTotal.setText(uiState.totalScreenTime);
+            tvSessions.setText(uiState.sessions);
+            tvNight.setText(uiState.night);
 
-            // ✅ “Uso total” abajo usa EXACTAMENTE el mismo valor del KPI
             if (tvNightTotal != null) {
-                int totalMinutes = Integer.parseInt(safeText(tvNight));  // ejemplo: "127 min" o "127"
+                int totalMinutes = Integer.parseInt(safeText(tvNight));
                 tvNightTotal.setText("Uso total: " + TimeKey.formatDurationMinutes(totalMinutes));
             }
         });
 
-        // Line chart: minutos por hora 6..22
-        vm.getScreenMinutes6to22().observe(this, minutes -> {
+        // 07..21
+        dailyDetailViewModel.getScreenMinutesFrom7To21().observe(this, minutes -> {
             if (minutes == null) {
                 lineChart.clear();
                 lineChart.invalidate();
@@ -119,69 +111,66 @@ public class ActivityScreenTime extends AppCompatActivity {
 
             List<Entry> entries = new ArrayList<>(minutes.length);
             for (int i = 0; i < minutes.length; i++) {
-                float hour = 6f + i;
+                float hour = 7f + i;
                 entries.add(new Entry(hour, minutes[i]));
             }
 
-            LineDataSet ds = new LineDataSet(entries, "Minutos");
-            ds.setColor(Color.parseColor("#22D3EE"));
-            ds.setLineWidth(2f);
-            ds.setCircleColor(Color.parseColor("#22D3EE"));
-            ds.setCircleRadius(3f);
-            ds.setDrawValues(false);
+            LineDataSet dataSet = new LineDataSet(entries, "Minutos");
+            dataSet.setColor(Color.parseColor("#22D3EE"));
+            dataSet.setLineWidth(2f);
+            dataSet.setCircleColor(Color.parseColor("#22D3EE"));
+            dataSet.setCircleRadius(3f);
+            dataSet.setDrawValues(false);
 
-            LineData data = new LineData(ds);
+            LineData data = new LineData(dataSet);
             lineChart.setData(data);
             lineChart.invalidate();
         });
 
-        // Night timeline: 8 segmentos (22..05)
-        vm.getNightMinutes22to6().observe(this, minutes -> {
-            if (minutes == null || minutes.length != 8) {
-                lastNightMinutes8 = null;
+        // 22..06
+        dailyDetailViewModel.getNightMinutesFrom22To06().observe(this, minutes -> {
+            if (minutes == null || minutes.length != 9) {
+                lastNightMinutes9 = null;
 
-                // quitar marker si no hay datos
                 barChartNight.setMarker(null);
-
                 barChartNight.clear();
                 barChartNight.invalidate();
                 setNightActiveHours(null);
                 return;
             }
 
-            lastNightMinutes8 = minutes;
+            lastNightMinutes9 = minutes;
 
-            NightMarkerView mv = new NightMarkerView(this);
-            mv.setChartView(barChartNight);
-            barChartNight.setMarker(mv);
+            NightMarkerView markerView = new NightMarkerView(this);
+            markerView.setChartView(barChartNight);
+            barChartNight.setMarker(markerView);
 
             renderNightTimeline(barChartNight, minutes);
             setNightActiveHours(minutes);
         });
 
-        // Flechas
         btnPrevDay.setOnClickListener(v -> {
             selectedDay -= 1;
             applyDayUi(selectedDay, todayDay);
-            vm.loadDay(selectedDay);
+            dailyDetailViewModel.loadDay(selectedDay);
         });
 
         btnNextDay.setOnClickListener(v -> {
             if (selectedDay < todayDay) {
                 selectedDay += 1;
                 applyDayUi(selectedDay, todayDay);
-                vm.loadDay(selectedDay);
+                dailyDetailViewModel.loadDay(selectedDay);
             }
         });
 
         applyDayUi(selectedDay, todayDay);
-        vm.loadDay(selectedDay);
+        dailyDetailViewModel.loadDay(selectedDay);
     }
 
-    private static String safeText(TextView tv) {
-        if (tv == null || tv.getText() == null) return "--";
-        String s = tv.getText().toString().trim();
-        return s.isEmpty() ? "--" : s;
+    private static String safeText(TextView textView) {
+        if (textView == null || textView.getText() == null) return "--";
+        String value = textView.getText().toString().trim();
+        return value.isEmpty() ? "--" : value;
     }
 
     private void applyDayUi(int day, int today) {
@@ -199,107 +188,99 @@ public class ActivityScreenTime extends AppCompatActivity {
         btnNextDay.setAlpha(canGoNext ? 1.0f : 0.35f);
     }
 
-    private void setupLineChart(LineChart c) {
-        c.getDescription().setEnabled(false);
-        c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
+    private void setupLineChart(LineChart chart) {
+        chart.getDescription().setEnabled(false);
+        chart.getLegend().setEnabled(false);
+        chart.setNoDataText("Sin datos");
 
-        c.setTouchEnabled(true);
-        c.setPinchZoom(true);
+        chart.setTouchEnabled(true);
+        chart.setPinchZoom(true);
 
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setAxisMinimum(6f);
-        x.setAxisMaximum(22f);
-        x.setLabelCount(9, true);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setDrawGridLines(false);
-        x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
-                int h = Math.round(value);
-                return h + "h";
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setGranularity(1f);
+        xAxis.setAxisMinimum(7f);
+        xAxis.setAxisMaximum(21f);
+        xAxis.setLabelCount(8, true);
+        xAxis.setTextColor(Color.parseColor("#94A3B8"));
+        xAxis.setDrawGridLines(false);
+        xAxis.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                int hour = Math.round(value);
+                return hour + "h";
             }
         });
 
-        c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setAxisMaximum(60f);
-        c.getAxisLeft().setGranularity(10f);
-        c.getAxisLeft().setLabelCount(7, true);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
+        chart.getAxisRight().setEnabled(false);
+        chart.getAxisLeft().setAxisMinimum(0f);
+        chart.getAxisLeft().setAxisMaximum(60f);
+        chart.getAxisLeft().setGranularity(10f);
+        chart.getAxisLeft().setLabelCount(7, true);
+        chart.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
+        chart.getAxisLeft().setDrawGridLines(true);
     }
 
-    // =========================
-    // Night timeline (22:00–06:00)
-    // =========================
+    private void setupNightTimeline(BarChart chart) {
+        chart.getDescription().setEnabled(false);
+        chart.getLegend().setEnabled(false);
+        chart.setNoDataText("Sin datos");
 
-    private void setupNightTimeline(BarChart c) {
-        c.getDescription().setEnabled(false);
-        c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
+        chart.setTouchEnabled(true);
+        chart.setPinchZoom(false);
+        chart.setScaleEnabled(false);
 
-        c.setTouchEnabled(true);
-        c.setPinchZoom(false);
-        c.setScaleEnabled(false);
+        chart.getAxisRight().setEnabled(false);
+        chart.getAxisLeft().setEnabled(false);
 
-        c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setEnabled(false);
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setEnabled(false);
 
-        XAxis x = c.getXAxis();
-        x.setEnabled(false);
+        chart.setDrawGridBackground(false);
+        chart.setDrawBorders(false);
 
-        c.setDrawGridBackground(false);
-        c.setDrawBorders(false);
+        float topPx = dp(28);
+        chart.setViewPortOffsets(0f, topPx, 0f, 0f);
+        chart.setExtraOffsets(0f, 0f, 0f, 0f);
+        chart.setFitBars(true);
+        chart.setDrawMarkers(true);
 
-        float topPx = dp(28); // espacio para que el marker “quepa” dentro del chart
-        c.setViewPortOffsets(0f, topPx, 0f, 0f);
-        c.setExtraOffsets(0f, 0f, 0f, 0f);
-        c.setFitBars(true);
-
-        // ✅ importante para mostrar MarkerView
-        c.setDrawMarkers(true);
-
-        // ✅ ya NO toast, dejamos que el Marker haga el trabajo
-        c.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
-            @Override public void onValueSelected(Entry e, Highlight h) {
-                // NO limpiar highlight aquí
-                // Si limpias highlight -> el marker desaparece al instante.
+        chart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) {
             }
 
-            @Override public void onNothingSelected() { }
+            @Override
+            public void onNothingSelected() {
+            }
         });
     }
 
-    private void renderNightTimeline(BarChart chart, int[] minutes8) {
-        List<BarEntry> entries = new ArrayList<>(8);
-        List<Integer> colors = new ArrayList<>(8);
+    private void renderNightTimeline(BarChart chart, int[] minutes9) {
+        List<BarEntry> entries = new ArrayList<>(9);
+        List<Integer> colors = new ArrayList<>(9);
 
-        for (int i = 0; i < 8; i++) {
-            int m = minutes8[i];
-            entries.add(new BarEntry(i, 1f)); // altura fija para “barra continua”
-            colors.add(colorForNightMinutes(m)); // intensidad
+        for (int i = 0; i < 9; i++) {
+            int minutes = minutes9[i];
+            entries.add(new BarEntry(i, 1f));
+            colors.add(colorForNightMinutes(minutes));
         }
 
-        BarDataSet ds = new BarDataSet(entries, "");
-        ds.setDrawValues(false);
-        ds.setColors(colors);
+        BarDataSet dataSet = new BarDataSet(entries, "");
+        dataSet.setDrawValues(false);
+        dataSet.setColors(colors);
+        dataSet.setBarBorderWidth(0.8f);
+        dataSet.setBarBorderColor(Color.parseColor("#0B1220"));
+        dataSet.setHighlightEnabled(true);
+        dataSet.setHighLightColor(Color.TRANSPARENT);
 
-        // separación sutil entre segmentos
-        ds.setBarBorderWidth(0.8f);
-        ds.setBarBorderColor(Color.parseColor("#0B1220"));
-
-        ds.setHighlightEnabled(true);
-        ds.setHighLightColor(Color.TRANSPARENT);
-
-        BarData data = new BarData(ds);
+        BarData data = new BarData(dataSet);
         data.setBarWidth(0.92f);
 
         chart.setData(data);
 
         chart.getXAxis().setAxisMinimum(-0.5f);
-        chart.getXAxis().setAxisMaximum(7.5f);
+        chart.getXAxis().setAxisMaximum(8.5f);
 
         chart.getAxisLeft().setAxisMinimum(0f);
         chart.getAxisLeft().setAxisMaximum(1f);
@@ -307,23 +288,21 @@ public class ActivityScreenTime extends AppCompatActivity {
         chart.invalidate();
     }
 
-    private int colorForNightMinutes(int m) {
-        // Amarillos MUY diferenciados
-        final int c0 = Color.parseColor("#2A240F"); // apagado (0..9)
-        final int c1 = Color.parseColor("#9A7B12"); // medio (10..29)
-        final int c2 = Color.parseColor("#F59E0B"); // fuerte (30..44)
-        final int c3 = Color.parseColor("#FDE047"); // muy intenso (>=45)
+    private int colorForNightMinutes(int minutes) {
+        final int c0 = Color.parseColor("#2A240F");
+        final int c1 = Color.parseColor("#9A7B12");
+        final int c2 = Color.parseColor("#F59E0B");
+        final int c3 = Color.parseColor("#FDE047");
 
-        if (m <= 0) return c0;
-        if (m < 10) return c0;
-        if (m < 30) return c1;
-        if (m < 45) return c2;
+        if (minutes <= 0) return c0;
+        if (minutes < 10) return c0;
+        if (minutes < 30) return c1;
+        if (minutes < 45) return c2;
         return c3;
     }
 
-    // ✅ ahora PUBLIC para que lo use el marker interno si lo necesitas fuera
-    public String nightSlotLabel(int idx) {
-        switch (idx) {
+    public String nightSlotLabel(int index) {
+        switch (index) {
             case 0: return "22:00–23:00";
             case 1: return "23:00–00:00";
             case 2: return "00:00–01:00";
@@ -332,28 +311,26 @@ public class ActivityScreenTime extends AppCompatActivity {
             case 5: return "03:00–04:00";
             case 6: return "04:00–05:00";
             case 7: return "05:00–06:00";
+            case 8: return "06:00–07:00";
             default: return "--";
         }
     }
 
-    private void setNightActiveHours(int[] minutes8) {
+    private void setNightActiveHours(int[] minutes9) {
         if (tvNightActiveHours == null) return;
 
-        if (minutes8 == null || minutes8.length != 8) {
+        if (minutes9 == null || minutes9.length != 9) {
             tvNightActiveHours.setText("Horas activas: --");
             return;
         }
 
         int activeHours = 0;
-        for (int m : minutes8) {
-            if (m > 0) activeHours++;
+        for (int minutes : minutes9) {
+            if (minutes > 0) activeHours++;
         }
         tvNightActiveHours.setText("Horas activas: " + activeHours);
     }
 
-    // =========================
-// MarkerView interno (0 clases nuevas)
-// =========================
     private class NightMarkerView extends MarkerView {
 
         private final TextView tv;
@@ -365,17 +342,16 @@ public class ActivityScreenTime extends AppCompatActivity {
 
         @Override
         public void refreshContent(Entry e, Highlight highlight) {
-            int idx = Math.round(e.getX()); // 0..7
+            int index = Math.round(e.getX());
 
-            if (lastNightMinutes8 != null && lastNightMinutes8.length == 8 && idx >= 0 && idx < 8) {
-                String label = nightSlotLabel(idx);
-                int m = lastNightMinutes8[idx];
-                tv.setText(label + ": " + m + " min de uso");
+            if (lastNightMinutes9 != null && lastNightMinutes9.length == 9 && index >= 0 && index < 9) {
+                String label = nightSlotLabel(index);
+                int minutes = lastNightMinutes9[index];
+                tv.setText(label + ": " + minutes + " min de uso");
             } else {
                 tv.setText("--");
             }
 
-            // ✅ asegura que getWidth()/getHeight() sean correctos en el draw del marker
             measure(
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -387,12 +363,11 @@ public class ActivityScreenTime extends AppCompatActivity {
 
         @Override
         public MPPointF getOffset() {
-            // tu diseño original: centrado y arriba
             return new MPPointF(-(getWidth() / 2f), -getHeight() - 12f);
         }
     }
-    private float dp(float v) {
-        return v * getResources().getDisplayMetrics().density;
-    }
 
+    private float dp(float value) {
+        return value * getResources().getDisplayMetrics().density;
+    }
 }

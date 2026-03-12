@@ -16,33 +16,36 @@ import java.util.List;
 @Dao
 public interface UsageDAO {
 
-    // ===================== APP =====================
+    // ===================== APPS =====================
     @Query("SELECT app_id FROM app WHERE package_name = :pkg LIMIT 1")
     Long getAppIdByPackageName(String pkg);
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     long insertApp(AppEntity app);
 
-    @Query("UPDATE app SET category = :category WHERE app_id = :appId")
-    int updateAppCategory(long appId, String category);
-
-    @Query("UPDATE app SET name = :name WHERE app_id = :appId")
-    int updateAppName(long appId, String name);
+    @Query("SELECT * FROM app ORDER BY name COLLATE NOCASE ASC")
+    List<AppEntity> getAllApps();
 
     @Query("SELECT category FROM app WHERE app_id = :appId LIMIT 1")
-    String getCategoryByAppId(long appId);
+    String getAppCategoryByAppId(long appId);
 
     @Query("SELECT name FROM app WHERE app_id = :appId LIMIT 1")
-    String getNameByAppId(long appId);
+    String getAppNameByAppId(long appId);
 
     @Query("SELECT package_name FROM app WHERE app_id = :appId LIMIT 1")
-    String getPackageNameByAppId(long appId);
+    String getAppPackageNameByAppId(long appId);
 
     @Query("SELECT category FROM app WHERE package_name = :pkg LIMIT 1")
-    String getCategoryByPackageName(String pkg);
+    String getAppCategoryByPackageName(String pkg);
 
     @Query("SELECT name FROM app WHERE package_name = :pkg LIMIT 1")
-    String getNameByPackageName(String pkg);
+    String getAppNameByPackageName(String pkg);
+
+    @Query("UPDATE app SET category = :category WHERE app_id = :appId")
+    int updateAppCategoryByAppId(long appId, String category);
+
+    @Query("UPDATE app SET name = :name WHERE app_id = :appId")
+    int updateAppNameByAppId(long appId, String name);
 
     @Query("UPDATE app SET category = :category WHERE package_name = :pkg")
     int updateAppCategoryByPackageName(String pkg, String category);
@@ -51,24 +54,15 @@ public interface UsageDAO {
     int updateAppNameByPackageName(String pkg, String name);
 
     @Query("UPDATE app SET is_ignored = :ignored WHERE app_id = :appId")
-    int updateAppIgnored(long appId, boolean ignored);
-
-    @Query("SELECT * FROM app ORDER BY name COLLATE NOCASE ASC")
-    List<AppEntity> getAllApps();
+    int updateAppIgnoredByAppId(long appId, boolean ignored);
 
     @Query("UPDATE app SET is_ignored = :ignored WHERE package_name = :pkg")
-    int setIgnoredByPackage(String pkg, boolean ignored);
-
-    @Query("SELECT app_id, SUM(foreground_ms) AS total_ms " +
-            "FROM daily_app_metric " +
-            "WHERE date = :date " +
-            "GROUP BY app_id")
-    Cursor getFgByAppIdForDay(int date);
+    int updateAppIgnoredByPackageName(String pkg, boolean ignored);
 
     @Query("SELECT app_id, category, is_ignored FROM app")
-    Cursor getAppCategoryMap();
+    Cursor getAppCategoryMapCursor();
 
-    // ===================== APP_USAGE_EVENTS =====================
+    // ===================== APP USAGE EVENTS =====================
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertUsageEvents(List<AppUsageEventEntity> events);
 
@@ -76,17 +70,23 @@ public interface UsageDAO {
     List<AppUsageEventEntity> getUsageEventsByDate(int date);
 
     @Query("SELECT COUNT(*) FROM app_usage_event WHERE date = :date")
-    int countUsageEventsByDate(int date);
+    int getUsageEventCountByDate(int date);
 
     @Query("DELETE FROM app_usage_event WHERE date < :cutoffDate")
     int deleteUsageEventsOlderThanDate(int cutoffDate);
 
-    // ===================== DAILY_APP_METRICS =====================
+    // ===================== DAILY APP METRICS =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDailyAppMetrics(List<DailyAppMetricsEntity> rows);
 
     @Query("DELETE FROM daily_app_metric WHERE date < :cutoffDate")
     int deleteDailyAppMetricsOlderThanDate(int cutoffDate);
+
+    @Query("SELECT app_id, SUM(foreground_ms) AS total_ms " +
+            "FROM daily_app_metric " +
+            "WHERE date = :date " +
+            "GROUP BY app_id")
+    Cursor getForegroundMsByAppIdForDayCursor(int date);
 
     @Query(
             "SELECT " +
@@ -101,7 +101,7 @@ public interface UsageDAO {
                     "  AND a.is_ignored = 0 " +
                     "GROUP BY category"
     )
-    Cursor getCategoryTotalsMsForDay(int date);
+    Cursor getCategoryTotalsMsForDayCursor(int date);
 
     @Query(
             "SELECT dam.app_id AS app_id, " +
@@ -119,7 +119,7 @@ public interface UsageDAO {
                     "ORDER BY total_ms DESC " +
                     "LIMIT :limit"
     )
-    Cursor getTopAppsForDay(int date, int limit);
+    Cursor getTopAppsForDayCursor(int date, int limit);
 
     @Query(
             "SELECT SUM(d.foreground_ms) AS total_ms " +
@@ -127,7 +127,5 @@ public interface UsageDAO {
                     "INNER JOIN app a ON d.app_id = a.app_id " +
                     "WHERE d.date = :date AND a.is_ignored = 0"
     )
-    Cursor getTotalForegroundMsForDay(int date);
-
-
+    Cursor getTotalForegroundMsForDayCursor(int date);
 }

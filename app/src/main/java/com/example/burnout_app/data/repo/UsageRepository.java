@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
 
+import com.example.burnout_app.data.dao.UsageDAO;
 import com.example.burnout_app.data.db.BurnoutDatabase;
 
 import java.util.ArrayList;
@@ -13,86 +14,71 @@ import java.util.Map;
 
 public class UsageRepository {
 
-    private final BurnoutDatabase db;
+    private final UsageDAO usageDao;
 
-    public UsageRepository(Context ctx) {
-        Context appCtx = ctx.getApplicationContext();
-        db = BurnoutDatabase.getInstance(appCtx);
+    public UsageRepository(Context context) {
+        BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
+        usageDao = db.usageDao();
     }
 
-    // =========================================================
-    // CATEGORY TOTALS (DailyAppMetric + App join) - UI: Multitask
-    // =========================================================
+    // ===================== CATEGORY TOTALS =====================
 
-    /**
-     * category -> total_ms (solo apps no ignoradas)
-     * Keys esperadas: SOCIAL, ENTERTAINMENT, MESSAGING, WORK, OTHER
-     */
     public Map<String, Long> getCategoryTotalsMsForDay(int date) {
-
         Map<String, Long> out = new HashMap<>();
 
-        Cursor c = db.usageDao().getCategoryTotalsMsForDay(date);
+        Cursor cursor = usageDao.getCategoryTotalsMsForDayCursor(date);
         try {
-            int iCat = c.getColumnIndexOrThrow("category");
-            int iMs  = c.getColumnIndexOrThrow("total_ms");
+            int categoryIndex = cursor.getColumnIndexOrThrow("category");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
 
-            while (c.moveToNext()) {
-                String cat = c.getString(iCat);
-                long ms = c.getLong(iMs);
+            while (cursor.moveToNext()) {
+                String category = cursor.getString(categoryIndex);
+                long totalMs = cursor.getLong(totalMsIndex);
 
-                Log.d("CAT_SQL", "category=" + cat + " ms=" + ms);
-                out.put(cat, ms);
+                Log.d("CAT_SQL", "category=" + category + " ms=" + totalMs);
+                out.put(category, totalMs);
             }
         } finally {
-            c.close();
+            cursor.close();
         }
 
-        // Garantiza que existan todas las categorías en el mapa (evita NPE/keys faltantes en UI)
-        ensure(out, "SOCIAL");
-        ensure(out, "ENTERTAINMENT");
-        ensure(out, "MESSAGING");
-        ensure(out, "WORK");
-        ensure(out, "OTHER");
+        ensureCategory(out, "SOCIAL");
+        ensureCategory(out, "ENTERTAINMENT");
+        ensureCategory(out, "MESSAGING");
+        ensureCategory(out, "WORK");
+        ensureCategory(out, "OTHER");
 
-        long sum = 0L;
-        for (Long v : out.values()) sum += v;
-        Log.d("CAT_SQL", "TOTAL SUM FROM SQL = " + sum);
+        long total = 0L;
+        for (Long value : out.values()) {
+            total += value;
+        }
+        Log.d("CAT_SQL", "TOTAL SUM FROM SQL = " + total);
 
         return out;
     }
 
-    // =========================================================
-    // TOTAL FOREGROUND (DailyAppMetric + App ignored filter)
-    // =========================================================
+    // ===================== TOTAL FOREGROUND TIME =====================
 
-    /**
-     * Total time using apps (foreground_ms) del día, excluyendo apps ignoradas.
-     */
     public long getTotalForegroundMsForDay(int date) {
-
         long total = 0L;
 
-        Cursor c = db.usageDao().getTotalForegroundMsForDay(date);
+        Cursor cursor = usageDao.getTotalForegroundMsForDayCursor(date);
         try {
-            if (c.moveToFirst()) {
-                int i = c.getColumnIndexOrThrow("total_ms");
-                if (!c.isNull(i)) {
-                    total = c.getLong(i);
+            if (cursor.moveToFirst()) {
+                int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+                if (!cursor.isNull(totalMsIndex)) {
+                    total = cursor.getLong(totalMsIndex);
                 }
             }
         } finally {
-            c.close();
+            cursor.close();
         }
 
         Log.d("TOTAL_SQL", "TOTAL FOREGROUND MS = " + total);
-
         return total;
     }
 
-    // =========================================================
-    // TOP APPS (DailyAppMetric + App join) - UI: Multitask
-    // =========================================================
+    // ===================== TOP APPS =====================
 
     public static class TopAppRow {
         public final long appId;
@@ -108,40 +94,37 @@ public class UsageRepository {
         }
     }
 
-    /**
-     * Top N apps por foreground_ms del día, excluyendo apps ignoradas.
-     */
-    public List<TopAppRow> getTopAppsForDay(int date, int limit) {
+    public List<TopAppRow> getTopAppsByDate(int date, int limit) {
         List<TopAppRow> out = new ArrayList<>();
 
-        Cursor c = db.usageDao().getTopAppsForDay(date, limit);
+        Cursor cursor = usageDao.getTopAppsForDayCursor(date, limit);
         try {
-            int iId = c.getColumnIndexOrThrow("app_id");
-            int iName = c.getColumnIndexOrThrow("name");
-            int iPkg = c.getColumnIndexOrThrow("package_name");
-            int iMs = c.getColumnIndexOrThrow("total_ms");
+            int appIdIndex = cursor.getColumnIndexOrThrow("app_id");
+            int nameIndex = cursor.getColumnIndexOrThrow("name");
+            int packageNameIndex = cursor.getColumnIndexOrThrow("package_name");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
 
-            while (c.moveToNext()) {
-                long id = c.getLong(iId);
-                String name = c.getString(iName);
-                String pkg = c.getString(iPkg);
-                long ms = c.getLong(iMs);
+            while (cursor.moveToNext()) {
+                long appId = cursor.getLong(appIdIndex);
+                String name = cursor.getString(nameIndex);
+                String packageName = cursor.getString(packageNameIndex);
+                long totalMs = cursor.getLong(totalMsIndex);
 
-                out.add(new TopAppRow(id, name, pkg, ms));
-                Log.d("TOP_APPS_SQL", "name=" + name + " ms=" + ms);
+                out.add(new TopAppRow(appId, name, packageName, totalMs));
+                Log.d("TOP_APPS_SQL", "name=" + name + " ms=" + totalMs);
             }
         } finally {
-            c.close();
+            cursor.close();
         }
 
         return out;
     }
 
-    // =========================================================
-    // Helpers
-    // =========================================================
+    // ===================== HELPERS =====================
 
-    private static void ensure(Map<String, Long> m, String k) {
-        if (!m.containsKey(k)) m.put(k, 0L);
+    private static void ensureCategory(Map<String, Long> categories, String category) {
+        if (!categories.containsKey(category)) {
+            categories.put(category, 0L);
+        }
     }
 }

@@ -50,7 +50,6 @@ public class MainActivity extends AppCompatActivity {
 
         TextView tvHeaderAvatar = null;
 
-
         if (navView != null) {
             android.view.View headerView = navView.getHeaderView(0);
 
@@ -71,25 +70,23 @@ public class MainActivity extends AppCompatActivity {
             avatarCard.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
         }
 
-        TextView finalTvHeaderAvatar1 = tvHeaderAvatar;
+        TextView finalTvHeaderAvatar = tvHeaderAvatar;
 
-        ProfileViewModel profileVM = new ViewModelProvider(this).get(ProfileViewModel.class);
-        profileVM.getProfile().observe(this, profile -> {
-            if (profile == null) return;
+        ProfileViewModel profileViewModel = new ViewModelProvider(this).get(ProfileViewModel.class);
+        profileViewModel.observeUserProfile().observe(this, userProfile -> {
+            if (userProfile == null) return;
 
-            String nombre = profile.nombre != null ? profile.nombre : "";
-            String apellidos = profile.apellidos != null ? profile.apellidos : "";
-            String fullName = (nombre + " " + apellidos).trim();
-            String initials = getInitials(nombre, apellidos);
+            String firstName = userProfile.nombre != null ? userProfile.nombre : "";
+            String lastName = userProfile.apellidos != null ? userProfile.apellidos : "";
+            String initials = getInitials(firstName, lastName);
 
             if (tvAvatarMain != null) {
                 tvAvatarMain.setText(initials);
             }
 
-            if (finalTvHeaderAvatar1 != null) {
-                finalTvHeaderAvatar1.setText(initials);
+            if (finalTvHeaderAvatar != null) {
+                finalTvHeaderAvatar.setText(initials);
             }
-
         });
 
         if (navView != null && drawerLayout != null) {
@@ -97,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
                 int id = item.getItemId();
 
                 if (id == R.id.nav_main) {
-                    // Ya estás aquí
+                    // Already here
                 } else if (id == R.id.nav_screen_time) {
                     startActivity(new Intent(this, ActivityScreenTime.class));
                 } else if (id == R.id.nav_notifications) {
@@ -142,18 +139,18 @@ public class MainActivity extends AppCompatActivity {
         TextView value3 = findViewById(R.id.value3);
         TextView value4 = findViewById(R.id.value4);
 
-        DashboardViewModel vm = new ViewModelProvider(this).get(DashboardViewModel.class);
-        vm.getUiState().observe(this, s -> {
-            if (s == null) return;
+        DashboardViewModel dashboardViewModel = new ViewModelProvider(this).get(DashboardViewModel.class);
+        dashboardViewModel.getUiState().observe(this, uiState -> {
+            if (uiState == null) return;
 
-            if (value1 != null) value1.setText(s.screenTime);
-            if (value2 != null) value2.setText(s.notifications);
-            if (value3 != null) value3.setText(s.multitask);
+            if (value1 != null) value1.setText(uiState.screenTime);
+            if (value2 != null) value2.setText(uiState.notifications);
+            if (value3 != null) value3.setText(uiState.multitask);
 
             if (value4 != null) {
                 int calls = 0;
                 try {
-                    calls = Integer.parseInt(s.communication.trim());
+                    calls = Integer.parseInt(uiState.communication.trim());
                 } catch (Exception ignored) {
                 }
 
@@ -172,8 +169,8 @@ public class MainActivity extends AppCompatActivity {
         } else {
             setup3hBarChart(barChart3h);
 
-            vm.getHourlyMetrics().observe(this, rows -> {
-                long[] bucketsMs = aggregate3hBuckets(rows);
+            dashboardViewModel.getHourlyMetrics().observe(this, hourlyMetrics -> {
+                long[] bucketsMs = aggregate3hBuckets(hourlyMetrics);
                 render3hBars(barChart3h, bucketsMs);
             });
         }
@@ -206,27 +203,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void setup3hBarChart(BarChart c) {
-        c.getDescription().setEnabled(false);
-        c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
+    private void setup3hBarChart(BarChart chart) {
+        chart.getDescription().setEnabled(false);
+        chart.getLegend().setEnabled(false);
+        chart.setNoDataText("Sin datos");
 
-        c.setTouchEnabled(true);
-        c.setPinchZoom(false);
-        c.setScaleEnabled(false);
+        chart.setTouchEnabled(true);
+        chart.setPinchZoom(false);
+        chart.setScaleEnabled(false);
 
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularityEnabled(true);
-        x.setGranularity(1f);
-        x.setAxisMinimum(-0.5f);
-        x.setAxisMaximum(7.5f);
-        x.setAvoidFirstLastClipping(true);
-        x.setDrawGridLines(false);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setTextSize(12f);
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setGranularityEnabled(true);
+        xAxis.setGranularity(1f);
+        xAxis.setAxisMinimum(-0.5f);
+        xAxis.setAxisMaximum(7.5f);
+        xAxis.setAvoidFirstLastClipping(true);
+        xAxis.setDrawGridLines(false);
+        xAxis.setTextColor(Color.parseColor("#94A3B8"));
+        xAxis.setTextSize(12f);
 
-        x.setValueFormatter(new ValueFormatter() {
+        xAxis.setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
                 int i = Math.round(value);
@@ -244,38 +241,40 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        c.getAxisRight().setEnabled(false);
+        chart.getAxisRight().setEnabled(false);
 
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setAxisMaximum(180f);
-        c.getAxisLeft().setGranularity(30f);
-        c.getAxisLeft().setLabelCount(7, true);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
+        chart.getAxisLeft().setAxisMinimum(0f);
+        chart.getAxisLeft().setAxisMaximum(180f);
+        chart.getAxisLeft().setGranularity(30f);
+        chart.getAxisLeft().setLabelCount(7, true);
+        chart.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
+        chart.getAxisLeft().setDrawGridLines(true);
 
-        c.getAxisLeft().setValueFormatter(new ValueFormatter() {
+        chart.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
                 return ((int) value) + "m";
             }
         });
 
-        c.setFitBars(true);
-        c.setExtraOffsets(4f, 2f, 6f, 6f);
+        chart.setFitBars(true);
+        chart.setExtraOffsets(4f, 2f, 6f, 6f);
     }
 
-    private long[] aggregate3hBuckets(List<HourlyMetricsEntity> rows) {
+    private long[] aggregate3hBuckets(List<HourlyMetricsEntity> hourlyMetrics) {
         long[] bucketsMs = new long[8];
-        if (rows == null) return bucketsMs;
+        if (hourlyMetrics == null) return bucketsMs;
 
-        for (HourlyMetricsEntity h : rows) {
-            if (h == null) continue;
-            int hour = h.hour;
+        for (HourlyMetricsEntity hourlyMetric : hourlyMetrics) {
+            if (hourlyMetric == null) continue;
+
+            int hour = hourlyMetric.hour;
             if (hour < 0 || hour > 23) continue;
 
             int bucket = hour / 3;
-            bucketsMs[bucket] += h.screen_ms;
+            bucketsMs[bucket] += hourlyMetric.screen_ms;
         }
+
         return bucketsMs;
     }
 
@@ -292,11 +291,11 @@ public class MainActivity extends AppCompatActivity {
             entries.add(new BarEntry(i, minutes));
         }
 
-        BarDataSet ds = new BarDataSet(entries, "Minutos");
-        ds.setColor(Color.parseColor("#22D3EE"));
-        ds.setDrawValues(false);
+        BarDataSet dataSet = new BarDataSet(entries, "Minutos");
+        dataSet.setColor(Color.parseColor("#22D3EE"));
+        dataSet.setDrawValues(false);
 
-        BarData data = new BarData(ds);
+        BarData data = new BarData(dataSet);
         data.setBarWidth(0.7f);
 
         chart.setData(data);
@@ -307,15 +306,15 @@ public class MainActivity extends AppCompatActivity {
         chart.invalidate();
     }
 
-    private String getInitials(String nombre, String apellidos) {
+    private String getInitials(String firstName, String lastName) {
         String initials = "";
 
-        if (nombre != null && !nombre.trim().isEmpty()) {
-            initials += nombre.trim().substring(0, 1).toUpperCase();
+        if (firstName != null && !firstName.trim().isEmpty()) {
+            initials += firstName.trim().substring(0, 1).toUpperCase();
         }
 
-        if (apellidos != null && !apellidos.trim().isEmpty()) {
-            initials += apellidos.trim().substring(0, 1).toUpperCase();
+        if (lastName != null && !lastName.trim().isEmpty()) {
+            initials += lastName.trim().substring(0, 1).toUpperCase();
         }
 
         return initials;

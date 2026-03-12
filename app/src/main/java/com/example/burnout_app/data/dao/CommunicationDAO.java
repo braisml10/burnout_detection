@@ -14,33 +14,33 @@ import java.util.List;
 @Dao
 public interface CommunicationDAO {
 
-    // ===================== DAILY_COMM_METRICS =====================
+    // ===================== DAILY COMM METRICS =====================
     @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
-    LiveData<DailyCommMetricsEntity> observeDailyComm(int epochDay);
+    LiveData<DailyCommMetricsEntity> observeDailyCommMetrics(int epochDay);
 
     @Query("SELECT * FROM daily_comm_metric WHERE date = :epochDay LIMIT 1")
-    DailyCommMetricsEntity getDailyComm(int epochDay);
+    DailyCommMetricsEntity getDailyCommMetrics(int epochDay);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void upsertDaily(DailyCommMetricsEntity row);
+    void upsertDailyCommMetrics(DailyCommMetricsEntity row);
 
     @Query("INSERT OR IGNORE INTO daily_comm_metric(date,calls_count,messages_count,total_comm_ms,voice_ms,text_ms) " +
             "VALUES(:epochDay,0,0,0,0,0)")
-    void insertDailyIfMissing(int epochDay);
+    void insertDailyCommMetricsIfMissing(int epochDay);
 
     @Query("DELETE FROM daily_comm_metric WHERE date < :cutoffDate")
-    int deleteDailyCommOlderThanDate(int cutoffDate);
+    int deleteDailyCommMetricsOlderThanDate(int cutoffDate);
 
-    // ===================== HOURLY_COMM_METRIC =====================
+    // ===================== HOURLY COMM METRICS =====================
     @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
-    LiveData<List<HourlyCommMetricsEntity>> observeHourly(int epochDay);
+    LiveData<List<HourlyCommMetricsEntity>> observeHourlyCommMetrics(int epochDay);
 
     @Query("SELECT * FROM hourly_comm_metric WHERE date = :epochDay ORDER BY hour ASC")
-    List<HourlyCommMetricsEntity> getHourlyCommByDate(int epochDay);
+    List<HourlyCommMetricsEntity> getHourlyCommMetricsByDate(int epochDay);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void upsertHourly(List<HourlyCommMetricsEntity> rows);
+    void upsertHourlyCommMetrics(List<HourlyCommMetricsEntity> rows);
 
     @Query("DELETE FROM hourly_comm_metric WHERE date < :cutoffDate")
-    int deleteHourlyCommOlderThanDate(int cutoffDate);
+    int deleteHourlyCommMetricsOlderThanDate(int cutoffDate);
 }

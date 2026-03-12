@@ -13,32 +13,34 @@ import com.example.burnout_app.data.repo.UserProfileRepository;
 
 public class ProfileViewModel extends AndroidViewModel {
 
-    private final UserProfileRepository repository;
-    private final LiveData<UserProfileEntity> profileLiveData;
+    private final UserProfileRepository userProfileRepository;
+    private final LiveData<UserProfileEntity> userProfileLiveData;
 
     public ProfileViewModel(@NonNull Application application) {
         super(application);
-        repository = new UserProfileRepository(application);
-        profileLiveData = repository.getProfile();
+        userProfileRepository = new UserProfileRepository(application);
+        userProfileLiveData = userProfileRepository.observeUserProfile();
     }
 
-    public LiveData<UserProfileEntity> getProfile() {
-        return profileLiveData;
+    // ===================== PROFILE OBSERVATION =====================
+
+    public LiveData<UserProfileEntity> observeUserProfile() {
+        return userProfileLiveData;
     }
 
-    public boolean isInputValid(String nombre, String apellidos, String email) {
+    // ===================== INPUT VALIDATION =====================
 
-        if (TextUtils.isEmpty(nombre) ||
-                TextUtils.isEmpty(apellidos) ||
-                TextUtils.isEmpty(email)) {
+    public boolean isProfileInputValid(String firstName, String lastName, String email) {
+        if (TextUtils.isEmpty(firstName)
+                || TextUtils.isEmpty(lastName)
+                || TextUtils.isEmpty(email)) {
             return false;
         }
 
         return Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches();
     }
 
-    public boolean isPasswordValid(String password, String confirmPassword) {
-
+    public boolean isPasswordInputValid(String password, String confirmPassword) {
         if (TextUtils.isEmpty(password) && TextUtils.isEmpty(confirmPassword)) {
             return true;
         }
@@ -54,87 +56,87 @@ public class ProfileViewModel extends AndroidViewModel {
         return password.equals(confirmPassword);
     }
 
-    public void updateProfile(UserProfileEntity currentProfile,
-                              String nombre,
-                              String apellidos,
-                              String email,
-                              String newPassword) {
+    public boolean canUpdateUserProfile(UserProfileEntity currentUserProfile,
+                                        String firstName,
+                                        String lastName,
+                                        String email,
+                                        String currentPassword,
+                                        String newPassword,
+                                        String confirmPassword) {
 
-        if (currentProfile == null) return;
+        if (currentUserProfile == null) return false;
 
-        String finalPassword = currentProfile.passwordHash;
-
-        if (!TextUtils.isEmpty(newPassword)) {
-            finalPassword = newPassword;
-        }
-
-        UserProfileEntity updatedProfile = new UserProfileEntity(
-                nombre.trim(),
-                apellidos.trim(),
-                email.trim(),
-                finalPassword
-        );
-
-        updatedProfile.id = currentProfile.id;
-
-        repository.insertOrReplace(updatedProfile);
-    }
-
-    public void deleteAccount() {
-        repository.deleteAll();
-    }
-
-    public boolean canUpdateProfile(UserProfileEntity currentProfile,
-                                    String nombre,
-                                    String apellidos,
-                                    String email,
-                                    String oldPassword,
-                                    String newPassword,
-                                    String confirmPassword) {
-
-        if (currentProfile == null) return false;
-
-        if (!isInputValid(nombre, apellidos, email)) {
+        if (!isProfileInputValid(firstName, lastName, email)) {
             return false;
         }
 
         boolean wantsToChangePassword =
-                !TextUtils.isEmpty(oldPassword) ||
-                        !TextUtils.isEmpty(newPassword) ||
-                        !TextUtils.isEmpty(confirmPassword);
+                !TextUtils.isEmpty(currentPassword)
+                        || !TextUtils.isEmpty(newPassword)
+                        || !TextUtils.isEmpty(confirmPassword);
 
         if (!wantsToChangePassword) {
             return true;
         }
 
-        if (!currentProfile.passwordHash.equals(oldPassword)) {
+        if (!currentUserProfile.passwordHash.equals(currentPassword)) {
             return false;
         }
 
-        return isPasswordValid(newPassword, confirmPassword);
+        return isPasswordInputValid(newPassword, confirmPassword);
     }
 
-    public void updateProfileWithPasswordCheck(UserProfileEntity currentProfile,
-                                               String nombre,
-                                               String apellidos,
-                                               String email,
-                                               String newPassword) {
+    // ===================== PROFILE WRITE =====================
 
-        if (currentProfile == null) return;
-        String finalPassword = currentProfile.passwordHash;
+    public void updateUserProfile(UserProfileEntity currentUserProfile,
+                                  String firstName,
+                                  String lastName,
+                                  String email,
+                                  String newPassword) {
+
+        if (currentUserProfile == null) return;
+
+        String finalPassword = currentUserProfile.passwordHash;
         if (!TextUtils.isEmpty(newPassword)) {
             finalPassword = newPassword;
         }
-        UserProfileEntity updatedProfile = new UserProfileEntity(
-                nombre.trim(),
-                apellidos.trim(),
+
+        UserProfileEntity updatedUserProfile = new UserProfileEntity(
+                firstName.trim(),
+                lastName.trim(),
                 email.trim(),
                 finalPassword
         );
-        updatedProfile.id = currentProfile.id;
+        updatedUserProfile.id = currentUserProfile.id;
 
-        repository.insertOrReplace(updatedProfile);
+        userProfileRepository.upsertUserProfile(updatedUserProfile);
     }
 
+    public void updateUserProfileWithPasswordCheck(UserProfileEntity currentUserProfile,
+                                                   String firstName,
+                                                   String lastName,
+                                                   String email,
+                                                   String newPassword) {
 
+        if (currentUserProfile == null) return;
+
+        String finalPassword = currentUserProfile.passwordHash;
+        if (!TextUtils.isEmpty(newPassword)) {
+            finalPassword = newPassword;
+        }
+
+        UserProfileEntity updatedUserProfile = new UserProfileEntity(
+                firstName.trim(),
+                lastName.trim(),
+                email.trim(),
+                finalPassword
+        );
+        updatedUserProfile.id = currentUserProfile.id;
+
+        userProfileRepository.upsertUserProfile(updatedUserProfile);
+    }
+
+    public void deleteUserProfile() {
+        userProfileRepository.deleteAllUserProfiles();
+    }
 }

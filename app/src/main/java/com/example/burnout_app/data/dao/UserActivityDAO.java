@@ -24,9 +24,9 @@ public interface UserActivityDAO {
     @Query("DELETE FROM screen_event WHERE date < :cutoffDate")
     int deleteScreenEventsOlderThanDate(int cutoffDate);
 
-    // ===================== DAILY_METRICS =====================
+    // ===================== DAILY METRICS =====================
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    void insertDailyIfMissing(DailyMetricsEntity dailyMetrics);
+    void insertDailyMetricsIfMissing(DailyMetricsEntity dailyMetrics);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDailyMetrics(DailyMetricsEntity dailyMetrics);
@@ -40,6 +40,9 @@ public interface UserActivityDAO {
     @Query("DELETE FROM daily_metrics WHERE date < :cutoffDate")
     int deleteDailyMetricsOlderThanDate(int cutoffDate);
 
+    @Query("SELECT notification_count FROM daily_metrics WHERE date = :date LIMIT 1")
+    Integer getNotificationCountByDate(int date);
+
     // ===================== HOURLY METRICS =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertHourlyMetrics(List<HourlyMetricsEntity> rows);
@@ -47,18 +50,12 @@ public interface UserActivityDAO {
     @Query("SELECT * FROM hourly_metric WHERE date = :date ORDER BY hour ASC")
     List<HourlyMetricsEntity> getHourlyMetricsByDate(int date);
 
-    @Query("DELETE FROM hourly_metric WHERE date < :cutoffDate")
-    int deleteHourlyMetricsOlderThanDate(int cutoffDate);
-
     @Query("SELECT * FROM hourly_metric WHERE date = :date ORDER BY hour ASC")
     LiveData<List<HourlyMetricsEntity>> observeHourlyMetricsByDate(int date);
 
+    @Query("DELETE FROM hourly_metric WHERE date < :cutoffDate")
+    int deleteHourlyMetricsOlderThanDate(int cutoffDate);
 
-    // for notifications
-    @Query("SELECT notification_count FROM daily_metrics WHERE date = :date LIMIT 1")
-    Integer getNotificationCountForDay(int date);
-
-    // hourly_metric
     @Query("""
         SELECT hour AS hour,
                app_switch_count AS switches
@@ -66,15 +63,11 @@ public interface UserActivityDAO {
         WHERE date = :date
         ORDER BY hour ASC
     """)
-    Cursor getSwitchesPerHourForDay(int date);
+    Cursor getAppSwitchCountByHourCursor(int date);
 
-    // for notifications
     @Query("SELECT hour, notification_count AS notifs FROM hourly_metric WHERE date = :date ORDER BY hour")
-    Cursor getNotificationsPerHourForDay(int date);
+    Cursor getNotificationCountByHourCursor(int date);
 
     @Query("SELECT COUNT(*) FROM hourly_metric WHERE date = :date AND screen_ms > 0")
-    Cursor getActiveHoursForDay(int date);
-
-
-
+    int getActiveHourCountByDate(int date);
 }

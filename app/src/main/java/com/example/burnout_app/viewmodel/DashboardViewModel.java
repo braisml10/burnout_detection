@@ -24,9 +24,12 @@ public class DashboardViewModel extends AndroidViewModel {
         public final String screenTime;
         public final String notifications;
         public final String multitask;
-        public final String communication; // ✅ nº llamadas
+        public final String communication;
 
-        public UiState(String screenTime, String notifications, String multitask, String communication) {
+        public UiState(String screenTime,
+                       String notifications,
+                       String multitask,
+                       String communication) {
             this.screenTime = screenTime;
             this.notifications = notifications;
             this.multitask = multitask;
@@ -34,50 +37,56 @@ public class DashboardViewModel extends AndroidViewModel {
         }
     }
 
-    private final UserActivityRepository userRepo;
-    private final CommunicationRepository commRepo;
+    private final UserActivityRepository userActivityRepository;
+    private final CommunicationRepository communicationRepository;
 
     private final MutableLiveData<Integer> selectedDay = new MutableLiveData<>();
 
     private final LiveData<List<HourlyMetricsEntity>> hourlyMetrics;
-
-    // ✅ UiState combinado sin observeForever
     private final MediatorLiveData<UiState> uiState = new MediatorLiveData<>();
 
-    private LiveData<DailyMetricsEntity> dailySrc;
-    private LiveData<DailyCommMetricsEntity> commSrc;
+    private LiveData<DailyMetricsEntity> dailyMetricsSource;
+    private LiveData<DailyCommMetricsEntity> communicationMetricsSource;
 
-    private DailyMetricsEntity lastDaily;
-    private DailyCommMetricsEntity lastComm;
+    private DailyMetricsEntity lastDailyMetrics;
+    private DailyCommMetricsEntity lastCommunicationMetrics;
 
-    public DashboardViewModel(@NonNull Application app) {
-        super(app);
+    public DashboardViewModel(@NonNull Application application) {
+        super(application);
 
-        userRepo = new UserActivityRepository(app);
-        commRepo = new CommunicationRepository(app);
+        userActivityRepository = new UserActivityRepository(application);
+        communicationRepository = new CommunicationRepository(application);
 
         int today = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay.setValue(today);
 
-        // KPI 1-3 (daily_metric)
-        dailySrc = Transformations.switchMap(selectedDay, userRepo::observeDailyMetrics);
+        // ===================== DAILY METRICS =====================
+        dailyMetricsSource = Transformations.switchMap(
+                selectedDay,
+                userActivityRepository::observeDailyMetrics
+        );
 
-        // KPI 4 (daily_comm_metric)
-        commSrc = Transformations.switchMap(selectedDay, commRepo::observeDaily);
+        // ===================== COMMUNICATION METRICS =====================
+        communicationMetricsSource = Transformations.switchMap(
+                selectedDay,
+                communicationRepository::observeDailyCommMetrics
+        );
 
-        // ✅ combiner
-        uiState.addSource(dailySrc, d -> {
-            lastDaily = d;
-            uiState.setValue(build());
+        uiState.addSource(dailyMetricsSource, dailyMetrics -> {
+            lastDailyMetrics = dailyMetrics;
+            uiState.setValue(buildUiState());
         });
 
-        uiState.addSource(commSrc, c -> {
-            lastComm = c;
-            uiState.setValue(build());
+        uiState.addSource(communicationMetricsSource, communicationMetrics -> {
+            lastCommunicationMetrics = communicationMetrics;
+            uiState.setValue(buildUiState());
         });
 
-        // Gráfica 3h del dashboard (hourly_metric)
-        hourlyMetrics = Transformations.switchMap(selectedDay, userRepo::observeHourlyMetrics);
+        // ===================== HOURLY METRICS =====================
+        hourlyMetrics = Transformations.switchMap(
+                selectedDay,
+                userActivityRepository::observeHourlyMetrics
+        );
     }
 
     public LiveData<UiState> getUiState() {
@@ -89,33 +98,44 @@ public class DashboardViewModel extends AndroidViewModel {
     }
 
     public void loadDay(int epochDay) {
-        Integer cur = selectedDay.getValue();
-        if (cur == null || cur != epochDay) {
+        Integer current = selectedDay.getValue();
+        if (current == null || current != epochDay) {
             selectedDay.setValue(epochDay);
         }
     }
 
-    private UiState build() {
-        long screenMs = (lastDaily != null) ? lastDaily.screen_ms : 0L;
-        int notif = (lastDaily != null) ? lastDaily.notification_count : 0;
-        int switches = (lastDaily != null) ? lastDaily.app_switch_count : 0;
+    private UiState buildUiState() {
 
-        int calls = (lastComm != null) ? lastComm.calls_count : 0;
+        long screenTimeMs =
+                (lastDailyMetrics != null) ? lastDailyMetrics.screen_ms : 0L;
+
+        int notificationCount =
+                (lastDailyMetrics != null) ? lastDailyMetrics.notification_count : 0;
+
+        int appSwitchCount =
+                (lastDailyMetrics != null) ? lastDailyMetrics.app_switch_count : 0;
+
+        int callsCount =
+                (lastCommunicationMetrics != null) ? lastCommunicationMetrics.calls_count : 0;
 
         return new UiState(
-                formatScreenTime(screenMs),
-                String.valueOf(Math.max(0, notif)),
-                String.valueOf(Math.max(0, switches)),
-                String.valueOf(Math.max(0, calls)) // ✅ KPI4 = llamadas
+                formatScreenTime(screenTimeMs),
+                String.valueOf(Math.max(0, notificationCount)),
+                String.valueOf(Math.max(0, appSwitchCount)),
+                String.valueOf(Math.max(0, callsCount))
         );
     }
 
     private static String formatScreenTime(long ms) {
-        long totalMin = ms / 60000L;
-        long h = totalMin / 60L;
-        long m = totalMin % 60L;
 
-        if (h > 0) return String.format("%dh %02dm", h, m);
-        return String.format("%dm", m);
+        long totalMinutes = ms / 60000L;
+        long hours = totalMinutes / 60L;
+        long minutes = totalMinutes % 60L;
+
+        if (hours > 0) {
+            return String.format("%dh %02dm", hours, minutes);
+        }
+
+        return String.format("%dm", minutes);
     }
 }

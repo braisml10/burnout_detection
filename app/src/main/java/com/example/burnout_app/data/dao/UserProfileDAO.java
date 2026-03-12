@@ -11,18 +11,21 @@ import com.example.burnout_app.data.entity.UserProfileEntity;
 
 @Dao
 public interface UserProfileDAO {
+
+    // ===================== PROFILE READ =====================
     @Query("SELECT * FROM user_profile WHERE id = 1 LIMIT 1")
-    LiveData<UserProfileEntity> getProfile();
+    LiveData<UserProfileEntity> observeUserProfile();
 
     @Query("SELECT * FROM user_profile WHERE id = 1 LIMIT 1")
-    UserProfileEntity getProfileSync();
+    UserProfileEntity getUserProfile();
 
+    // ===================== PROFILE WRITE =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertOrReplace(UserProfileEntity profile);
+    void upsertUserProfile(UserProfileEntity profile);
 
     @Update
-    void update(UserProfileEntity profile);
+    void updateUserProfile(UserProfileEntity profile);
 
     @Query("DELETE FROM user_profile")
-    void deleteAll();
+    void deleteAllUserProfiles();
 }

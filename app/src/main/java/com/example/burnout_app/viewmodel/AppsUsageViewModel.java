@@ -25,9 +25,7 @@ import java.util.concurrent.Executors;
 
 public class AppsUsageViewModel extends AndroidViewModel {
 
-    // ---------------------------
-    // KPI SUPERIORES (switches + unique)
-    // ---------------------------
+    // ===================== TOP KPIS =====================
     public static class UiState {
         public final String appSwitches;
         public final String uniqueApps;
@@ -38,31 +36,35 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
-    // ---------------------------
-    // TIEMPO POR CATEGORÍA
-    // ---------------------------
+    // ===================== CATEGORY TIME =====================
     public static class CategoryState {
-        public final String socialTxt, entTxt, msgTxt, workTxt, otherTxt;
-        public final int socialPct, entPct, msgPct, workPct, otherPct;
+        public final String socialTxt;
+        public final String entTxt;
+        public final String msgTxt;
+        public final String workTxt;
+        public final String otherTxt;
 
-        public CategoryState(
-                String socialTxt,
-                String entTxt,
-                String msgTxt,
-                String workTxt,
-                String otherTxt,
-                int socialPct,
-                int entPct,
-                int msgPct,
-                int workPct,
-                int otherPct
-        ) {
+        public final int socialPct;
+        public final int entPct;
+        public final int msgPct;
+        public final int workPct;
+        public final int otherPct;
+
+        public CategoryState(String socialTxt,
+                             String entTxt,
+                             String msgTxt,
+                             String workTxt,
+                             String otherTxt,
+                             int socialPct,
+                             int entPct,
+                             int msgPct,
+                             int workPct,
+                             int otherPct) {
             this.socialTxt = socialTxt;
             this.entTxt = entTxt;
             this.msgTxt = msgTxt;
             this.workTxt = workTxt;
             this.otherTxt = otherTxt;
-
             this.socialPct = socialPct;
             this.entPct = entPct;
             this.msgPct = msgPct;
@@ -71,17 +73,27 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
-    // ---------------------------
-    // TOP APPS (Top 3)
-    // ---------------------------
+    // ===================== TOP APPS =====================
     public static class TopAppsState {
-        public final String name1, name2, name3;
-        public final int pct1, pct2, pct3;
-        public final int bar1, bar2, bar3;
+        public final String name1;
+        public final String name2;
+        public final String name3;
+        public final int pct1;
+        public final int pct2;
+        public final int pct3;
+        public final int bar1;
+        public final int bar2;
+        public final int bar3;
 
-        public TopAppsState(String name1, String name2, String name3,
-                            int pct1, int pct2, int pct3,
-                            int bar1, int bar2, int bar3) {
+        public TopAppsState(String name1,
+                            String name2,
+                            String name3,
+                            int pct1,
+                            int pct2,
+                            int pct3,
+                            int bar1,
+                            int bar2,
+                            int bar3) {
             this.name1 = name1;
             this.name2 = name2;
             this.name3 = name3;
@@ -94,9 +106,7 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
-    // ---------------------------
-    // SWITCHES CHART (acumulado 0..24)
-    // ---------------------------
+    // ===================== SWITCHES CHART =====================
     public static class SwitchesChartState {
         public final List<Entry> entries;
         public final int maxY;
@@ -107,45 +117,35 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
-    private final UserActivityRepository userRepo;
-    private final UsageRepository usageRepo;
+    private final UserActivityRepository userActivityRepository;
+    private final UsageRepository usageRepository;
 
     private final MutableLiveData<Integer> selectedDay = new MutableLiveData<>();
 
     private final LiveData<UiState> uiState;
-
-    // KPI tiempo total (suma foreground_ms de todas las apps no ignoradas)
     private final MutableLiveData<String> appsTimeFiltered = new MutableLiveData<>();
-
-    // Categorías
     private final MutableLiveData<CategoryState> categoryState = new MutableLiveData<>();
-
-    // Top Apps
     private final MutableLiveData<TopAppsState> topAppsState = new MutableLiveData<>();
-
-    // Switches chart
     private final MutableLiveData<SwitchesChartState> switchesChartState = new MutableLiveData<>();
 
-    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
 
-    public AppsUsageViewModel(@NonNull Application app) {
-        super(app);
+    public AppsUsageViewModel(@NonNull Application application) {
+        super(application);
 
-        userRepo = new UserActivityRepository(app);
-        usageRepo = new UsageRepository(app);
+        userActivityRepository = new UserActivityRepository(application);
+        usageRepository = new UsageRepository(application);
 
-        // KPI superiores (switches + uniqueApps) salen de daily_metrics (agregado global)
-        LiveData<DailyMetricsEntity> src = Transformations.switchMap(selectedDay, userRepo::observeDailyMetrics);
+        LiveData<DailyMetricsEntity> dailyMetricsSource =
+                Transformations.switchMap(selectedDay, userActivityRepository::observeDailyMetrics);
 
-        uiState = Transformations.map(src, m -> {
-            long fgMsAll   = (m != null) ? m.foreground_ms : 0L;       // debug: puede incluir ignoradas
-            int switches  = (m != null) ? m.app_switch_count : 0;
-            int uniqueApps = (m != null) ? m.unique_apps_count : 0;
-
+        uiState = Transformations.map(dailyMetricsSource, dailyMetrics -> {
+            int appSwitchCount = (dailyMetrics != null) ? dailyMetrics.app_switch_count : 0;
+            int uniqueAppsCount = (dailyMetrics != null) ? dailyMetrics.unique_apps_count : 0;
 
             return new UiState(
-                    String.valueOf(switches),
-                    String.valueOf(uniqueApps)
+                    String.valueOf(appSwitchCount),
+                    String.valueOf(uniqueAppsCount)
             );
         });
 
@@ -154,25 +154,33 @@ public class AppsUsageViewModel extends AndroidViewModel {
         loadAll(today);
     }
 
-    // ---------------------------
-    // Getters
-    // ---------------------------
-    public LiveData<UiState> getUiState() { return uiState; }
+    // ===================== GETTERS =====================
 
-    public LiveData<CategoryState> getCategoryState() { return categoryState; }
+    public LiveData<UiState> getUiState() {
+        return uiState;
+    }
 
-    public LiveData<String> getAppsTimeFiltered() { return appsTimeFiltered; }
+    public LiveData<CategoryState> getCategoryState() {
+        return categoryState;
+    }
 
-    public LiveData<TopAppsState> getTopAppsState() { return topAppsState; }
+    public LiveData<String> getAppsTimeFiltered() {
+        return appsTimeFiltered;
+    }
 
-    public LiveData<SwitchesChartState> getSwitchesChartState() { return switchesChartState; }
+    public LiveData<TopAppsState> getTopAppsState() {
+        return topAppsState;
+    }
 
-    // ---------------------------
-    // Loading
-    // ---------------------------
+    public LiveData<SwitchesChartState> getSwitchesChartState() {
+        return switchesChartState;
+    }
+
+    // ===================== LOADING =====================
+
     public void loadDay(int day) {
-        Integer cur = selectedDay.getValue();
-        if (cur == null || cur != day) {
+        Integer currentDay = selectedDay.getValue();
+        if (currentDay == null || currentDay != day) {
             selectedDay.setValue(day);
         }
         loadAll(day);
@@ -185,195 +193,199 @@ public class AppsUsageViewModel extends AndroidViewModel {
     }
 
     private void loadCategories(int day) {
-        io.execute(() -> {
-            long totalMs = usageRepo.getTotalForegroundMsForDay(day);
-            appsTimeFiltered.postValue(formatTimeKpi(totalMs));
+        ioExecutor.execute(() -> {
+            long totalForegroundMs = usageRepository.getTotalForegroundMsForDay(day);
+            appsTimeFiltered.postValue(formatTimeKpi(totalForegroundMs));
 
-            Map<String, Long> ms = usageRepo.getCategoryTotalsMsForDay(day);
+            Map<String, Long> categoryTotalsMs = usageRepository.getCategoryTotalsMsForDay(day);
 
-            long social = get(ms, "SOCIAL");
-            long ent    = get(ms, "ENTERTAINMENT");
-            long msg    = get(ms, "MESSAGING");
-            long work   = get(ms, "WORK");
-            long other  = get(ms, "OTHER");
+            long socialMs = get(categoryTotalsMs, "SOCIAL");
+            long entertainmentMs = get(categoryTotalsMs, "ENTERTAINMENT");
+            long messagingMs = get(categoryTotalsMs, "MESSAGING");
+            long workMs = get(categoryTotalsMs, "WORK");
+            long otherMs = get(categoryTotalsMs, "OTHER");
 
-            long total = social + ent + msg + work + other;
+            long totalMs = socialMs + entertainmentMs + messagingMs + workMs + otherMs;
 
-            int pSocial = 0, pEnt = 0, pMsg = 0, pWork = 0, pOther = 0;
+            int socialPct = 0;
+            int entertainmentPct = 0;
+            int messagingPct = 0;
+            int workPct = 0;
+            int otherPct = 0;
 
-            if (total > 0L) {
-                pSocial = pct(social, total);
-                pEnt    = pct(ent, total);
-                pMsg    = pct(msg, total);
-                pWork   = pct(work, total);
+            if (totalMs > 0L) {
+                socialPct = pct(socialMs, totalMs);
+                entertainmentPct = pct(entertainmentMs, totalMs);
+                messagingPct = pct(messagingMs, totalMs);
+                workPct = pct(workMs, totalMs);
 
-                pOther  = 100 - (pSocial + pEnt + pMsg + pWork);
-                pOther  = clampPct(pOther);
+                otherPct = 100 - (socialPct + entertainmentPct + messagingPct + workPct);
+                otherPct = clampPct(otherPct);
             }
 
             CategoryState out = new CategoryState(
-                    formatTimeShort(social),
-                    formatTimeShort(ent),
-                    formatTimeShort(msg),
-                    formatTimeShort(work),
-                    formatTimeShort(other),
-                    clampPct(pSocial),
-                    clampPct(pEnt),
-                    clampPct(pMsg),
-                    clampPct(pWork),
-                    pOther
+                    formatTimeShort(socialMs),
+                    formatTimeShort(entertainmentMs),
+                    formatTimeShort(messagingMs),
+                    formatTimeShort(workMs),
+                    formatTimeShort(otherMs),
+                    clampPct(socialPct),
+                    clampPct(entertainmentPct),
+                    clampPct(messagingPct),
+                    clampPct(workPct),
+                    otherPct
             );
-
 
             categoryState.postValue(out);
         });
     }
 
     private void loadTopApps(int day) {
-        io.execute(() -> {
-            long totalFiltered = 0L;
-            Map<String, Long> cat = usageRepo.getCategoryTotalsMsForDay(day);
-            for (Long v : cat.values()) totalFiltered += (v != null) ? v : 0L;
-            if (totalFiltered <= 0L) totalFiltered = 1L;
-
-            List<UsageRepository.TopAppRow> rows = usageRepo.getTopAppsForDay(day, 3);
-
-            String n1 = "--", n2 = "--", n3 = "--";
-            int p1 = 0, p2 = 0, p3 = 0;
-
-            Context ctx = getApplication();
-
-            if (rows.size() > 0) {
-                n1 = resolveDisplayName(ctx, rows.get(0).name);
-                p1 = pct(rows.get(0).totalMs, totalFiltered);
+        ioExecutor.execute(() -> {
+            long totalFilteredMs = 0L;
+            Map<String, Long> categoryTotalsMs = usageRepository.getCategoryTotalsMsForDay(day);
+            for (Long value : categoryTotalsMs.values()) {
+                totalFilteredMs += (value != null) ? value : 0L;
             }
-            if (rows.size() > 1) {
-                n2 = resolveDisplayName(ctx, rows.get(1).name);
-                p2 = pct(rows.get(1).totalMs, totalFiltered);
-            }
-            if (rows.size() > 2) {
-                n3 = resolveDisplayName(ctx, rows.get(2).name);
-                p3 = pct(rows.get(2).totalMs, totalFiltered);
+            if (totalFilteredMs <= 0L) {
+                totalFilteredMs = 1L;
             }
 
-            int b1 = clampPct(p1);
-            int b2 = clampPct(p2);
-            int b3 = clampPct(p3);
+            List<UsageRepository.TopAppRow> topApps = usageRepository.getTopAppsByDate(day, 3);
 
-            topAppsState.postValue(new TopAppsState(n1, n2, n3, p1, p2, p3, b1, b2, b3));
+            String name1 = "--";
+            String name2 = "--";
+            String name3 = "--";
+            int pct1 = 0;
+            int pct2 = 0;
+            int pct3 = 0;
+
+            Context context = getApplication();
+
+            if (topApps.size() > 0) {
+                name1 = resolveDisplayName(context, topApps.get(0).name);
+                pct1 = pct(topApps.get(0).totalMs, totalFilteredMs);
+            }
+            if (topApps.size() > 1) {
+                name2 = resolveDisplayName(context, topApps.get(1).name);
+                pct2 = pct(topApps.get(1).totalMs, totalFilteredMs);
+            }
+            if (topApps.size() > 2) {
+                name3 = resolveDisplayName(context, topApps.get(2).name);
+                pct3 = pct(topApps.get(2).totalMs, totalFilteredMs);
+            }
+
+            int bar1 = clampPct(pct1);
+            int bar2 = clampPct(pct2);
+            int bar3 = clampPct(pct3);
+
+            topAppsState.postValue(new TopAppsState(
+                    name1, name2, name3,
+                    pct1, pct2, pct3,
+                    bar1, bar2, bar3
+            ));
         });
     }
 
-
-    // ✅ switches acumulados 0..24 (con punto inicial 0)
     private void loadSwitchesChart(int day) {
-        io.execute(() -> {
+        ioExecutor.execute(() -> {
+            int[] appSwitchCountByHour = userActivityRepository.getAppSwitchCountByHour(day);
 
-            // ✅ hourly_metric -> UserActivityRepository
-            int[] perHour = userRepo.getSwitchesPerHourForDay(day);
-
-            if (perHour == null || perHour.length != 24) {
+            if (appSwitchCountByHour == null || appSwitchCountByHour.length != 24) {
                 switchesChartState.postValue(new SwitchesChartState(new ArrayList<>(), 0));
                 return;
             }
 
-            // DEBUG: comprueba suma por hora vs total
-            int sum = 0;
-            for (int h = 0; h < 24; h++) sum += perHour[h];
-
-            // ✅ Queremos que la curva "arranque" en 0 y vaya subiendo
-            // Convención: Entry(x=0)=0, Entry(x=1)=acum(0), ... Entry(x=24)=acum(0..23)
             List<Entry> entries = new ArrayList<>(25);
 
-            int acc = 0;
-            entries.add(new Entry(0f, 0f)); // ✅ inicio del día
+            int accumulated = 0;
+            int maxY = 0;
 
-            int max = 0;
-            for (int h = 0; h < 24; h++) {
-                acc += perHour[h];
-                if (acc > max) max = acc;
+            entries.add(new Entry(0f, 0f));
 
-                // punto al final de cada hora
-                entries.add(new Entry((float) (h + 1), (float) acc));
+            for (int hour = 0; hour < 24; hour++) {
+                accumulated += appSwitchCountByHour[hour];
+                if (accumulated > maxY) {
+                    maxY = accumulated;
+                }
+
+                entries.add(new Entry((float) (hour + 1), (float) accumulated));
             }
 
-            switchesChartState.postValue(new SwitchesChartState(entries, max));
+            switchesChartState.postValue(new SwitchesChartState(entries, maxY));
         });
     }
 
-
-    // ---------------------------
-    // Helpers
-    // ---------------------------
-    private static String safe(String s) {
-        if (s == null) return "--";
-        String t = s.trim();
-        return t.isEmpty() ? "--" : t;
-    }
+    // ===================== HELPERS =====================
 
     private static long get(Map<String, Long> map, String key) {
-        Long v = (map != null) ? map.get(key) : null;
-        return (v != null) ? v : 0L;
+        Long value = (map != null) ? map.get(key) : null;
+        return (value != null) ? value : 0L;
     }
 
     private static int pct(long value, long total) {
         return (int) Math.round(100.0 * value / (double) total);
     }
 
-    private static int clampPct(int v) {
-        return Math.max(0, Math.min(100, v));
+    private static int clampPct(int value) {
+        return Math.max(0, Math.min(100, value));
     }
 
     private static String formatTimeKpi(long ms) {
         long totalMin = ms / 60000L;
-        long h = totalMin / 60L;
-        long m = totalMin % 60L;
-        if (h > 0) return String.format(Locale.ROOT, "%dh %02dm", h, m);
-        return String.format(Locale.ROOT, "%dm", m);
+        long hours = totalMin / 60L;
+        long minutes = totalMin % 60L;
+
+        if (hours > 0) {
+            return String.format(Locale.ROOT, "%dh %02dm", hours, minutes);
+        }
+        return String.format(Locale.ROOT, "%dm", minutes);
     }
 
     private static String formatTimeShort(long ms) {
         if (ms <= 0L) return "0m";
+
         long totalSec = ms / 1000L;
         if (totalSec < 60L) return "<1m";
 
-        long totalMin = (totalSec + 59L) / 60L; // ceil
-        long h = totalMin / 60L;
-        long m = totalMin % 60L;
+        long totalMin = (totalSec + 59L) / 60L;
+        long hours = totalMin / 60L;
+        long minutes = totalMin % 60L;
 
-        if (h > 0) return String.format(Locale.ROOT, "%dh %02dm", h, m);
-        return String.format(Locale.ROOT, "%dm", m);
+        if (hours > 0) {
+            return String.format(Locale.ROOT, "%dh %02dm", hours, minutes);
+        }
+        return String.format(Locale.ROOT, "%dm", minutes);
+    }
+
+    private static String resolveDisplayName(Context context, String rawName) {
+        if (rawName == null) return "--";
+
+        String value = rawName.trim();
+        if (value.isEmpty()) return "--";
+
+        if ("android".equalsIgnoreCase(value)) return "Sistema";
+
+        boolean looksLikePackage = value.contains(".") && !value.contains(" ");
+        if (looksLikePackage) {
+            String label = AppCategoryResolver.resolveAppLabel(context, value);
+            if (label != null) {
+                label = label.trim();
+                if (!label.isEmpty() && !label.equalsIgnoreCase(value)) {
+                    return label;
+                }
+            }
+
+            String[] parts = value.split("\\.");
+            return parts[parts.length - 1];
+        }
+
+        return value;
     }
 
     @Override
     protected void onCleared() {
         super.onCleared();
-        io.shutdownNow();
+        ioExecutor.shutdownNow();
     }
-
-    private static String resolveDisplayName(Context ctx, String raw) {
-        if (raw == null) return "--";
-        String s = raw.trim();
-        if (s.isEmpty()) return "--";
-
-        // Caso típico “android” (suele venir de cosas del sistema)
-        if ("android".equalsIgnoreCase(s)) return "Sistema";
-
-        // Si parece package, resolvemos label real con PackageManager
-        boolean looksLikePkg = s.contains(".") && !s.contains(" ");
-        if (looksLikePkg) {
-            String label = AppCategoryResolver.resolveAppLabel(ctx, s);
-            if (label != null) {
-                label = label.trim();
-                // Si falla y devuelve el mismo package, no lo aceptamos
-                if (!label.isEmpty() && !label.equalsIgnoreCase(s)) return label;
-            }
-            // fallback: último segmento
-            String[] parts = s.split("\\.");
-            return parts[parts.length - 1];
-        }
-
-        return s;
-    }
-
 }

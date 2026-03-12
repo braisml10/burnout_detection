@@ -95,9 +95,9 @@ public class DailyAggregationWorker extends Worker {
     // ===================== MAIN ORCHESTRATION HELPERS =====================
 
     private void ensureDailyRows(BurnoutDatabase db, int yesterday, int today, int tomorrow) {
-        db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(yesterday, 0L, 0, 0L, 0, 0, 0, 0, 0L));
-        db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(today, 0L, 0, 0L, 0, 0, 0, 0, 0L));
-        db.userActivityDao().insertDailyIfMissing(new DailyMetricsEntity(tomorrow, 0L, 0, 0L, 0, 0, 0, 0, 0L));
+        db.userActivityDao().insertDailyMetricsIfMissing(new DailyMetricsEntity(yesterday, 0L, 0, 0L, 0, 0, 0, 0, 0L));
+        db.userActivityDao().insertDailyMetricsIfMissing(new DailyMetricsEntity(today, 0L, 0, 0L, 0, 0, 0, 0, 0L));
+        db.userActivityDao().insertDailyMetricsIfMissing(new DailyMetricsEntity(tomorrow, 0L, 0, 0L, 0, 0, 0, 0, 0L));
     }
 
     private void runUsageAggregation(Context ctx,
@@ -148,8 +148,8 @@ public class DailyAggregationWorker extends Worker {
                                              int yesterday,
                                              int today) {
         try {
-            db.communicationDao().insertDailyIfMissing(yesterday);
-            db.communicationDao().insertDailyIfMissing(today);
+            db.communicationDao().insertDailyCommMetricsIfMissing(yesterday);
+            db.communicationDao().insertDailyCommMetricsIfMissing(today);
 
             CommAggResult todayResult = computeCommForDay(ctx, today);
             persistCommMetricsForDay(db, today, todayResult);
@@ -263,7 +263,7 @@ public class DailyAggregationWorker extends Worker {
         prefs.edit().putLong(KEY_LAST_USAGE_CAPTURE_TS, end).apply();
 
         Log.d(TAG, "Usage insert: inserted=" + toInsert.size()
-                + " todayCount=" + db.usageDao().countUsageEventsByDate(today));
+                + " todayCount=" + db.usageDao().getUsageEventCountByDate(today));
     }
 
     // ===================== FOREGROUND AGGREGATION =====================
@@ -545,7 +545,7 @@ public class DailyAggregationWorker extends Worker {
 
         Cursor cToday = null;
         try {
-            cToday = db.notificationDao().countByHourCursor(today);
+            cToday = db.notificationDao().getNotificationCountByHourCursor(today);
             if (cToday != null) {
                 int iHour = cToday.getColumnIndex("hour");
                 int iC = cToday.getColumnIndex("c");
@@ -563,7 +563,7 @@ public class DailyAggregationWorker extends Worker {
 
         Cursor cPrev = null;
         try {
-            cPrev = db.notificationDao().countByHourCursor(yesterday);
+            cPrev = db.notificationDao().getMessagingNotificationCountByHourCursor(yesterday);
             if (cPrev != null) {
                 int iHour = cPrev.getColumnIndex("hour");
                 int iC = cPrev.getColumnIndex("c");
@@ -579,8 +579,8 @@ public class DailyAggregationWorker extends Worker {
             if (cPrev != null) cPrev.close();
         }
 
-        out.notifTotalToday = db.notificationDao().countByDate(today);
-        out.notifTotalPrev = db.notificationDao().countByDate(yesterday);
+        out.notifTotalToday = db.notificationDao().getNotificationCountByDate(today);
+        out.notifTotalPrev = db.notificationDao().getNotificationCountByDate(yesterday);
 
         return out;
     }
@@ -679,8 +679,8 @@ public class DailyAggregationWorker extends Worker {
 
         int delNotif = db.notificationDao().deleteNotificationEventsOlderThanDate(cutoffDate);
 
-        int delDailyComm = db.communicationDao().deleteDailyCommOlderThanDate(cutoffDate);
-        int delHourlyComm = db.communicationDao().deleteHourlyCommOlderThanDate(cutoffDate);
+        int delDailyComm = db.communicationDao().deleteDailyCommMetricsOlderThanDate(cutoffDate);
+        int delHourlyComm = db.communicationDao().deleteHourlyCommMetricsOlderThanDate(cutoffDate);
 
         Log.d(TAG, "Retention: cutoffDate=" + cutoffDate
                 + " deletedUsage=" + delUsage
@@ -776,7 +776,7 @@ public class DailyAggregationWorker extends Worker {
 
     private String safePkg(BurnoutDatabase db, long appId) {
         try {
-            String pkg = db.usageDao().getPackageNameByAppId(appId);
+            String pkg = db.usageDao().getAppPackageNameByAppId(appId);
             return (pkg != null) ? pkg : ("appId=" + appId);
         } catch (Exception ex) {
             return "appId=" + appId;
@@ -926,7 +926,7 @@ public class DailyAggregationWorker extends Worker {
         long ms = 0L;
         Cursor c = null;
         try {
-            c = db.usageDao().getCategoryTotalsMsForDay(epochDay);
+            c = db.usageDao().getCategoryTotalsMsForDayCursor(epochDay);
             if (c == null) return 0L;
 
             int iCat = c.getColumnIndexOrThrow("category");
@@ -950,7 +950,7 @@ public class DailyAggregationWorker extends Worker {
             db.runInTransaction(new Runnable() {
                 @Override
                 public void run() {
-                    db.communicationDao().insertDailyIfMissing(epochDay);
+                    db.communicationDao().insertDailyCommMetricsIfMissing(epochDay);
 
                     long messagingMs = getMessagingMsForDay(db, epochDay);
 
@@ -959,7 +959,7 @@ public class DailyAggregationWorker extends Worker {
 
                     Cursor c = null;
                     try {
-                        c = db.notificationDao().countMessagingNotifsByHourCursor(epochDay);
+                        c = db.notificationDao().getMessagingNotificationCountByHourCursor(epochDay);
                         if (c != null) {
                             int iHour = c.getColumnIndex("hour");
                             int iC = c.getColumnIndex("c");
@@ -977,7 +977,7 @@ public class DailyAggregationWorker extends Worker {
                         if (c != null) c.close();
                     }
 
-                    int msgNotifsTotalCheck = db.notificationDao().countMessagingNotifsByDate(epochDay);
+                    int msgNotifsTotalCheck = db.notificationDao().getMessagingNotificationCountByDate(epochDay);
                     msgNotifsTotal = Math.max(msgNotifsTotal, msgNotifsTotalCheck);
 
                     r.msgNotifsTotal = msgNotifsTotal;
@@ -1004,7 +1004,7 @@ public class DailyAggregationWorker extends Worker {
                             voiceMs,
                             textMs
                     );
-                    db.communicationDao().upsertDaily(daily);
+                    db.communicationDao().upsertDailyCommMetrics(daily);
 
                     long sumMsgs = 0L;
                     for (int h = 0; h < 24; h++) {
@@ -1026,7 +1026,7 @@ public class DailyAggregationWorker extends Worker {
                         rows.add(new HourlyCommMetricsEntity(epochDay, h, totalVal, voiceVal, textVal));
                     }
 
-                    db.communicationDao().upsertHourly(rows);
+                    db.communicationDao().upsertHourlyCommMetrics(rows);
 
                     Log.d(TAG_COMM, "COMM day=" + epochDay
                             + " voiceMs=" + voiceMs
@@ -1052,12 +1052,12 @@ public class DailyAggregationWorker extends Worker {
         if (existing != null) {
 
             if (mustIgnore) {
-                db.usageDao().updateAppIgnored(existing, true);
+                db.usageDao().updateAppIgnoredByAppId(existing, true);
                 return existing;
             }
 
-            String curName = db.usageDao().getNameByAppId(existing);
-            String curCat = db.usageDao().getCategoryByAppId(existing);
+            String curName = db.usageDao().getAppNameByAppId(existing);
+            String curCat = db.usageDao().getAppCategoryByAppId(existing);
 
             boolean needsName = (curName == null || curName.trim().isEmpty() || curName.equals(pkg) || looksLikePackage(curName));
             boolean needsCat = (curCat == null || curCat.trim().isEmpty() || "OTHER".equalsIgnoreCase(curCat));
@@ -1066,14 +1066,14 @@ public class DailyAggregationWorker extends Worker {
                 String label = AppCategoryResolver.resolveAppLabel(ctx, pkg);
                 if (label != null) label = label.trim();
                 if (label != null && !label.isEmpty() && !label.equals(pkg)) {
-                    db.usageDao().updateAppName(existing, label);
+                    db.usageDao().updateAppNameByAppId(existing, label);
                 }
             }
 
             if (needsCat) {
                 String cat = AppCategoryResolver.resolveCategory(ctx, pkg);
                 if (cat == null) cat = "OTHER";
-                db.usageDao().updateAppCategory(existing, cat);
+                db.usageDao().updateAppCategoryByAppId(existing, cat);
             }
 
             return existing;

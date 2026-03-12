@@ -30,8 +30,8 @@ public class ProfileActivity extends AppCompatActivity {
     private ImageButton btnEditProfile;
     private MaterialButton btnDeleteAccount;
 
-    private ProfileViewModel viewModel;
-    private UserProfileEntity currentProfile;
+    private ProfileViewModel profileViewModel;
+    private UserProfileEntity currentUserProfile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,12 +40,12 @@ public class ProfileActivity extends AppCompatActivity {
 
         initViews();
 
-        viewModel = new ViewModelProvider(this).get(ProfileViewModel.class);
+        profileViewModel = new ViewModelProvider(this).get(ProfileViewModel.class);
 
-        viewModel.getProfile().observe(this, profile -> {
-            if (profile != null) {
-                currentProfile = profile;
-                bindProfile(profile);
+        profileViewModel.observeUserProfile().observe(this, userProfile -> {
+            if (userProfile != null) {
+                currentUserProfile = userProfile;
+                bindProfile(userProfile);
             }
         });
 
@@ -66,7 +66,7 @@ public class ProfileActivity extends AppCompatActivity {
                         SessionManager sessionManager = new SessionManager(ProfileActivity.this);
                         sessionManager.logout();
 
-                        viewModel.deleteAccount();
+                        profileViewModel.deleteUserProfile();
 
                         Intent intent = new Intent(ProfileActivity.this, WelcomeActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -89,23 +89,23 @@ public class ProfileActivity extends AppCompatActivity {
         btnDeleteAccount = findViewById(R.id.btnDeleteAccount);
     }
 
-    private void bindProfile(UserProfileEntity profile) {
-        String nombre = safe(profile.nombre);
-        String apellidos = safe(profile.apellidos);
-        String email = safe(profile.email);
+    private void bindProfile(UserProfileEntity userProfile) {
+        String firstName = safe(userProfile.nombre);
+        String lastName = safe(userProfile.apellidos);
+        String email = safe(userProfile.email);
 
-        tvNombre.setText(nombre);
-        tvApellidos.setText(apellidos);
+        tvNombre.setText(firstName);
+        tvApellidos.setText(lastName);
         tvEmailInfo.setText(email);
 
-        String fullName = (nombre + " " + apellidos).trim();
+        String fullName = (firstName + " " + lastName).trim();
         tvFullName.setText(fullName);
 
-        tvAvatar.setText(getInitials(nombre, apellidos));
+        tvAvatar.setText(getInitials(firstName, lastName));
     }
 
     private void showEditProfileDialog() {
-        if (currentProfile == null) {
+        if (currentUserProfile == null) {
             Toast.makeText(this, "No se pudo cargar el perfil", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -119,9 +119,9 @@ public class ProfileActivity extends AppCompatActivity {
         EditText etNewPassword = dialogView.findViewById(R.id.etNewPassword);
         EditText etConfirmPassword = dialogView.findViewById(R.id.etConfirmPassword);
 
-        etNombre.setText(safe(currentProfile.nombre));
-        etApellidos.setText(safe(currentProfile.apellidos));
-        etEmail.setText(safe(currentProfile.email));
+        etNombre.setText(safe(currentUserProfile.nombre));
+        etApellidos.setText(safe(currentUserProfile.apellidos));
+        etEmail.setText(safe(currentUserProfile.email));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Editar perfil")
@@ -132,24 +132,24 @@ public class ProfileActivity extends AppCompatActivity {
 
         dialog.setOnShowListener(d -> {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String nombre = etNombre.getText().toString().trim();
-                String apellidos = etApellidos.getText().toString().trim();
+                String firstName = etNombre.getText().toString().trim();
+                String lastName = etApellidos.getText().toString().trim();
                 String email = etEmail.getText().toString().trim();
-                String oldPassword = etOldPassword.getText().toString();
+                String currentPassword = etOldPassword.getText().toString();
                 String newPassword = etNewPassword.getText().toString();
                 String confirmPassword = etConfirmPassword.getText().toString();
 
-                boolean valid = viewModel.canUpdateProfile(
-                        currentProfile,
-                        nombre,
-                        apellidos,
+                boolean isValid = profileViewModel.canUpdateUserProfile(
+                        currentUserProfile,
+                        firstName,
+                        lastName,
                         email,
-                        oldPassword,
+                        currentPassword,
                         newPassword,
                         confirmPassword
                 );
 
-                if (!valid) {
+                if (!isValid) {
                     Toast.makeText(
                             this,
                             "Contraseña antigua incorrecta o nuevas no coincidentes.",
@@ -158,10 +158,10 @@ public class ProfileActivity extends AppCompatActivity {
                     return;
                 }
 
-                viewModel.updateProfileWithPasswordCheck(
-                        currentProfile,
-                        nombre,
-                        apellidos,
+                profileViewModel.updateUserProfileWithPasswordCheck(
+                        currentUserProfile,
+                        firstName,
+                        lastName,
                         email,
                         newPassword
                 );
@@ -174,10 +174,16 @@ public class ProfileActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private String getInitials(String nombre, String apellidos) {
-        String n = nombre != null && !nombre.isEmpty() ? nombre.substring(0, 1).toUpperCase() : "";
-        String a = apellidos != null && !apellidos.isEmpty() ? apellidos.substring(0, 1).toUpperCase() : "";
-        return n + a;
+    private String getInitials(String firstName, String lastName) {
+        String firstInitial = firstName != null && !firstName.isEmpty()
+                ? firstName.substring(0, 1).toUpperCase()
+                : "";
+
+        String lastInitial = lastName != null && !lastName.isEmpty()
+                ? lastName.substring(0, 1).toUpperCase()
+                : "";
+
+        return firstInitial + lastInitial;
     }
 
     private String safe(String value) {

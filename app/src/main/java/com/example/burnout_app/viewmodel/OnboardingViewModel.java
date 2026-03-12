@@ -13,36 +13,49 @@ import com.example.burnout_app.data.repo.UserProfileRepository;
 
 public class OnboardingViewModel extends AndroidViewModel {
 
-    private final UserProfileRepository repository;
-    private final LiveData<UserProfileEntity> profileLiveData;
+    private final UserProfileRepository userProfileRepository;
+    private final LiveData<UserProfileEntity> userProfileLiveData;
 
     public OnboardingViewModel(@NonNull Application application) {
         super(application);
-        repository = new UserProfileRepository(application);
-        profileLiveData = repository.getProfile();
+        userProfileRepository = new UserProfileRepository(application);
+        userProfileLiveData = userProfileRepository.observeUserProfile();
     }
 
-    public LiveData<UserProfileEntity> getProfile() {
-        return profileLiveData;
+    // ===================== PROFILE OBSERVATION =====================
+
+    public LiveData<UserProfileEntity> observeUserProfile() {
+        return userProfileLiveData;
     }
 
-    public void createProfile(String nombre, String apellidos, String email, String password) {
-        UserProfileEntity profile = new UserProfileEntity(
-                nombre.trim(),
-                apellidos.trim(),
+    // ===================== PROFILE CREATION =====================
+
+    public void createUserProfile(String firstName,
+                                  String lastName,
+                                  String email,
+                                  String password) {
+        UserProfileEntity userProfile = new UserProfileEntity(
+                firstName.trim(),
+                lastName.trim(),
                 email.trim(),
                 password
         );
 
-        repository.insertOrReplace(profile);
+        userProfileRepository.upsertUserProfile(userProfile);
     }
 
-    public boolean isInputValid(String nombre, String apellidos, String email, String password, String confirmPassword) {
-        if (TextUtils.isEmpty(nombre) ||
-                TextUtils.isEmpty(apellidos) ||
-                TextUtils.isEmpty(email) ||
-                TextUtils.isEmpty(password) ||
-                TextUtils.isEmpty(confirmPassword)) {
+    // ===================== INPUT VALIDATION =====================
+
+    public boolean isInputValid(String firstName,
+                                String lastName,
+                                String email,
+                                String password,
+                                String confirmPassword) {
+        if (TextUtils.isEmpty(firstName)
+                || TextUtils.isEmpty(lastName)
+                || TextUtils.isEmpty(email)
+                || TextUtils.isEmpty(password)
+                || TextUtils.isEmpty(confirmPassword)) {
             return false;
         }
 
@@ -57,19 +70,20 @@ public class OnboardingViewModel extends AndroidViewModel {
         return password.equals(confirmPassword);
     }
 
+    // ===================== LOGIN =====================
+
     public interface LoginCallback {
         void onResult(boolean success);
     }
 
     public void login(String email, String password, LoginCallback callback) {
         new Thread(() -> {
-            UserProfileEntity profile = repository.getProfileSync();
+            UserProfileEntity userProfile = userProfileRepository.getUserProfile();
 
             boolean success = false;
-
-            if (profile != null) {
-                success = email.equals(profile.email)
-                        && password.equals(profile.passwordHash);
+            if (userProfile != null) {
+                success = email.equals(userProfile.email)
+                        && password.equals(userProfile.passwordHash);
             }
 
             callback.onResult(success);

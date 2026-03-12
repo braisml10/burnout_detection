@@ -20,8 +20,8 @@ public class DailyDetailViewModel extends AndroidViewModel {
 
     public static class UiState {
         public final String totalScreenTime;
-        public final String sessions;   // desbloqueos
-        public final String night;      // minutos nocturnos (KPI)
+        public final String sessions;
+        public final String night;
 
         public UiState(String totalScreenTime, String sessions, String night) {
             this.totalScreenTime = totalScreenTime;
@@ -30,158 +30,164 @@ public class DailyDetailViewModel extends AndroidViewModel {
         }
     }
 
-    private final UserActivityRepository repo;
+    private static final int NIGHT_START_HOUR = 22;
+    private static final int NIGHT_END_HOUR = 6;
+    private static final int DAY_START_HOUR = 7;
+    private static final int DAY_END_HOUR = 21;
 
-    // Día seleccionado desde la UI
+    private final UserActivityRepository userActivityRepository;
+
     private final MutableLiveData<Integer> selectedDay = new MutableLiveData<>();
 
-    private final LiveData<DailyMetricsEntity> metrics;
+    private final LiveData<DailyMetricsEntity> dailyMetrics;
     private final LiveData<UiState> uiState;
 
-    // Hourly del día seleccionado y del día anterior
-    private final LiveData<List<HourlyMetricsEntity>> hourlyToday;
-    private final LiveData<List<HourlyMetricsEntity>> hourlyPrev;
+    private final LiveData<List<HourlyMetricsEntity>> hourlyMetricsToday;
+    private final LiveData<List<HourlyMetricsEntity>> hourlyMetricsPreviousDay;
 
-    // Serie para gráfico lineal: 06..21 (16 puntos)
-    private final LiveData<int[]> screenMinutes6to22;
+    // 07..21 -> 15 puntos
+    private final LiveData<int[]> screenMinutesFrom7To21;
 
-    // Serie para barras nocturnas: 22,23,00,01,02,03,04,05,06 (9 puntos)
-    private final MediatorLiveData<int[]> nightMinutes22to6 = new MediatorLiveData<>();
+    // 22,23,00..06 -> 9 puntos
+    private final MediatorLiveData<int[]> nightMinutesFrom22To06 = new MediatorLiveData<>();
 
-    private List<HourlyMetricsEntity> cachePrev;
-    private List<HourlyMetricsEntity> cacheToday;
+    private List<HourlyMetricsEntity> cachedPreviousDayHourlyMetrics;
+    private List<HourlyMetricsEntity> cachedTodayHourlyMetrics;
 
-    public DailyDetailViewModel(@NonNull Application app) {
-        super(app);
-        repo = new UserActivityRepository(app);
+    public DailyDetailViewModel(@NonNull Application application) {
+        super(application);
+        userActivityRepository = new UserActivityRepository(application);
 
         int today = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay.setValue(today);
 
-        metrics = Transformations.switchMap(selectedDay, repo::observeDailyMetrics);
+        // ===================== DAILY METRICS =====================
+        dailyMetrics = Transformations.switchMap(
+                selectedDay,
+                userActivityRepository::observeDailyMetrics
+        );
 
-        // Mapear entidad -> UiState
-        uiState = Transformations.map(metrics, m -> {
-            long screenMs = (m != null) ? m.screen_ms : 0L;
-            int unlocks   = (m != null) ? m.unlock_count : 0;
-            long nightMs  = (m != null) ? m.night_ms : 0L;
+        uiState = Transformations.map(dailyMetrics, metrics -> {
+            long screenTimeMs = (metrics != null) ? metrics.screen_ms : 0L;
+            int unlockCount = (metrics != null) ? metrics.unlock_count : 0;
+            long nightTimeMs = (metrics != null) ? metrics.night_ms : 0L;
 
-            long nightMin = nightMs / 60000L;
+            long nightMinutes = nightTimeMs / 60000L;
 
             return new UiState(
-                    formatScreenTime(screenMs),
-                    String.valueOf(unlocks),
-                    String.valueOf(nightMin)
+                    formatScreenTime(screenTimeMs),
+                    String.valueOf(unlockCount),
+                    String.valueOf(nightMinutes)
             );
         });
 
-        // ✅ hourly del día seleccionado
-        hourlyToday = Transformations.switchMap(selectedDay, repo::observeHourlyMetrics);
+        // ===================== HOURLY METRICS =====================
+        hourlyMetricsToday = Transformations.switchMap(
+                selectedDay,
+                userActivityRepository::observeHourlyMetrics
+        );
 
-        // ✅ hourly del día anterior (para 22 y 23)
-        hourlyPrev = Transformations.switchMap(selectedDay, d -> repo.observeHourlyMetrics(d - 1));
+        hourlyMetricsPreviousDay = Transformations.switchMap(
+                selectedDay,
+                day -> userActivityRepository.observeHourlyMetrics(day - 1)
+        );
 
-        // 06..21 (16 puntos)
-        screenMinutes6to22 = Transformations.map(hourlyToday, rows -> {
-            int[] out = new int[16];
-            if (rows == null) return out;
+        // ===================== SCREEN TREND 07..21 =====================
+        screenMinutesFrom7To21 = Transformations.map(hourlyMetricsToday, hourlyRows -> {
+            int[] out = new int[15];
+            if (hourlyRows == null) return out;
 
-            for (HourlyMetricsEntity h : rows) {
-                if (h == null) continue;
-                int hour = h.hour;
-                if (hour >= 6 && hour <= 21) {
-                    out[hour - 6] = (int) (h.screen_ms / 60000L);
+            for (HourlyMetricsEntity hourlyRow : hourlyRows) {
+                if (hourlyRow == null) continue;
+
+                int hour = hourlyRow.hour;
+                if (hour >= DAY_START_HOUR && hour <= DAY_END_HOUR) {
+                    out[hour - DAY_START_HOUR] = (int) (hourlyRow.screen_ms / 60000L);
                 }
             }
+
             return out;
         });
 
-        // ✅ combinar prev + today para la noche (sin Runnable)
-        nightMinutes22to6.addSource(hourlyPrev, rows -> {
-            cachePrev = rows;
-            recomputeNight();
-        });
-        nightMinutes22to6.addSource(hourlyToday, rows -> {
-            cacheToday = rows;
-            recomputeNight();
+        // ===================== NIGHT TREND 22..06 =====================
+        nightMinutesFrom22To06.addSource(hourlyMetricsPreviousDay, hourlyRows -> {
+            cachedPreviousDayHourlyMetrics = hourlyRows;
+            recomputeNightMinutesFrom22To06();
         });
 
-        // valor inicial (evita nulls)
-        nightMinutes22to6.setValue(new int[8]);
+        nightMinutesFrom22To06.addSource(hourlyMetricsToday, hourlyRows -> {
+            cachedTodayHourlyMetrics = hourlyRows;
+            recomputeNightMinutesFrom22To06();
+        });
 
+        nightMinutesFrom22To06.setValue(new int[9]);
     }
 
-
-    private void recomputeNight() {
-        int[] out = new int[8]; // 0=22, 1=23, 2=00, ..., 7=05
-
-        // 22 y 23 del día anterior
-        if (cachePrev != null) {
-            for (HourlyMetricsEntity h : cachePrev) {
-                if (h == null) continue;
-                if (h.hour == 22) out[0] = (int) (h.screen_ms / 60000L);
-                else if (h.hour == 23) out[1] = (int) (h.screen_ms / 60000L);
-            }
-        }
-
-        // 00..05 del día actual
-        if (cacheToday != null) {
-            for (HourlyMetricsEntity h : cacheToday) {
-                if (h == null) continue;
-                int hour = h.hour;
-                if (hour >= 0 && hour <= 5) {
-                    out[2 + hour] = (int) (h.screen_ms / 60000L); // 0->2 ... 5->7
-                }
-            }
-        }
-
-        nightMinutes22to6.setValue(out);
-    }
-
-
-    // ---------------------------
-    // Getters
-    // ---------------------------
+    // ===================== PUBLIC API =====================
 
     public LiveData<UiState> getUiState() {
         return uiState;
     }
 
-    public LiveData<int[]> getScreenMinutes6to22() {
-        return screenMinutes6to22;
+    public LiveData<int[]> getScreenMinutesFrom7To21() {
+        return screenMinutesFrom7To21;
     }
 
-    public LiveData<int[]> getNightMinutes22to6() {
-        return nightMinutes22to6;
+    public LiveData<int[]> getNightMinutesFrom22To06() {
+        return nightMinutesFrom22To06;
     }
-
-    // ---------------------------
-    // API
-    // ---------------------------
 
     public void loadDay(int epochDay) {
-        Integer current = selectedDay.getValue();
-        if (current == null || current != epochDay) {
-
-            // ✅ evita mezclar prev/today de días distintos durante el cambio
-            cachePrev = null;
-            cacheToday = null;
-            nightMinutes22to6.setValue(new int[8]);
+        Integer currentDay = selectedDay.getValue();
+        if (currentDay == null || currentDay != epochDay) {
+            cachedPreviousDayHourlyMetrics = null;
+            cachedTodayHourlyMetrics = null;
+            nightMinutesFrom22To06.setValue(new int[9]);
 
             selectedDay.setValue(epochDay);
         }
     }
 
-    // ---------------------------
-    // Helpers
-    // ---------------------------
+    // ===================== INTERNAL HELPERS =====================
+
+    private void recomputeNightMinutesFrom22To06() {
+        int[] out = new int[9]; // 0=22, 1=23, 2=00, ..., 8=06
+
+        if (cachedPreviousDayHourlyMetrics != null) {
+            for (HourlyMetricsEntity hourlyRow : cachedPreviousDayHourlyMetrics) {
+                if (hourlyRow == null) continue;
+
+                if (hourlyRow.hour == 22) {
+                    out[0] = (int) (hourlyRow.screen_ms / 60000L);
+                } else if (hourlyRow.hour == 23) {
+                    out[1] = (int) (hourlyRow.screen_ms / 60000L);
+                }
+            }
+        }
+
+        if (cachedTodayHourlyMetrics != null) {
+            for (HourlyMetricsEntity hourlyRow : cachedTodayHourlyMetrics) {
+                if (hourlyRow == null) continue;
+
+                int hour = hourlyRow.hour;
+                if (hour >= 0 && hour <= NIGHT_END_HOUR) {
+                    out[2 + hour] = (int) (hourlyRow.screen_ms / 60000L);
+                }
+            }
+        }
+
+        nightMinutesFrom22To06.setValue(out);
+    }
 
     private static String formatScreenTime(long ms) {
-        long totalMin = ms / 60000L;
-        long h = totalMin / 60L;
-        long m = totalMin % 60L;
+        long totalMinutes = ms / 60000L;
+        long hours = totalMinutes / 60L;
+        long minutes = totalMinutes % 60L;
 
-        if (h > 0) return String.format("%dh %02dm", h, m);
-        return String.format("%dm", m);
+        if (hours > 0) {
+            return String.format("%dh %02dm", hours, minutes);
+        }
+
+        return String.format("%dm", minutes);
     }
 }

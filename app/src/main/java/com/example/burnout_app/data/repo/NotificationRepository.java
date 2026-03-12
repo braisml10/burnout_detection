@@ -3,6 +3,9 @@ package com.example.burnout_app.data.repo;
 import android.content.Context;
 import android.database.Cursor;
 
+import com.example.burnout_app.data.dao.NotificationDAO;
+import com.example.burnout_app.data.dao.UsageDAO;
+import com.example.burnout_app.data.dao.UserActivityDAO;
 import com.example.burnout_app.data.db.BurnoutDatabase;
 
 import java.util.ArrayList;
@@ -10,57 +13,58 @@ import java.util.List;
 
 public class NotificationRepository {
 
-    private final BurnoutDatabase db;
+    private final NotificationDAO notificationDao;
+    private final UsageDAO usageDao;
+    private final UserActivityDAO userActivityDao;
 
-    public NotificationRepository(Context ctx) {
-        db = BurnoutDatabase.getInstance(ctx.getApplicationContext());
+    public NotificationRepository(Context context) {
+        BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
+        notificationDao = db.notificationDao();
+        usageDao = db.usageDao();
+        userActivityDao = db.userActivityDao();
     }
 
-    // =========================================================
-    // TOTAL (daily_metrics)
-    // =========================================================
+    // ===================== DAILY NOTIFICATION COUNTS =====================
 
-    public int getTotalNotificationsForDay(int date) {
-        // daily_metrics.notification_count ya lo rellena el worker
-        Integer v = db.userActivityDao().getNotificationCountForDay(date);
-        return (v != null) ? v : 0;
+    public int getNotificationCountByDate(int date) {
+        Integer value = userActivityDao.getNotificationCountByDate(date);
+        return (value != null) ? value : 0;
     }
 
-    // =========================================================
-    // HOURLY TREND (hourly_metric)
-    // =========================================================
+    // ===================== HOURLY NOTIFICATION COUNTS =====================
 
-    public int[] getNotificationsPerHourForDay(int date) {
-
+    public int[] getNotificationCountByHour(int date) {
         int[] out = new int[24];
 
-        Cursor c = db.userActivityDao().getNotificationsPerHourForDay(date);
+        Cursor cursor = userActivityDao.getNotificationCountByHourCursor(date);
         try {
-            int iHour = c.getColumnIndexOrThrow("hour");
-            int iCnt  = c.getColumnIndexOrThrow("notifs");
+            int hourIndex = cursor.getColumnIndexOrThrow("hour");
+            int countIndex = cursor.getColumnIndexOrThrow("notifs");
 
-            while (c.moveToNext()) {
-                int h = c.getInt(iHour);
-                int cnt = c.getInt(iCnt);
-                if (h >= 0 && h <= 23) out[h] = cnt;
+            while (cursor.moveToNext()) {
+                int hour = cursor.getInt(hourIndex);
+                int count = cursor.getInt(countIndex);
+
+                if (hour >= 0 && hour <= 23) {
+                    out[hour] = count;
+                }
             }
         } finally {
-            c.close();
+            cursor.close();
         }
+
         return out;
     }
 
-    // =========================================================
-    // TOP APPS (raw notification_event + app join via usageDao)
-    // =========================================================
+    // ===================== TOP NOTIFICATION APPS =====================
 
-    public static class TopNotifAppRow {
+    public static class TopNotificationAppRow {
         public final long appId;
         public final String name;
         public final String packageName;
         public final int count;
 
-        public TopNotifAppRow(long appId, String name, String packageName, int count) {
+        public TopNotificationAppRow(long appId, String name, String packageName, int count) {
             this.appId = appId;
             this.name = name;
             this.packageName = packageName;
@@ -68,82 +72,77 @@ public class NotificationRepository {
         }
     }
 
-    /** Top apps por notificaciones desde notification_event (raw), con name/pkg desde app table */
-    public List<TopNotifAppRow> getTopAppsByNotificationsForDay(int date, int limit) {
+    public List<TopNotificationAppRow> getTopNotificationAppsByDate(int date, int limit) {
+        List<TopNotificationAppRow> out = new ArrayList<>();
 
-        List<TopNotifAppRow> out = new ArrayList<>();
-
-        Cursor c = db.notificationDao().topAppsCursor(date, limit);
+        Cursor cursor = notificationDao.getTopNotificationAppsCursor(date, limit);
         try {
-            int iAppId = c.getColumnIndexOrThrow("app_id");
-            int iCnt   = c.getColumnIndexOrThrow("c");
+            int appIdIndex = cursor.getColumnIndexOrThrow("app_id");
+            int countIndex = cursor.getColumnIndexOrThrow("c");
 
-            while (c.moveToNext()) {
-                long appId = c.getLong(iAppId);
-                int cnt = c.getInt(iCnt);
+            while (cursor.moveToNext()) {
+                long appId = cursor.getLong(appIdIndex);
+                int count = cursor.getInt(countIndex);
 
-                String name = db.usageDao().getNameByAppId(appId);
-                String pkg  = db.usageDao().getPackageNameByAppId(appId);
+                String name = usageDao.getAppNameByAppId(appId);
+                String packageName = usageDao.getAppPackageNameByAppId(appId);
 
-                if (name == null) name = (pkg != null) ? pkg : ("appId=" + appId);
-                if (pkg == null) pkg = "";
+                if (name == null) {
+                    name = (packageName != null) ? packageName : ("appId=" + appId);
+                }
+                if (packageName == null) {
+                    packageName = "";
+                }
 
-                out.add(new TopNotifAppRow(appId, name, pkg, cnt));
+                out.add(new TopNotificationAppRow(appId, name, packageName, count));
             }
         } finally {
-            c.close();
+            cursor.close();
         }
 
         return out;
     }
 
-    // =========================================================
-    // Notifs/Category
-    // =========================================================
-    public static class CategoryCountRow {
+    // ===================== NOTIFICATION COUNTS BY CATEGORY =====================
+
+    public static class NotificationCategoryCountRow {
         public final String category;
         public final int count;
 
-        public CategoryCountRow(String category, int count) {
+        public NotificationCategoryCountRow(String category, int count) {
             this.category = category;
             this.count = count;
         }
     }
 
-    public List<CategoryCountRow> getNotificationsByCategoryForDay(int date) {
-        List<CategoryCountRow> out = new ArrayList<>();
+    public List<NotificationCategoryCountRow> getNotificationCountByCategory(int date) {
+        List<NotificationCategoryCountRow> out = new ArrayList<>();
 
-        Cursor c = db.notificationDao().countByAppCategoryCursor(date);
+        Cursor cursor = notificationDao.getNotificationCountByAppCategoryCursor(date);
         try {
-            int iCat = c.getColumnIndexOrThrow("app_category");
-            int iCnt = c.getColumnIndexOrThrow("c");
+            int categoryIndex = cursor.getColumnIndexOrThrow("app_category");
+            int countIndex = cursor.getColumnIndexOrThrow("c");
 
-            while (c.moveToNext()) {
-                String cat = c.getString(iCat);
-                int cnt = c.getInt(iCnt);
-                if (cat == null || cat.trim().isEmpty()) cat = "OTHER";
-                out.add(new CategoryCountRow(cat, cnt));
+            while (cursor.moveToNext()) {
+                String category = cursor.getString(categoryIndex);
+                int count = cursor.getInt(countIndex);
+
+                if (category == null || category.trim().isEmpty()) {
+                    category = "OTHER";
+                }
+
+                out.add(new NotificationCategoryCountRow(category, count));
             }
         } finally {
-            c.close();
+            cursor.close();
         }
+
         return out;
     }
 
-    /**
-     * Horas "activas" del día (screen_ms > 0) desde hourly_metric.
-     * Útil para avg/hora: totalNotifs / max(1, hoursActive).
-     */
-    public int getActiveHoursForDay(int date) {
-        Cursor c = db.userActivityDao().getActiveHoursForDay(date);
-        try {
-            if (c.moveToFirst()) {
-                int i = c.getColumnIndexOrThrow("active_hours");
-                return c.getInt(i);
-            }
-            return 0;
-        } finally {
-            c.close();
-        }
+    // ===================== ACTIVE HOURS =====================
+
+    public int getActiveHourCountByDate(int date) {
+        return userActivityDao.getActiveHourCountByDate(date);
     }
 }

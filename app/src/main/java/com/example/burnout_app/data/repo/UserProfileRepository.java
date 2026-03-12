@@ -13,45 +13,49 @@ import java.util.concurrent.Executors;
 
 public class UserProfileRepository {
 
-    private final UserProfileDAO dao;
-    private final LiveData<UserProfileEntity> profileLiveData;
+    private final UserProfileDAO userProfileDao;
+    private final LiveData<UserProfileEntity> userProfileLiveData;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     public UserProfileRepository(Context context) {
         BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
-        dao = db.userProfileDAO();
-        profileLiveData = dao.getProfile();
+        userProfileDao = db.userProfileDAO();
+        userProfileLiveData = userProfileDao.observeUserProfile();
     }
 
-    public LiveData<UserProfileEntity> getProfile() {
-        return profileLiveData;
+    // ===================== PROFILE READ =====================
+
+    public LiveData<UserProfileEntity> observeUserProfile() {
+        return userProfileLiveData;
     }
 
-    public UserProfileEntity getProfileSync() {
-        return dao.getProfileSync();
+    public UserProfileEntity getUserProfile() {
+        return userProfileDao.getUserProfile();
     }
 
-    public void insertOrReplace(UserProfileEntity profile) {
-        executorService.execute(() -> dao.insertOrReplace(profile));
+    public void userProfileExists(ProfileExistsCallback callback) {
+        executorService.execute(() -> {
+            UserProfileEntity profile = userProfileDao.getUserProfile();
+            boolean exists = profile != null;
+            callback.onResult(exists);
+        });
     }
 
-    public void update(UserProfileEntity profile) {
-        executorService.execute(() -> dao.update(profile));
+    // ===================== PROFILE WRITE =====================
+
+    public void upsertUserProfile(UserProfileEntity profile) {
+        executorService.execute(() -> userProfileDao.upsertUserProfile(profile));
     }
 
-    public void deleteAll() {
-        executorService.execute(dao::deleteAll);
+    public void updateUserProfile(UserProfileEntity profile) {
+        executorService.execute(() -> userProfileDao.updateUserProfile(profile));
+    }
+
+    public void deleteAllUserProfiles() {
+        executorService.execute(userProfileDao::deleteAllUserProfiles);
     }
 
     public interface ProfileExistsCallback {
         void onResult(boolean exists);
-    }
-
-    public void profileExists(ProfileExistsCallback callback) {
-        executorService.execute(() -> {
-            UserProfileEntity profile = dao.getProfileSync();
-            boolean exists = profile != null;
-            callback.onResult(exists);
-        });
     }
 }

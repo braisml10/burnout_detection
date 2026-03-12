@@ -25,14 +25,14 @@ public class RegisterActivity extends AppCompatActivity {
     private MaterialButton btnCreateAccount;
     private TextView tvGoLogin;
 
-    private OnboardingViewModel viewModel;
+    private OnboardingViewModel onboardingViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        viewModel = new ViewModelProvider(this).get(OnboardingViewModel.class);
+        onboardingViewModel = new ViewModelProvider(this).get(OnboardingViewModel.class);
 
         btnBack = findViewById(R.id.btnBack);
         etNombre = findViewById(R.id.etNombre);
@@ -49,18 +49,18 @@ public class RegisterActivity extends AppCompatActivity {
                 startActivity(new Intent(RegisterActivity.this, LoginActivity.class)));
 
         btnCreateAccount.setOnClickListener(v -> {
-            String nombre = etNombre.getText() != null ? etNombre.getText().toString().trim() : "";
-            String apellidos = etApellidos.getText() != null ? etApellidos.getText().toString().trim() : "";
+            String firstName = etNombre.getText() != null ? etNombre.getText().toString().trim() : "";
+            String lastName = etApellidos.getText() != null ? etApellidos.getText().toString().trim() : "";
             String email = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
             String password = etPassword.getText() != null ? etPassword.getText().toString() : "";
             String confirmPassword = etConfirmPassword.getText() != null ? etConfirmPassword.getText().toString() : "";
 
-            if (!viewModel.isInputValid(nombre, apellidos, email, password, confirmPassword)) {
+            if (!onboardingViewModel.isInputValid(firstName, lastName, email, password, confirmPassword)) {
                 Toast.makeText(this, "Revisa los campos introducidos", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            viewModel.createProfile(nombre, apellidos, email, password);
+            onboardingViewModel.createUserProfile(firstName, lastName, email, password);
 
             SessionManager sessionManager = new SessionManager(this);
             sessionManager.setLoggedIn(true);

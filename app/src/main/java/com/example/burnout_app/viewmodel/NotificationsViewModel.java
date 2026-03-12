@@ -19,45 +19,41 @@ public class NotificationsViewModel extends AndroidViewModel {
 
     public static class UiState {
         public final int date;
-
         public final int totalDaily;
-        public final int avgPerHour; // total / activeHours
+        public final int avgPerHour;
         public final String mostIntrusiveApp;
-
-        public final int[] notifsByHour; // 24
-        public final List<NotificationRepository.TopNotifAppRow> topApps;
-
-        // ✅ NUEVO: distribución por tipo (category)
-        public final List<NotificationRepository.CategoryCountRow> byCategory;
+        public final int[] notificationCountByHour;
+        public final List<NotificationRepository.TopNotificationAppRow> topNotificationApps;
+        public final List<NotificationRepository.NotificationCategoryCountRow> notificationCountByCategory;
 
         public UiState(int date,
                        int totalDaily,
                        int avgPerHour,
                        String mostIntrusiveApp,
-                       int[] notifsByHour,
-                       List<NotificationRepository.TopNotifAppRow> topApps,
-                       List<NotificationRepository.CategoryCountRow> byCategory) {
+                       int[] notificationCountByHour,
+                       List<NotificationRepository.TopNotificationAppRow> topNotificationApps,
+                       List<NotificationRepository.NotificationCategoryCountRow> notificationCountByCategory) {
             this.date = date;
             this.totalDaily = totalDaily;
             this.avgPerHour = avgPerHour;
             this.mostIntrusiveApp = mostIntrusiveApp;
-            this.notifsByHour = notifsByHour;
-            this.topApps = topApps;
-            this.byCategory = byCategory;
+            this.notificationCountByHour = notificationCountByHour;
+            this.topNotificationApps = topNotificationApps;
+            this.notificationCountByCategory = notificationCountByCategory;
         }
     }
 
-    private final NotificationRepository repo;
-    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final NotificationRepository notificationRepository;
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
 
     private final MutableLiveData<UiState> uiState = new MutableLiveData<>();
 
     private int currentDay;
 
-    public NotificationsViewModel(@NonNull Application app) {
-        super(app);
+    public NotificationsViewModel(@NonNull Application application) {
+        super(application);
 
-        repo = new NotificationRepository(app);
+        notificationRepository = new NotificationRepository(application);
 
         currentDay = TimeKey.epochDayLocal(System.currentTimeMillis());
         loadDay(currentDay);
@@ -71,35 +67,41 @@ public class NotificationsViewModel extends AndroidViewModel {
         if (date == currentDay && uiState.getValue() != null) return;
         currentDay = date;
 
-        io.execute(() -> {
-            int total = repo.getTotalNotificationsForDay(date);
+        ioExecutor.execute(() -> {
+            int totalDaily = notificationRepository.getNotificationCountByDate(date);
 
-            int activeHours = repo.getActiveHoursForDay(date);
-            if (activeHours <= 0) activeHours = 1;
-            int avg = (int) Math.round(total / (double) activeHours);
+            int activeHourCount = notificationRepository.getActiveHourCountByDate(date);
+            if (activeHourCount <= 0) activeHourCount = 1;
 
-            int[] byHour = repo.getNotificationsPerHourForDay(date);
+            int avgPerHour = (int) Math.round(totalDaily / (double) activeHourCount);
 
-            List<NotificationRepository.TopNotifAppRow> top =
-                    repo.getTopAppsByNotificationsForDay(date, 8);
-            if (top == null) top = Collections.emptyList();
+            int[] notificationCountByHour = notificationRepository.getNotificationCountByHour(date);
 
-            String mostIntrusive = "—";
-            if (!top.isEmpty()) mostIntrusive = top.get(0).name;
+            List<NotificationRepository.TopNotificationAppRow> topNotificationApps =
+                    notificationRepository.getTopNotificationAppsByDate(date, 8);
+            if (topNotificationApps == null) {
+                topNotificationApps = Collections.emptyList();
+            }
 
-            // ✅ NUEVO: notificaciones por tipo (category)
-            List<NotificationRepository.CategoryCountRow> byCategory =
-                    repo.getNotificationsByCategoryForDay(date);
-            if (byCategory == null) byCategory = Collections.emptyList();
+            String mostIntrusiveApp = "—";
+            if (!topNotificationApps.isEmpty()) {
+                mostIntrusiveApp = topNotificationApps.get(0).name;
+            }
+
+            List<NotificationRepository.NotificationCategoryCountRow> notificationCountByCategory =
+                    notificationRepository.getNotificationCountByCategory(date);
+            if (notificationCountByCategory == null) {
+                notificationCountByCategory = Collections.emptyList();
+            }
 
             uiState.postValue(new UiState(
                     date,
-                    total,
-                    avg,
-                    mostIntrusive,
-                    byHour,
-                    top,
-                    byCategory
+                    totalDaily,
+                    avgPerHour,
+                    mostIntrusiveApp,
+                    notificationCountByHour,
+                    topNotificationApps,
+                    notificationCountByCategory
             ));
         });
     }
@@ -107,6 +109,6 @@ public class NotificationsViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        io.shutdown();
+        ioExecutor.shutdown();
     }
 }

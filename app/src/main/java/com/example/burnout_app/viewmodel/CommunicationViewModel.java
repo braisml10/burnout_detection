@@ -21,15 +21,13 @@ public class CommunicationViewModel extends AndroidViewModel {
 
     public static class UiState {
         public final int date;
-
         public final int callsCount;
         public final int messagesCount;
         public final long totalCommMs;
-        public final String dominantChannel; // "Voz" | "Texto" | "—"
-
-        public final long[] totalByHour; // 24
-        public final long[] voiceByHour; // 24
-        public final long[] textByHour;  // 24
+        public final String dominantChannel;
+        public final long[] totalByHour;
+        public final long[] voiceByHour;
+        public final long[] textByHour;
 
         public UiState(int date,
                        int callsCount,
@@ -50,16 +48,15 @@ public class CommunicationViewModel extends AndroidViewModel {
         }
     }
 
-    private final CommunicationRepository repo;
-
-    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final CommunicationRepository communicationRepository;
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private final MutableLiveData<UiState> uiState = new MutableLiveData<>();
 
     private int currentDay;
 
-    public CommunicationViewModel(@NonNull Application app) {
-        super(app);
-        repo = new CommunicationRepository(app);
+    public CommunicationViewModel(@NonNull Application application) {
+        super(application);
+        communicationRepository = new CommunicationRepository(application);
 
         currentDay = TimeKey.epochDayLocal(System.currentTimeMillis());
         loadDay(currentDay);
@@ -70,70 +67,70 @@ public class CommunicationViewModel extends AndroidViewModel {
     }
 
     public void loadDay(int date) {
-        // OJO: esto puede evitar refrescar aunque la DB cambie.
-        // Si quieres siempre refrescar, elimina este if.
         if (date == currentDay && uiState.getValue() != null) return;
 
         currentDay = date;
 
-        io.execute(() -> {
+        ioExecutor.execute(() -> {
+            DailyCommMetricsEntity dailyCommMetrics = communicationRepository.getDailyCommMetrics(date);
 
-            // ---------------------------
-            // Daily (usa lo guardado en DB)
-            // ---------------------------
-            DailyCommMetricsEntity d = repo.getDailyCommForDay(date);
+            int callsCount = (dailyCommMetrics != null) ? dailyCommMetrics.calls_count : 0;
+            int messagesCount = (dailyCommMetrics != null) ? dailyCommMetrics.messages_count : 0;
 
-            int calls = (d != null) ? d.calls_count : 0;
-            int msgs  = (d != null) ? d.messages_count : 0;
+            long voiceDayMs = (dailyCommMetrics != null) ? Math.max(0L, dailyCommMetrics.voice_ms) : 0L;
+            long textDayMs = (dailyCommMetrics != null) ? Math.max(0L, dailyCommMetrics.text_ms) : 0L;
 
-            long voiceDay = (d != null) ? Math.max(0L, d.voice_ms) : 0L;
-            long textDay  = (d != null) ? Math.max(0L, d.text_ms)  : 0L;
-
-            long totalDay;
-            if (d != null) {
-                totalDay = Math.max(0L, d.total_comm_ms);
-                if (totalDay <= 0L) totalDay = voiceDay + textDay; // fallback
+            long totalDayMs;
+            if (dailyCommMetrics != null) {
+                totalDayMs = Math.max(0L, dailyCommMetrics.total_comm_ms);
+                if (totalDayMs <= 0L) {
+                    totalDayMs = voiceDayMs + textDayMs;
+                }
             } else {
-                totalDay = 0L;
+                totalDayMs = 0L;
             }
 
-            String dominant = "—";
-            long max = Math.max(voiceDay, textDay);
-            if (max > 0L) dominant = (voiceDay >= textDay) ? "Voz" : "Texto";
+            String dominantChannel = "—";
+            long maxChannelMs = Math.max(voiceDayMs, textDayMs);
+            if (maxChannelMs > 0L) {
+                dominantChannel = (voiceDayMs >= textDayMs) ? "Voz" : "Texto";
+            }
 
-            // ---------------------------
-            // Hourly (24h)
-            // ---------------------------
             long[] totalByHour = new long[24];
             long[] voiceByHour = new long[24];
-            long[] textByHour  = new long[24];
+            long[] textByHour = new long[24];
 
-            List<HourlyCommMetricsEntity> rows = repo.getHourlyCommForDay(date);
-            if (rows == null) rows = Collections.emptyList();
+            List<HourlyCommMetricsEntity> hourlyCommMetrics =
+                    communicationRepository.getHourlyCommMetricsByDate(date);
+            if (hourlyCommMetrics == null) {
+                hourlyCommMetrics = Collections.emptyList();
+            }
 
-            for (HourlyCommMetricsEntity h : rows) {
-                if (h == null) continue;
+            for (HourlyCommMetricsEntity hourlyRow : hourlyCommMetrics) {
+                if (hourlyRow == null) continue;
 
-                int hour = h.hour;
+                int hour = hourlyRow.hour;
                 if (hour < 0 || hour > 23) continue;
 
-                long v = Math.max(0L, h.voice_value);
-                long t = Math.max(0L, h.text_value);
+                long voiceValue = Math.max(0L, hourlyRow.voice_value);
+                long textValue = Math.max(0L, hourlyRow.text_value);
 
-                voiceByHour[hour] = v;
-                textByHour[hour] = t;
+                voiceByHour[hour] = voiceValue;
+                textByHour[hour] = textValue;
 
-                long tot = Math.max(0L, h.total_value);
-                if (tot <= 0L) tot = v + t;
-                totalByHour[hour] = tot;
+                long totalValue = Math.max(0L, hourlyRow.total_value);
+                if (totalValue <= 0L) {
+                    totalValue = voiceValue + textValue;
+                }
+                totalByHour[hour] = totalValue;
             }
 
             uiState.postValue(new UiState(
                     date,
-                    Math.max(0, calls),
-                    Math.max(0, msgs),
-                    totalDay,
-                    dominant,
+                    Math.max(0, callsCount),
+                    Math.max(0, messagesCount),
+                    totalDayMs,
+                    dominantChannel,
                     totalByHour,
                     voiceByHour,
                     textByHour
@@ -144,6 +141,6 @@ public class CommunicationViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        io.shutdown();
+        ioExecutor.shutdown();
     }
 }

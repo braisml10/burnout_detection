@@ -13,26 +13,30 @@ import java.util.List;
 
 public class CommunicationRepository {
 
-    private final CommunicationDAO dao;
+    private final CommunicationDAO communicationDao;
 
-    public CommunicationRepository(Context ctx) {
-        BurnoutDatabase db = BurnoutDatabase.getInstance(ctx.getApplicationContext());
-        dao = db.communicationDao();
+    public CommunicationRepository(Context context) {
+        BurnoutDatabase db = BurnoutDatabase.getInstance(context.getApplicationContext());
+        communicationDao = db.communicationDao();
     }
 
-    public LiveData<DailyCommMetricsEntity> observeDaily(int epochDay) {
-        return dao.observeDailyComm(epochDay);
+    // ===================== DAILY COMM METRICS =====================
+
+    public LiveData<DailyCommMetricsEntity> observeDailyCommMetrics(int epochDay) {
+        return communicationDao.observeDailyCommMetrics(epochDay);
     }
 
-    public LiveData<List<HourlyCommMetricsEntity>> observeHourly(int epochDay) {
-        return dao.observeHourly(epochDay);
+    public DailyCommMetricsEntity getDailyCommMetrics(int epochDay) {
+        return communicationDao.getDailyCommMetrics(epochDay);
     }
 
-    public DailyCommMetricsEntity getDailyCommForDay(int epochDay) {
-        return dao.getDailyComm(epochDay);
+    // ===================== HOURLY COMM METRICS =====================
+
+    public LiveData<List<HourlyCommMetricsEntity>> observeHourlyCommMetrics(int epochDay) {
+        return communicationDao.observeHourlyCommMetrics(epochDay);
     }
 
-    public List<HourlyCommMetricsEntity> getHourlyCommForDay(int epochDay) {
-        return dao.getHourlyCommByDate(epochDay);
+    public List<HourlyCommMetricsEntity> getHourlyCommMetricsByDate(int epochDay) {
+        return communicationDao.getHourlyCommMetricsByDate(epochDay);
     }
 }

@@ -13,6 +13,7 @@ import java.util.List;
 @Dao
 public interface NotificationDAO {
 
+    // ===================== NOTIFICATION EVENTS =====================
     @Insert
     void insertNotificationEvent(NotificationEventEntity event);
 
@@ -22,14 +23,16 @@ public interface NotificationDAO {
     @Query("DELETE FROM notification_event WHERE date < :cutoffDate")
     int deleteNotificationEventsOlderThanDate(int cutoffDate);
 
+    // ===================== NOTIFICATION COUNTS =====================
     @Query("SELECT COUNT(*) FROM notification_event WHERE date = :date")
-    int countByDate(int date);
+    int getNotificationCountByDate(int date);
 
     @Query("SELECT hour, COUNT(*) AS c FROM notification_event WHERE date = :date GROUP BY hour ORDER BY hour")
-    Cursor countByHourCursor(int date);
+    Cursor getNotificationCountByHourCursor(int date);
 
+    // ===================== NOTIFICATION AGGREGATIONS =====================
     @Query("SELECT app_id, COUNT(*) AS c FROM notification_event WHERE date = :date GROUP BY app_id ORDER BY c DESC LIMIT :limit")
-    Cursor topAppsCursor(int date, int limit);
+    Cursor getTopNotificationAppsCursor(int date, int limit);
 
     @Query(
             "SELECT " +
@@ -49,15 +52,15 @@ public interface NotificationDAO {
                     "  END " +
                     "ORDER BY c DESC"
     )
-    Cursor countByAppCategoryCursor(int date);
+    Cursor getNotificationCountByAppCategoryCursor(int date);
 
     @Query("SELECT COUNT(*) FROM notification_event WHERE date = :epochDay AND app_id IN (" +
-                "SELECT app_id FROM app WHERE category = 'MESSAGING')")
-    int countMessagingNotifsByDate(int epochDay);
+            "SELECT app_id FROM app WHERE category = 'MESSAGING')")
+    int getMessagingNotificationCountByDate(int epochDay);
 
     @Query("SELECT hour, COUNT(*) AS c FROM notification_event " +
             "WHERE date = :epochDay AND app_id IN (SELECT app_id FROM app WHERE category = 'MESSAGING') " +
             "GROUP BY hour " +
             "ORDER BY hour")
-    Cursor countMessagingNotifsByHourCursor(int epochDay);
+    Cursor getMessagingNotificationCountByHourCursor(int epochDay);
 }

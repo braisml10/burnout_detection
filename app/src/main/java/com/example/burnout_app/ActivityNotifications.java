@@ -37,7 +37,7 @@ import java.util.List;
 
 public class ActivityNotifications extends AppCompatActivity {
 
-    private NotificationsViewModel vm;
+    private NotificationsViewModel notificationsViewModel;
 
     // KPIs
     private TextView tvTotalNotifs;
@@ -52,31 +52,34 @@ public class ActivityNotifications extends AppCompatActivity {
     private int todayDay;
     private int selectedDay;
 
-    // Chart 1: tendencia (LINE)
+    // Chart 1: trend
     private LineChart chartNotifs;
 
-    // Chart 2: una barra horizontal segmentada por tipo
+    // Chart 2: stacked horizontal bar by category
     private HorizontalBarChart chartNotifTypesStacked;
 
-    // Leyenda custom
+    // Custom legend
     private LinearLayout legendNotifTypes;
 
-    // cache para tooltip por segmento (stackIndex)
+    // Cache for tooltip by stack index
     private List<NotifTypeSeg> lastTypeSegs;
 
-    // Top apps (3)
-    private TextView tvApp1Name, tvApp2Name, tvApp3Name;
-    private ProgressBar pbApp1, pbApp2, pbApp3;
-    private TextView tvApp1Pct, tvApp2Pct, tvApp3Pct;
+    // Top apps
+    private TextView tvApp1Name;
+    private TextView tvApp2Name;
+    private TextView tvApp3Name;
+    private ProgressBar pbApp1;
+    private ProgressBar pbApp2;
+    private ProgressBar pbApp3;
+    private TextView tvApp1Pct;
+    private TextView tvApp2Pct;
+    private TextView tvApp3Pct;
 
-    // ✅ Categorías fijas (siempre aparecen aunque estén a 0)
+    // Fixed categories shown even when count is zero
     private static final String[] FIXED_CATEGORIES = new String[]{
             "WORK", "ENTERTAINMENT", "SOCIAL", "COMMUNICATION", "OTHER"
     };
 
-    // -------------------------
-    // Modelo interno para leyenda/tooltip
-    // -------------------------
     private static class NotifTypeSeg {
         final String label;
         final int count;
@@ -98,28 +101,28 @@ public class ActivityNotifications extends AppCompatActivity {
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
 
-        vm = new ViewModelProvider(this).get(NotificationsViewModel.class);
+        notificationsViewModel = new ViewModelProvider(this).get(NotificationsViewModel.class);
 
         // KPIs
         tvTotalNotifs = findViewById(R.id.tvTotalNotifsValue);
         tvAvgPerHour = findViewById(R.id.tvAvgPerHourValue);
         tvMostIntrusive = findViewById(R.id.tvMostIntrusiveValue);
 
-        // Chart 1 (LINE)
+        // Trend chart
         chartNotifs = findViewById(R.id.chartNotifs);
         if (chartNotifs == null) {
             throw new IllegalStateException("chartNotifs NULL: falta R.id.chartNotifs en el layout");
         }
         setupNotifsLineChart(chartNotifs);
 
-        // Chart 2 (STACKED)
+        // Type strip chart
         chartNotifTypesStacked = findViewById(R.id.chartNotifTypesStacked);
         if (chartNotifTypesStacked == null) {
             throw new IllegalStateException("chartNotifTypesStacked NULL: falta R.id.chartNotifTypesStacked en el layout");
         }
         setupTypeStrip(chartNotifTypesStacked);
 
-        // Leyenda
+        // Legend
         legendNotifTypes = findViewById(R.id.legendNotifTypes);
         if (legendNotifTypes == null) {
             throw new IllegalStateException("legendNotifTypes NULL: falta R.id.legendNotifTypes en el layout");
@@ -149,42 +152,42 @@ public class ActivityNotifications extends AppCompatActivity {
         btnPrevDay.setOnClickListener(v -> {
             selectedDay--;
             applyDayUi();
-            vm.loadDay(selectedDay);
+            notificationsViewModel.loadDay(selectedDay);
         });
 
         btnNextDay.setOnClickListener(v -> {
             if (selectedDay < todayDay) {
                 selectedDay++;
                 applyDayUi();
-                vm.loadDay(selectedDay);
+                notificationsViewModel.loadDay(selectedDay);
             }
         });
 
-        // Observers
-        vm.getUiState().observe(this, s -> {
-            if (s == null) return;
+        notificationsViewModel.getUiState().observe(this, uiState -> {
+            if (uiState == null) return;
 
-            tvTotalNotifs.setText(String.valueOf(s.totalDaily));
-            tvAvgPerHour.setText(String.valueOf(s.avgPerHour));
-            tvMostIntrusive.setText(prettyName(s.mostIntrusiveApp));
+            tvTotalNotifs.setText(String.valueOf(uiState.totalDaily));
+            tvAvgPerHour.setText(String.valueOf(uiState.avgPerHour));
+            tvMostIntrusive.setText(prettyName(uiState.mostIntrusiveApp));
 
-            renderNotifsLineChart(chartNotifs, s.notifsByHour);
-
-            // ✅ barra segmentada + leyenda + tooltip (marker)
-            renderTypeStrip(chartNotifTypesStacked, s.byCategory);
-
-            renderTopApps(s.totalDaily, s.topApps);
+            renderNotifsLineChart(chartNotifs, uiState.notificationCountByHour);
+            renderTypeStrip(chartNotifTypesStacked, uiState.notificationCountByCategory);
+            renderTopApps(uiState.totalDaily, uiState.topNotificationApps);
         });
 
         applyDayUi();
-        vm.loadDay(selectedDay);
+        notificationsViewModel.loadDay(selectedDay);
     }
 
     private void applyDayUi() {
         String label;
-        if (selectedDay == todayDay) label = "Hoy";
-        else if (selectedDay == todayDay - 1) label = "Ayer";
-        else label = TimeKey.dateLabelFromEpochDay(selectedDay);
+        if (selectedDay == todayDay) {
+            label = "Hoy";
+        } else if (selectedDay == todayDay - 1) {
+            label = "Ayer";
+        } else {
+            label = TimeKey.dateLabelFromEpochDay(selectedDay);
+        }
 
         tvDayLabel.setText(label);
 
@@ -193,127 +196,127 @@ public class ActivityNotifications extends AppCompatActivity {
         btnNextDay.setAlpha(canGoNext ? 1f : 0.35f);
     }
 
-    // =========================================================
-    // LINE CHART (tendencia)
-    // =========================================================
+    // ===================== TREND CHART =====================
 
-    private void setupNotifsLineChart(LineChart c) {
-        c.getDescription().setEnabled(false);
-        c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
+    private void setupNotifsLineChart(LineChart chart) {
+        chart.getDescription().setEnabled(false);
+        chart.getLegend().setEnabled(false);
+        chart.setNoDataText("Sin datos");
 
-        c.setTouchEnabled(true);
-        c.setPinchZoom(true);
+        chart.setTouchEnabled(true);
+        chart.setPinchZoom(true);
 
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setAxisMinimum(0f);
-        x.setAxisMaximum(24f);
-        x.setLabelCount(5, true);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setDrawGridLines(false);
-        x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
-                int h = Math.round(value);
-                if (h == 24) return "24";
-                if (h % 6 == 0) return String.format("%02d", h);
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setGranularity(1f);
+        xAxis.setAxisMinimum(0f);
+        xAxis.setAxisMaximum(24f);
+        xAxis.setLabelCount(5, true);
+        xAxis.setTextColor(Color.parseColor("#94A3B8"));
+        xAxis.setDrawGridLines(false);
+        xAxis.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                int hour = Math.round(value);
+                if (hour == 24) return "24";
+                if (hour % 6 == 0) return String.format("%02d", hour);
                 return "";
             }
         });
 
-        c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setGranularity(1f);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
+        chart.getAxisRight().setEnabled(false);
+
+        YAxis leftAxis = chart.getAxisLeft();
+        leftAxis.setAxisMinimum(0f);
+        leftAxis.setGranularity(1f);
+        leftAxis.setTextColor(Color.parseColor("#94A3B8"));
+        leftAxis.setDrawGridLines(true);
     }
 
-    private void renderNotifsLineChart(LineChart chart, int[] notifsByHour) {
-        if (notifsByHour == null || notifsByHour.length != 24) {
+    private void renderNotifsLineChart(LineChart chart, int[] notificationCountByHour) {
+        if (notificationCountByHour == null || notificationCountByHour.length != 24) {
             chart.clear();
             chart.invalidate();
             return;
         }
 
         List<Entry> entries = new ArrayList<>(25);
-        for (int h = 0; h < 24; h++) entries.add(new Entry(h, notifsByHour[h]));
-        entries.add(new Entry(24f, notifsByHour[23]));
+        for (int hour = 0; hour < 24; hour++) {
+            entries.add(new Entry(hour, notificationCountByHour[hour]));
+        }
+        entries.add(new Entry(24f, notificationCountByHour[23]));
 
-        LineDataSet ds = new LineDataSet(entries, "Notificaciones");
-        ds.setColor(Color.parseColor("#22D3EE"));
-        ds.setLineWidth(2f);
-        ds.setCircleColor(Color.parseColor("#22D3EE"));
-        ds.setCircleRadius(3f);
-        ds.setDrawValues(false);
-        ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        LineDataSet dataSet = new LineDataSet(entries, "Notificaciones");
+        dataSet.setColor(Color.parseColor("#22D3EE"));
+        dataSet.setLineWidth(2f);
+        dataSet.setCircleColor(Color.parseColor("#22D3EE"));
+        dataSet.setCircleRadius(3f);
+        dataSet.setDrawValues(false);
+        dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
 
-        chart.setData(new LineData(ds));
+        chart.setData(new LineData(dataSet));
         chart.invalidate();
     }
 
-    // =========================================================
-    // TYPE STRIP (1 barra segmentada proporcional + tooltip + leyenda)
-    // =========================================================
+    // ===================== TYPE STRIP =====================
 
-    private void setupTypeStrip(HorizontalBarChart c) {
-        c.getDescription().setEnabled(false);
-        c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
+    private void setupTypeStrip(HorizontalBarChart chart) {
+        chart.getDescription().setEnabled(false);
+        chart.getLegend().setEnabled(false);
+        chart.setNoDataText("Sin datos");
 
-        c.setTouchEnabled(true);
-        c.setPinchZoom(false);
-        c.setScaleEnabled(false);
+        chart.setTouchEnabled(true);
+        chart.setPinchZoom(false);
+        chart.setScaleEnabled(false);
 
-        c.setDrawGridBackground(false);
-        c.setDrawBorders(false);
+        chart.setDrawGridBackground(false);
+        chart.setDrawBorders(false);
 
-        // Barra “full width”
-        c.setViewPortOffsets(0f, 0f, 0f, 0f);
-        c.setExtraOffsets(0f, 0f, 0f, 0f);
-        c.setFitBars(true);
+        chart.setViewPortOffsets(0f, 0f, 0f, 0f);
+        chart.setExtraOffsets(0f, 0f, 0f, 0f);
+        chart.setFitBars(true);
 
-        // Ejes invisibles
-        c.getAxisRight().setEnabled(false);
+        chart.getAxisRight().setEnabled(false);
 
-        YAxis left = c.getAxisLeft();
-        left.setEnabled(true);
-        left.setDrawAxisLine(false);
-        left.setDrawGridLines(false);
-        left.setDrawLabels(false);
-        left.setAxisMinimum(0f);
+        YAxis leftAxis = chart.getAxisLeft();
+        leftAxis.setEnabled(true);
+        leftAxis.setDrawAxisLine(false);
+        leftAxis.setDrawGridLines(false);
+        leftAxis.setDrawLabels(false);
+        leftAxis.setAxisMinimum(0f);
 
-        XAxis x = c.getXAxis();
-        x.setEnabled(true);
-        x.setDrawAxisLine(false);
-        x.setDrawGridLines(false);
-        x.setDrawLabels(false);
-        x.setAxisMinimum(-0.5f);
-        x.setAxisMaximum(0.5f); // 1 barra
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setEnabled(true);
+        xAxis.setDrawAxisLine(false);
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawLabels(false);
+        xAxis.setAxisMinimum(-0.5f);
+        xAxis.setAxisMaximum(0.5f);
 
-        // ✅ importante para marker
-        c.setDrawMarkers(true);
+        chart.setDrawMarkers(true);
 
-        // ✅ igual que en screen_time: NO limpiar highlight aquí
-        c.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
-            @Override public void onValueSelected(Entry e, Highlight h) { }
-            @Override public void onNothingSelected() { }
+        chart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) { }
+
+            @Override
+            public void onNothingSelected() { }
         });
     }
 
     private void renderTypeStrip(HorizontalBarChart chart,
-                                 List<NotificationRepository.CategoryCountRow> rows) {
+                                 List<NotificationRepository.NotificationCategoryCountRow> rows) {
 
         int total = 0;
-        for (String cat : FIXED_CATEGORIES) {
-            total += countForCat(rows, cat);
+        for (String category : FIXED_CATEGORIES) {
+            total += countForCategory(rows, category);
         }
 
         List<NotifTypeSeg> segs = new ArrayList<>(FIXED_CATEGORIES.length);
-        for (String cat : FIXED_CATEGORIES) {
-            int cnt = countForCat(rows, cat);
-            int pct = (total > 0) ? Math.round((cnt * 100f) / total) : 0;
-            segs.add(new NotifTypeSeg(cat, cnt, pct, colorForCategory(cat)));
+        for (String category : FIXED_CATEGORIES) {
+            int count = countForCategory(rows, category);
+            int pct = (total > 0) ? Math.round((count * 100f) / total) : 0;
+            segs.add(new NotifTypeSeg(category, count, pct, colorForCategory(category)));
         }
         lastTypeSegs = segs;
 
@@ -339,17 +342,16 @@ public class ActivityNotifications extends AppCompatActivity {
         List<BarEntry> entries = new ArrayList<>(1);
         entries.add(new BarEntry(0f, stack));
 
-        BarDataSet ds = new BarDataSet(entries, "");
-        ds.setDrawValues(false);
-        ds.setColors(colors);
-        ds.setStackLabels(stackLabels);
+        BarDataSet dataSet = new BarDataSet(entries, "");
+        dataSet.setDrawValues(false);
+        dataSet.setColors(colors);
+        dataSet.setStackLabels(stackLabels);
+        dataSet.setBarBorderWidth(0.8f);
+        dataSet.setBarBorderColor(Color.parseColor("#0B1220"));
+        dataSet.setHighlightEnabled(true);
+        dataSet.setHighLightColor(Color.TRANSPARENT);
 
-        ds.setBarBorderWidth(0.8f);
-        ds.setBarBorderColor(Color.parseColor("#0B1220"));
-        ds.setHighlightEnabled(true);
-        ds.setHighLightColor(Color.TRANSPARENT);
-
-        BarData data = new BarData(ds);
+        BarData data = new BarData(dataSet);
         data.setBarWidth(0.55f);
 
         chart.setData(data);
@@ -358,24 +360,26 @@ public class ActivityNotifications extends AppCompatActivity {
         chart.getAxisLeft().setAxisMinimum(0f);
         chart.getAxisLeft().setAxisMaximum(max);
 
-        // ✅ Reutiliza EXACTAMENTE el mismo marker layout que screen_time
-        //    (visual idéntico)
-        TypeMarkerView mv = new TypeMarkerView(this);
-        mv.setChartView(chart);          // 🔑 CLAVE (igual que en screen_time)
-        chart.setMarker(mv);
+        TypeMarkerView markerView = new TypeMarkerView(this);
+        markerView.setChartView(chart);
+        chart.setMarker(markerView);
 
         chart.invalidate();
 
         renderTypeLegend(segs);
     }
 
-    private int countForCat(List<NotificationRepository.CategoryCountRow> rows, String cat) {
+    private int countForCategory(List<NotificationRepository.NotificationCategoryCountRow> rows,
+                                 String category) {
         if (rows == null || rows.isEmpty()) return 0;
-        String target = safeCatLabel(cat);
-        for (NotificationRepository.CategoryCountRow r : rows) {
-            if (r == null) continue;
-            String c = safeCatLabel(r.category);
-            if (target.equals(c)) return Math.max(0, r.count);
+
+        String target = safeCategoryLabel(category);
+        for (NotificationRepository.NotificationCategoryCountRow row : rows) {
+            if (row == null) continue;
+            String currentCategory = safeCategoryLabel(row.category);
+            if (target.equals(currentCategory)) {
+                return Math.max(0, row.count);
+            }
         }
         return 0;
     }
@@ -387,8 +391,10 @@ public class ActivityNotifications extends AppCompatActivity {
         if (segs == null || segs.isEmpty()) return;
 
         List<NotifTypeSeg> nonZero = new ArrayList<>();
-        for (NotifTypeSeg s : segs) {
-            if (s != null && s.count > 0) nonZero.add(s);
+        for (NotifTypeSeg seg : segs) {
+            if (seg != null && seg.count > 0) {
+                nonZero.add(seg);
+            }
         }
 
         if (nonZero.isEmpty()) {
@@ -398,9 +404,9 @@ public class ActivityNotifications extends AppCompatActivity {
 
         Collections.sort(nonZero, (a, b) -> Integer.compare(b.count, a.count));
 
-        final int MAX_ITEMS = 3;
+        final int maxItems = 3;
+        int shown = Math.min(maxItems, nonZero.size());
 
-        int shown = Math.min(MAX_ITEMS, nonZero.size());
         for (int i = 0; i < shown; i++) {
             legendNotifTypes.addView(makeLegendItem(nonZero.get(i)));
         }
@@ -421,68 +427,63 @@ public class ActivityNotifications extends AppCompatActivity {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.HORIZONTAL);
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        lp.rightMargin = 18;
-        item.setLayoutParams(lp);
+        itemParams.rightMargin = 18;
+        item.setLayoutParams(itemParams);
 
         View dot = new View(this);
-        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(12, 12);
-        dotLp.rightMargin = 8;
-        dot.setLayoutParams(dotLp);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(12, 12);
+        dotParams.rightMargin = 8;
+        dot.setLayoutParams(dotParams);
         dot.setBackgroundColor(seg.color);
 
-        TextView tv = new TextView(this);
-        tv.setText(seg.label + " " + seg.pct + "%");
-        tv.setTextColor(Color.parseColor("#E2E8F0"));
-        tv.setTextSize(12f);
-        tv.setSingleLine(true);
+        TextView label = new TextView(this);
+        label.setText(seg.label + " " + seg.pct + "%");
+        label.setTextColor(Color.parseColor("#E2E8F0"));
+        label.setTextSize(12f);
+        label.setSingleLine(true);
 
         item.addView(dot);
-        item.addView(tv);
+        item.addView(label);
 
         return item;
     }
 
-    // ✅ Paleta diferente a la superior (evitamos cyan/verde similares a top apps)
-    private int colorForCategory(String cat) {
-        if (cat == null) return Color.parseColor("#94A3B8");
-        cat = cat.trim().toUpperCase();
+    private int colorForCategory(String category) {
+        if (category == null) return Color.parseColor("#94A3B8");
+        category = category.trim().toUpperCase();
 
-        switch (cat) {
+        switch (category) {
             case "WORK":
-                return Color.parseColor("#8B5CF6"); // purple
+                return Color.parseColor("#8B5CF6");
             case "ENTERTAINMENT":
-                return Color.parseColor("#F59E0B"); // amber
+                return Color.parseColor("#F59E0B");
             case "SOCIAL":
-                return Color.parseColor("#EC4899"); // pink
+                return Color.parseColor("#EC4899");
             case "COMMUNICATION":
-                return Color.parseColor("#60A5FA"); // blue
+                return Color.parseColor("#60A5FA");
             case "OTHER":
             default:
-                return Color.parseColor("#94A3B8"); // gray-blue
+                return Color.parseColor("#94A3B8");
         }
     }
 
-    private String safeCatLabel(String cat) {
-        if (cat == null) return "OTHER";
-        cat = cat.trim();
-        if (cat.isEmpty()) return "OTHER";
-        return cat.toUpperCase();
+    private String safeCategoryLabel(String category) {
+        if (category == null) return "OTHER";
+        category = category.trim();
+        if (category.isEmpty()) return "OTHER";
+        return category.toUpperCase();
     }
 
-    // =========================
-    // MarkerView interno (MISMA SOLUCIÓN que screen_time)
-    // Reutiliza R.layout.marker_night + bg_marker (idéntico visual)
-    // =========================
     private class TypeMarkerView extends MarkerView {
 
         private final TextView tv;
 
         public TypeMarkerView(Context context) {
-            super(context, R.layout.marker); // ✅ reutilizamos el mismo
+            super(context, R.layout.marker);
             tv = findViewById(R.id.tvMarkerText);
         }
 
@@ -491,16 +492,15 @@ public class ActivityNotifications extends AppCompatActivity {
             if (lastTypeSegs == null || lastTypeSegs.isEmpty() || highlight == null) {
                 tv.setText("--");
             } else {
-                int stackIdx = highlight.getStackIndex();
-                if (stackIdx >= 0 && stackIdx < lastTypeSegs.size()) {
-                    NotifTypeSeg seg = lastTypeSegs.get(stackIdx);
+                int stackIndex = highlight.getStackIndex();
+                if (stackIndex >= 0 && stackIndex < lastTypeSegs.size()) {
+                    NotifTypeSeg seg = lastTypeSegs.get(stackIndex);
                     tv.setText(seg.label + " (" + seg.pct + "%)");
                 } else {
                     tv.setText("--");
                 }
             }
 
-            // ✅ asegura que getWidth()/getHeight() sean correctos (igual que screen_time)
             measure(
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -521,94 +521,105 @@ public class ActivityNotifications extends AppCompatActivity {
             float x = base.x;
             float y = base.y;
 
-            float w = getMeasuredWidth() > 0 ? getMeasuredWidth() : getWidth();
-            float h = getMeasuredHeight() > 0 ? getMeasuredHeight() : getHeight();
+            float width = getMeasuredWidth() > 0 ? getMeasuredWidth() : getWidth();
+            float height = getMeasuredHeight() > 0 ? getMeasuredHeight() : getHeight();
 
-            View cv = getChartView();
-            if (cv == null) return new MPPointF(x, y);
+            View chartView = getChartView();
+            if (chartView == null) return new MPPointF(x, y);
 
-            float chartW = cv.getWidth();
-            float chartH = cv.getHeight();
+            float chartWidth = chartView.getWidth();
+            float chartHeight = chartView.getHeight();
+            float padding = dp(6);
 
-            float pad = dp(6);
-
-            // clamp horizontal al VIEW (0..chartW)
-            if (posX + x < pad) {
-                x = pad - posX;
-            } else if (posX + x + w > chartW - pad) {
-                x = (chartW - pad) - posX - w;
+            if (posX + x < padding) {
+                x = padding - posX;
+            } else if (posX + x + width > chartWidth - padding) {
+                x = (chartWidth - padding) - posX - width;
             }
 
-            // clamp vertical (si se sale por arriba, lo bajamos dentro)
-            if (posY + y < pad) {
-                y = pad - posY;
+            if (posY + y < padding) {
+                y = padding - posY;
             }
 
             return new MPPointF(x, y);
         }
     }
 
-    private float dp(float v) {
-        return v * getResources().getDisplayMetrics().density;
+    private float dp(float value) {
+        return value * getResources().getDisplayMetrics().density;
     }
 
-    // =========================================================
-    // Top apps
-    // =========================================================
+    // ===================== TOP APPS =====================
 
-    private void renderTopApps(int totalDaily, List<NotificationRepository.TopNotifAppRow> top) {
+    private void renderTopApps(int totalDaily,
+                               List<NotificationRepository.TopNotificationAppRow> topNotificationApps) {
         setTopRow(1, "--", 0, 0, totalDaily);
         setTopRow(2, "--", 0, 0, totalDaily);
         setTopRow(3, "--", 0, 0, totalDaily);
 
-        if (top == null || top.isEmpty()) return;
+        if (topNotificationApps == null || topNotificationApps.isEmpty()) return;
 
-        int mx = maxCount(top);
-        if (top.size() >= 1) setTopRow(1, top.get(0).name, top.get(0).count, mx, totalDaily);
-        if (top.size() >= 2) setTopRow(2, top.get(1).name, top.get(1).count, mx, totalDaily);
-        if (top.size() >= 3) setTopRow(3, top.get(2).name, top.get(2).count, mx, totalDaily);
-    }
+        int maxCount = maxCount(topNotificationApps);
 
-    private int maxCount(List<NotificationRepository.TopNotifAppRow> top) {
-        int m = 0;
-        for (NotificationRepository.TopNotifAppRow r : top) {
-            if (r != null) m = Math.max(m, r.count);
+        if (topNotificationApps.size() >= 1) {
+            setTopRow(1, topNotificationApps.get(0).name, topNotificationApps.get(0).count, maxCount, totalDaily);
         }
-        return m;
+        if (topNotificationApps.size() >= 2) {
+            setTopRow(2, topNotificationApps.get(1).name, topNotificationApps.get(1).count, maxCount, totalDaily);
+        }
+        if (topNotificationApps.size() >= 3) {
+            setTopRow(3, topNotificationApps.get(2).name, topNotificationApps.get(2).count, maxCount, totalDaily);
+        }
     }
 
-    private void setTopRow(int idx, String name, int count, int maxCount, int totalDaily) {
+    private int maxCount(List<NotificationRepository.TopNotificationAppRow> topNotificationApps) {
+        int max = 0;
+        for (NotificationRepository.TopNotificationAppRow row : topNotificationApps) {
+            if (row != null) {
+                max = Math.max(max, row.count);
+            }
+        }
+        return max;
+    }
+
+    private void setTopRow(int index, String name, int count, int maxCount, int totalDaily) {
         int bar = 0;
-        if (maxCount > 0) bar = (int) Math.round((count * 100.0) / maxCount);
+        if (maxCount > 0) {
+            bar = (int) Math.round((count * 100.0) / maxCount);
+        }
 
         int pct = 0;
-        if (totalDaily > 0) pct = (int) Math.round((count * 100.0) / totalDaily);
+        if (totalDaily > 0) {
+            pct = (int) Math.round((count * 100.0) / totalDaily);
+        }
 
-        String n = prettyName(name);
+        String prettyName = prettyName(name);
 
-        if (idx == 1) {
-            tvApp1Name.setText(n);
+        if (index == 1) {
+            tvApp1Name.setText(prettyName);
             pbApp1.setProgress(bar);
             tvApp1Pct.setText(pct + "%");
-        } else if (idx == 2) {
-            tvApp2Name.setText(n);
+        } else if (index == 2) {
+            tvApp2Name.setText(prettyName);
             pbApp2.setProgress(bar);
             tvApp2Pct.setText(pct + "%");
-        } else if (idx == 3) {
-            tvApp3Name.setText(n);
+        } else if (index == 3) {
+            tvApp3Name.setText(prettyName);
             pbApp3.setProgress(bar);
             tvApp3Pct.setText(pct + "%");
         }
     }
 
-    private static String prettyName(String s) {
-        if (s == null) return "--";
-        s = s.trim();
-        if (s.isEmpty()) return "--";
-        if (s.contains(".") && !s.contains(" ")) {
-            String[] parts = s.split("\\.");
+    private static String prettyName(String value) {
+        if (value == null) return "--";
+        value = value.trim();
+        if (value.isEmpty()) return "--";
+
+        if (value.contains(".") && !value.contains(" ")) {
+            String[] parts = value.split("\\.");
             return parts[parts.length - 1];
         }
-        return s;
+
+        return value;
     }
 }

@@ -21,43 +21,36 @@ public class UserActivityRepository {
         userActivityDao = db.userActivityDao();
     }
 
-    // =========================================================
-    // Observables (UI: Dashboard / DailyDetail)
-    // =========================================================
+    // ===================== DAILY METRICS =====================
 
     public LiveData<DailyMetricsEntity> observeDailyMetrics(int epochDay) {
         return userActivityDao.observeDailyMetrics(epochDay);
     }
 
+    // ===================== HOURLY METRICS =====================
+
     public LiveData<List<HourlyMetricsEntity>> observeHourlyMetrics(int epochDay) {
         return userActivityDao.observeHourlyMetricsByDate(epochDay);
     }
 
-    // =========================================================
-    // Hourly helpers (UI: Multitask -> switches per hour)
-    // NOTE: Este métod corresponde a hourly_metric, así que vive aquí,
-    // no en UsageRepository.
-    // =========================================================
+    public int[] getAppSwitchCountByHour(int date) {
+        int[] out = new int[24];
 
-    public int[] getSwitchesPerHourForDay(int date) {
-
-        int[] out = new int[24]; // 0..23
-
-        Cursor c = userActivityDao.getSwitchesPerHourForDay(date);
+        Cursor cursor = userActivityDao.getAppSwitchCountByHourCursor(date);
         try {
-            int iHour = c.getColumnIndexOrThrow("hour");
-            int iCnt  = c.getColumnIndexOrThrow("switches");
+            int hourIndex = cursor.getColumnIndexOrThrow("hour");
+            int countIndex = cursor.getColumnIndexOrThrow("switches");
 
-            while (c.moveToNext()) {
-                int hour = c.getInt(iHour);
-                int cnt  = c.getInt(iCnt);
+            while (cursor.moveToNext()) {
+                int hour = cursor.getInt(hourIndex);
+                int count = cursor.getInt(countIndex);
 
                 if (hour >= 0 && hour <= 23) {
-                    out[hour] = cnt;
+                    out[hour] = count;
                 }
             }
         } finally {
-            c.close();
+            cursor.close();
         }
 
         return out;

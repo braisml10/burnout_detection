@@ -7,9 +7,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- =========================
-         MAIN CONTENT (tu layout tal cual)
-         ========================= -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
@@ -21,7 +18,6 @@
         android:paddingBottom="32dp"
         tools:context=".MainActivity">
 
-        <!-- HEADER: avatar + menu -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/avatarCard"
             android:layout_width="44dp"
@@ -37,39 +33,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:gravity="center"
-                android:text="B"
+                android:text="--"
                 android:textColor="@android:color/white"
                 android:textStyle="bold"
                 android:textSize="16sp"
                 tools:ignore="HardcodedText" />
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- USAMOS ESTE BOTÓN (arriba derecha) PARA ABRIR EL DRAWER
-        <ImageButton
-            android:id="@+id/btnMenu"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="Menu"
-            app:srcCompat="@drawable/ic_menu"
-            app:tint="@android:color/white"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="@id/avatarCard" /> -->
-
-        <!-- TITLE ROW -->
         <TextView
             android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="Actividad hoy"
+            android:text="@string/main_today_activity_title"
             android:textColor="@android:color/white"
             android:textStyle="bold"
             android:textSize="18sp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/avatarCard"
-            tools:ignore="HardcodedText" />
+            app:layout_constraintTop_toBottomOf="@id/avatarCard" />
 
         <TextView
             android:id="@+id/tvDate"
@@ -80,10 +61,8 @@
             android:textColor="#94A3B8"
             android:textSize="14sp"
             app:layout_constraintBaseline_toBaselineOf="@id/tvTitle"
-            app:layout_constraintStart_toEndOf="@id/tvTitle"
-            tools:ignore="HardcodedText" />
+            app:layout_constraintStart_toEndOf="@id/tvTitle" />
 
-        <!-- KPI GRID: 2x2 -->
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guidelineMid"
             android:layout_width="wrap_content"
@@ -91,24 +70,23 @@
             android:orientation="vertical"
             app:layout_constraintGuide_percent="0.5" />
 
-        <!-- Card 1: Screen time (CLICKABLE) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardScreenTime"
             android:layout_width="0dp"
             android:layout_height="140dp"
             android:layout_marginTop="18dp"
             android:layout_marginEnd="8dp"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#111B2E"
-            app:strokeColor="#1E2A44"
-            app:strokeWidth="1dp"
             android:clickable="true"
+            android:contentDescription="@string/main_cd_open_screen_time"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            android:contentDescription="Abrir Tiempo en pantalla"
-            app:layout_constraintStart_toStartOf="parent"
+            app:cardBackgroundColor="#111B2E"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#1E2A44"
+            app:strokeWidth="1dp"
             app:layout_constraintEnd_toStartOf="@id/guidelineMid"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tvTitle">
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -120,9 +98,9 @@
                     android:id="@+id/iconBg1"
                     android:layout_width="42dp"
                     android:layout_height="42dp"
+                    app:cardBackgroundColor="#0F253E"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="0dp"
-                    app:cardBackgroundColor="#0F253E"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent">
 
@@ -138,66 +116,62 @@
                     android:id="@+id/chev1"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    app:srcCompat="@drawable/ic_chevron_right"
-                    app:tint="#64748B"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:srcCompat="@drawable/ic_chevron_right"
+                    app:tint="#64748B" />
 
                 <TextView
                     android:id="@+id/label1"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
-                    android:text="Tiempo de pantalla"
+                    android:text="@string/main_screen_time_label"
                     android:textColor="#94A3B8"
                     android:textSize="14sp"
-                    app:layout_constraintTop_toBottomOf="@id/iconBg1"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/iconBg1" />
 
-                <!-- FIX: anchored + autosize + no font padding -->
                 <TextView
                     android:id="@+id/value1"
                     android:layout_width="0dp"
                     android:layout_height="0dp"
-                    android:includeFontPadding="false"
+                    android:ellipsize="end"
                     android:gravity="start|bottom"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
                     android:text="--"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    app:autoSizeTextType="uniform"
-                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeMaxTextSize="26sp"
+                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeStepGranularity="1sp"
-                    app:layout_constraintTop_toBottomOf="@id/label1"
+                    app:autoSizeTextType="uniform"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/label1" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Card 2: Notifications (CLICKABLE) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardNotifications"
             android:layout_width="0dp"
             android:layout_height="140dp"
             android:layout_marginTop="18dp"
             android:layout_marginStart="8dp"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#111B2E"
-            app:strokeColor="#1E2A44"
-            app:strokeWidth="1dp"
             android:clickable="true"
+            android:contentDescription="@string/main_cd_open_notifications"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            android:contentDescription="Abrir Notificaciones"
-            app:layout_constraintStart_toStartOf="@id/guidelineMid"
+            app:cardBackgroundColor="#111B2E"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#1E2A44"
+            app:strokeWidth="1dp"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/guidelineMid"
             app:layout_constraintTop_toBottomOf="@id/tvTitle">
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -209,9 +183,9 @@
                     android:id="@+id/iconBg2"
                     android:layout_width="42dp"
                     android:layout_height="42dp"
+                    app:cardBackgroundColor="#0F2D22"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="0dp"
-                    app:cardBackgroundColor="#0F2D22"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent">
 
@@ -227,65 +201,62 @@
                     android:id="@+id/chev2"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    app:srcCompat="@drawable/ic_chevron_right"
-                    app:tint="#64748B"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:srcCompat="@drawable/ic_chevron_right"
+                    app:tint="#64748B" />
 
                 <TextView
                     android:id="@+id/label2"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
-                    android:text="Notificaciones"
+                    android:text="@string/main_notifications_label"
                     android:textColor="#94A3B8"
                     android:textSize="14sp"
-                    app:layout_constraintTop_toBottomOf="@id/iconBg2"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/iconBg2" />
 
                 <TextView
                     android:id="@+id/value2"
                     android:layout_width="0dp"
                     android:layout_height="0dp"
-                    android:includeFontPadding="false"
+                    android:ellipsize="end"
                     android:gravity="start|bottom"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
                     android:text="--"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    app:autoSizeTextType="uniform"
-                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeMaxTextSize="26sp"
+                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeStepGranularity="1sp"
-                    app:layout_constraintTop_toBottomOf="@id/label2"
+                    app:autoSizeTextType="uniform"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/label2" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Card 3: Multitask (CLICKABLE) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardMultitask"
             android:layout_width="0dp"
             android:layout_height="140dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="8dp"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#111B2E"
-            app:strokeColor="#1E2A44"
-            app:strokeWidth="1dp"
             android:clickable="true"
+            android:contentDescription="@string/main_cd_open_multitask"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            android:contentDescription="Abrir Multitarea"
-            app:layout_constraintStart_toStartOf="parent"
+            app:cardBackgroundColor="#111B2E"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#1E2A44"
+            app:strokeWidth="1dp"
             app:layout_constraintEnd_toStartOf="@id/guidelineMid"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/cardScreenTime">
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -297,9 +268,9 @@
                     android:id="@+id/iconBg3"
                     android:layout_width="42dp"
                     android:layout_height="42dp"
+                    app:cardBackgroundColor="#2A1430"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="0dp"
-                    app:cardBackgroundColor="#2A1430"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent">
 
@@ -315,65 +286,62 @@
                     android:id="@+id/chev3"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    app:srcCompat="@drawable/ic_chevron_right"
-                    app:tint="#64748B"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:srcCompat="@drawable/ic_chevron_right"
+                    app:tint="#64748B" />
 
                 <TextView
                     android:id="@+id/label3"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
-                    android:text="Multitarea"
+                    android:text="@string/main_multitask_label"
                     android:textColor="#94A3B8"
                     android:textSize="14sp"
-                    app:layout_constraintTop_toBottomOf="@id/iconBg3"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/iconBg3" />
 
                 <TextView
                     android:id="@+id/value3"
                     android:layout_width="0dp"
                     android:layout_height="0dp"
-                    android:includeFontPadding="false"
+                    android:ellipsize="end"
                     android:gravity="start|bottom"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
                     android:text="--"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    app:autoSizeTextType="uniform"
-                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeMaxTextSize="26sp"
+                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeStepGranularity="1sp"
-                    app:layout_constraintTop_toBottomOf="@id/label3"
+                    app:autoSizeTextType="uniform"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/label3" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Card 4: Communication (CLICKABLE) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardCommunication"
             android:layout_width="0dp"
             android:layout_height="140dp"
             android:layout_marginTop="16dp"
             android:layout_marginStart="8dp"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#111B2E"
-            app:strokeColor="#1E2A44"
-            app:strokeWidth="1dp"
             android:clickable="true"
+            android:contentDescription="@string/main_cd_open_communication"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            android:contentDescription="Abrir Comunicación"
-            app:layout_constraintStart_toStartOf="@id/guidelineMid"
+            app:cardBackgroundColor="#111B2E"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#1E2A44"
+            app:strokeWidth="1dp"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/guidelineMid"
             app:layout_constraintTop_toBottomOf="@id/cardNotifications">
 
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -385,9 +353,9 @@
                     android:id="@+id/iconBg4"
                     android:layout_width="42dp"
                     android:layout_height="42dp"
+                    app:cardBackgroundColor="#0A2A3A"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="0dp"
-                    app:cardBackgroundColor="#0A2A3A"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent">
 
@@ -403,78 +371,74 @@
                     android:id="@+id/chev4"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    app:srcCompat="@drawable/ic_chevron_right"
-                    app:tint="#64748B"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:srcCompat="@drawable/ic_chevron_right"
+                    app:tint="#64748B" />
 
                 <TextView
                     android:id="@+id/label4"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
-                    android:text="Comunicación"
+                    android:text="@string/main_communication_label"
                     android:textColor="#94A3B8"
                     android:textSize="14sp"
-                    app:layout_constraintTop_toBottomOf="@id/iconBg4"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/iconBg4" />
 
                 <TextView
                     android:id="@+id/value4"
                     android:layout_width="0dp"
                     android:layout_height="0dp"
-                    android:includeFontPadding="false"
+                    android:ellipsize="end"
                     android:gravity="start|bottom"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
                     android:text="--"
                     android:textColor="@android:color/white"
                     android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    app:autoSizeTextType="uniform"
-                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeMaxTextSize="26sp"
+                    app:autoSizeMinTextSize="18sp"
                     app:autoSizeStepGranularity="1sp"
-                    app:layout_constraintTop_toBottomOf="@id/label4"
+                    app:autoSizeTextType="uniform"
                     app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    tools:ignore="HardcodedText" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/label4" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- SECTION TITLE -->
         <TextView
             android:id="@+id/tvHourlyTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Actividad por hora"
+            android:text="@string/main_hourly_activity_title"
             android:textColor="@android:color/white"
             android:textStyle="bold"
             android:textSize="16sp"
-            app:layout_constraintTop_toBottomOf="@id/cardMultitask"
             app:layout_constraintStart_toStartOf="parent"
-            tools:ignore="HardcodedText" />
+            app:layout_constraintTop_toBottomOf="@id/cardMultitask" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardChart"
             android:layout_width="0dp"
             android:layout_height="220dp"
             android:layout_marginTop="12dp"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#0E1729"
-            app:strokeColor="#1E2A44"
-            app:strokeWidth="1dp"
             android:clickable="true"
+            android:contentDescription="@string/main_cd_open_hourly_activity"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            android:contentDescription="Abrir Actividad por hora"
-            app:layout_constraintTop_toBottomOf="@id/tvHourlyTitle"
+            app:cardBackgroundColor="#0E1729"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#1E2A44"
+            app:strokeWidth="1dp"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:layout_constraintTop_toBottomOf="@id/tvHourlyTitle">
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -488,30 +452,25 @@
                     android:id="@+id/barChart3h"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
-
             </FrameLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- =========================
-         DRAWER (menú lateral)
-         ========================= -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:fitsSystemWindows="true"
-        android:clipToPadding="false"
-        android:paddingTop="16dp"
         android:background="#0B0F1A"
+        android:clipToPadding="false"
+        android:fitsSystemWindows="true"
+        android:paddingTop="16dp"
         app:headerLayout="@layout/drawer_header"
-        app:menu="@menu/drawer_menu"
+        app:itemHorizontalPadding="20dp"
+        app:itemIconPadding="16dp"
         app:itemIconTint="@null"
         app:itemTextColor="@android:color/white"
-        app:itemHorizontalPadding="20dp"
-        app:itemIconPadding="16dp" />
+        app:menu="@menu/drawer_menu" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

@@ -29,16 +29,14 @@
                 android:layout_height="40dp"
                 android:background="@android:color/transparent"
                 app:srcCompat="@drawable/ic_chevron_left"
-                app:tint="@android:color/white"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:tint="@android:color/white" />
         </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="36dp"
-            android:text="Bienvenido de nuevo"
+            android:text="@string/login_welcome_back"
             android:textColor="@android:color/white"
             android:textStyle="bold"
             android:textSize="28sp"/>
@@ -47,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="Inicia sesión en tu cuenta"
+            android:text="@string/login_subtitle"
             android:textColor="#94A3B8"
             android:textSize="18sp"/>
 
@@ -55,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="42dp"
-            android:text="Email"
+            android:text="@string/email"
             android:textColor="@android:color/white"
             android:textSize="16sp"/>
 
@@ -77,7 +75,7 @@
                 android:id="@+id/etEmail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="email"
+                android:hint="@string/email"
                 android:textColor="@android:color/white"
                 android:textColorHint="#94A3B8"
                 android:inputType="textEmailAddress"/>
@@ -87,7 +85,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Contraseña"
+            android:text="@string/login_password_label"
             android:textColor="@android:color/white"
             android:textSize="16sp"/>
 
@@ -111,7 +109,7 @@
                 android:id="@+id/etPassword"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Contraseña"
+                android:hint="@string/login_password_hint"
                 android:textColor="@android:color/white"
                 android:textColorHint="#94A3B8"
                 android:inputType="textPassword"/>
@@ -122,7 +120,7 @@
             android:layout_width="match_parent"
             android:layout_height="58dp"
             android:layout_marginTop="40dp"
-            android:text="Iniciar sesión"
+            android:text="@string/login_button"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
             android:textSize="18sp"
@@ -135,7 +133,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="28dp"
-            android:text="¿No tienes cuenta? Regístrate"
+            android:text="@string/login_go_register"
             android:textColor="#00D3FF"
             android:textSize="16sp"/>
     </LinearLayout>

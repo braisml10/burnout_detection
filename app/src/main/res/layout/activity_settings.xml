@@ -22,7 +22,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="@android:color/transparent"
-            android:contentDescription="Volver"
+            android:contentDescription="@string/back"
             android:padding="10dp"
             app:srcCompat="@drawable/ic_chevron_left"
             app:tint="@android:color/white"
@@ -33,7 +33,7 @@
             android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Configuración"
+            android:text="@string/settings"
             android:textColor="@android:color/white"
             android:textSize="24sp"
             android:textStyle="bold"
@@ -49,7 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
-            android:text="PERMISOS"
+            android:text="@string/permissions"
             android:textColor="#94A3B8"
             android:textSize="14sp"
             android:textStyle="bold"
@@ -99,7 +99,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Notificaciones"
+                    android:text="@string/main_notifications_label"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -108,7 +108,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Acceso a notificaciones del sistema"
+                    android:text="@string/settings_notifications_desc"
                     android:textColor="#94A3B8"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -162,7 +162,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Llamadas y Mensajes"
+                    android:text="@string/settings_communication_title"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -171,7 +171,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Permiso para leer LLamadas y SMS"
+                    android:text="@string/settings_communication_desc"
                     android:textColor="#94A3B8"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -225,7 +225,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Uso del dispositivo"
+                    android:text="@string/settings_usage_title"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -234,7 +234,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Acceso a estadísticas de uso"
+                    android:text="@string/settings_usage_desc"
                     android:textColor="#94A3B8"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -288,7 +288,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Idioma"
+                    android:text="@string/language"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -298,7 +298,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Español"
+                    android:text="@string/language_spanish"
                     android:textColor="#94A3B8"
                     android:textSize="13sp" />
             </LinearLayout>

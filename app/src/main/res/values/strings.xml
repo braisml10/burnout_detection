@@ -4,4 +4,115 @@
         <item quantity="one">%d llamada</item>
         <item quantity="other">%d llamadas</item>
     </plurals>
+    <!-- COMMON -->
+    <string name="today">Hoy</string>
+    <string name="minutes_abv">min</string>
+    <string name="first_name">Nombre</string>
+    <string name="last_name">Apellidos</string>
+    <string name="password">Contraseña</string>
+    <string name="email">Correo electrónico</string>
+    <string name="back">Volver</string>
+    <string name="settings">Configuración</string>
+    <string name="permissions">Permisos</string>
+    <string name="language">Idioma</string>
+    <string name="language_spanish">Español</string>
+    <string name="register_button">Crear cuenta</string>
+    <string name="login_button">Iniciar sesión</string>
+
+    <!-- activity_communications.xml -->
+    <string name="communications_title">Comunicaciones</string>
+    <string name="calls">Llamadas</string>
+    <string name="messages">Mensajes</string>
+    <string name="duration">Duración</string>
+    <string name="total">total</string>
+    <string name="received">recibidos</string>
+    <string name="communication_intensity_hour">Intensidad de comunicación por hora</string>
+    <string name="channel_distribution">Distribución por canal</string>
+
+    <!-- activity_login.xml -->
+    <string name="login_welcome_back">Bienvenido de nuevo</string>
+    <string name="login_subtitle">Inicia sesión en tu cuenta</string>
+    <string name="login_password_label">Contraseña</string>
+    <string name="login_password_hint">Contraseña</string>
+    <string name="login_go_register">¿No tienes cuenta? Regístrate</string>
+
+    <!-- activity_main.xml -->
+    <string name="main_today_activity_title">Actividad hoy</string>
+    <string name="main_screen_time_label">Tiempo de pantalla</string>
+    <string name="main_notifications_label">Notificaciones</string>
+    <string name="main_multitask_label">Multitarea</string>
+    <string name="main_communication_label">Comunicación</string>
+    <string name="main_hourly_activity_title">Actividad por hora</string>
+    <string name="main_cd_open_screen_time">Abrir tiempo de pantalla</string>
+    <string name="main_cd_open_notifications">Abrir notificaciones</string>
+    <string name="main_cd_open_multitask">Abrir multitarea</string>
+    <string name="main_cd_open_communication">Abrir comunicación</string>
+    <string name="main_cd_open_hourly_activity">Abrir actividad por hora</string>
+
+    <!-- activity_multitask.xml -->
+    <string name="multitask_title">Patrones de uso y multitarea</string>
+    <string name="multitask_apps_time_label">Tiempo apps</string>
+    <string name="multitask_app_switches_label">Cambios app</string>
+    <string name="multitask_switches_unit">cambios</string>
+    <string name="multitask_used_apps_label">Apps usadas</string>
+    <string name="multitask_apps_unit">apps</string>
+    <string name="multitask_category_time_title">Tiempo por categoría</string>
+    <string name="multitask_category_social">Social</string>
+    <string name="multitask_category_entertainment">Entretenimiento</string>
+    <string name="multitask_category_messaging">Mensajería</string>
+    <string name="multitask_category_work">Trabajo</string>
+    <string name="multitask_category_other">Otros</string>
+    <string name="multitask_switches_chart_title">Frecuencia de cambio (cambios diarios)</string>
+    <string name="multitask_top_apps_title">Apps más usadas</string>
+
+    <!-- activity_notifications.xml -->
+    <string name="notifications_title">Notificaciones y carga atencional</string>
+    <string name="notifications_daily_total_label">Total diario</string>
+    <string name="notifications_daily_total_unit">notif.</string>
+    <string name="notifications_avg_per_hour_label">Promedio/h</string>
+    <string name="notifications_avg_per_hour_unit">notif./h</string>
+    <string name="notifications_most_intrusive_app_label">App más intrusiva</string>
+    <string name="notifications_trend_title">Tendencia de notificaciones</string>
+    <string name="notifications_top_apps_title">Apps con más notificaciones</string>
+    <string name="notifications_types_title">Notificaciones por tipo</string>
+
+    <!-- activity_profile.xml -->
+    <string name="profile_title">Mi perfil</string>
+    <string name="profile_edit_button_desc">Editar perfil</string>
+    <string name="profile_personal_info_title">Información personal</string>
+    <string name="profile_delete_account_button">Eliminar cuenta</string>
+
+    <!-- activity_register.xml -->
+    <string name="register_title">Crea tu cuenta</string>
+    <string name="register_go_login">¿Ya tienes cuenta? Inicia sesión</string>
+    <string name="confirm_password">Confirmar contraseña</string>ç
+
+    <!-- activity_screen_time.xml -->
+    <string name="screen_time_title">Tiempo en pantalla</string>
+    <string name="screen_time_total_label">Tiempo total</string>
+    <string name="screen_time_sessions_label">Sesiones</string>
+    <string name="screen_time_sessions_unit">aperturas</string>
+    <string name="screen_time_night_label">Uso nocturno</string>
+    <string name="screen_time_daily_chart_title">Actividad diurna (07:00–21:00)</string>
+    <string name="screen_time_night_chart_title">Uso nocturno (22:00–06:00)</string>
+    <string name="screen_time_night_total">Uso total: %1$s</string>
+    <string name="screen_time_night_active_hours">Horas activas: %1$s</string>
+
+    <!-- activity_settings.xml -->
+    <string name="settings_notifications_title">Notificaciones</string>
+    <string name="settings_notifications_desc">Acceso a notificaciones del sistema</string>
+    <string name="settings_communication_title">Llamadas y mensajes</string>
+    <string name="settings_communication_desc">Permiso para leer llamadas y SMS</string>
+    <string name="settings_usage_title">Uso del dispositivo</string>
+    <string name="settings_usage_desc">Acceso a estadísticas de uso</string>
+
+    <!-- activity_welcome.xml -->
+    <string name="welcome_logo_desc">Logo de la aplicación</string>
+    <string name="welcome_title">App para la Detección del Burnout Digital</string>
+    <string name="welcome_subtitle">Accede o crea tu cuenta para continuar</string>
+
+    <!-- dialog_edit_profile.xml -->
+    <string name="current_password">Contraseña actual</string>
+    <string name="new_password">Nueva contraseña</string>
+    <string name="confirm_new_password">Confirmar nueva contraseña</string>
 </resources>

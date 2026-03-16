@@ -40,7 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Crea tu cuenta"
+            android:text="@string/register_title"
             android:textColor="@android:color/white"
             android:textStyle="bold"
             android:textSize="28sp"/>
@@ -49,7 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="36dp"
-            android:text="Nombre"
+            android:text="@string/first_name"
             android:textColor="@android:color/white"
             android:textSize="16sp"/>
 
@@ -69,7 +69,7 @@
                 android:id="@+id/etNombre"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Nombre"
+                android:hint="@string/first_name"
                 android:textColor="@android:color/white"
                 android:textColorHint="#94A3B8"/>
         </com.google.android.material.textfield.TextInputLayout>
@@ -78,7 +78,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Apellidos"
+            android:text="@string/last_name"
             android:textColor="@android:color/white"
             android:textSize="16sp"/>
 
@@ -98,7 +98,7 @@
                 android:id="@+id/etApellidos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Apellidos"
+                android:hint="@string/last_name"
                 android:textColor="@android:color/white"
                 android:textColorHint="#94A3B8"/>
         </com.google.android.material.textfield.TextInputLayout>
@@ -107,7 +107,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Email"
+            android:text="@string/email"
             android:textColor="@android:color/white"
             android:textSize="16sp"/>
 
@@ -129,7 +129,7 @@
                 android:id="@+id/etEmail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="email"
+                android:hint="@string/email"
                 android:textColor="@android:color/white"
                 android:textColorHint="#94A3B8"
                 android:inputType="textEmailAddress"/>
@@ -139,7 +139,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Contraseña"
+            android:text="@string/password"
             android:textColor="@android:color/white"
             android:textSize="16sp"/>
 
@@ -163,7 +163,7 @@
                 android:id="@+id/etPassword"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Contraseña"
+                android:hint="@string/password"
                 android:textColor="@android:color/white"
                 android:textColorHint="#94A3B8"
                 android:inputType="textPassword"/>
@@ -173,7 +173,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
-            android:text="Confirmar contraseña"
+            android:text="@string/confirm_password"
             android:textColor="@android:color/white"
             android:textSize="16sp"/>
 
@@ -197,7 +197,7 @@
                 android:id="@+id/etConfirmPassword"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Contraseña"
+                android:hint="@string/confirm_password"
                 android:textColor="@android:color/white"
                 android:textColorHint="#94A3B8"
                 android:inputType="textPassword"/>
@@ -208,7 +208,7 @@
             android:layout_width="match_parent"
             android:layout_height="58dp"
             android:layout_marginTop="40dp"
-            android:text="Crear cuenta"
+            android:text="@string/register_button"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
             android:textSize="18sp"

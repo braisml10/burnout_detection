@@ -14,7 +14,7 @@
         android:layout_height="48dp"
         android:background="@drawable/bg_avatar_circle"
         android:gravity="center"
-        android:text="B"
+        android:text="-"
         android:textStyle="bold"
         android:textSize="16sp"
         android:textColor="@android:color/white" />

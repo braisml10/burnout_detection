@@ -1,7 +1,9 @@
 package com.example.burnout_app;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -13,6 +15,7 @@ import com.example.burnout_app.viewmodel.CommunicationViewModel;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.MarkerView;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
@@ -21,6 +24,9 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+import com.github.mikephil.charting.utils.MPPointF;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +52,10 @@ public class ActivityCommunications extends AppCompatActivity {
     // Charts
     private LineChart chartIntensity;
     private BarChart chartChannelStacked;
+
+    // Últimos datos (para MarkerView)
+    private long[] lastVoiceByHourMs;
+    private long[] lastTextByHourMs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,14 +112,10 @@ public class ActivityCommunications extends AppCompatActivity {
                 return;
             }
 
-            // ✅ KPIs desde DAILY (daily_comm_metric)
             tvCallsValue.setText(String.valueOf(Math.max(0, s.callsCount)));
             tvMessagesValue.setText(String.valueOf(Math.max(0, s.messagesCount)));
-
-            // ✅ KPI duración total: SOLO número en minutos (sin texto/unidades)
             tvTotalCommValue.setText(String.valueOf(msToMinutes(Math.max(0L, s.totalCommMs))));
 
-            // ✅ Charts desde HOURLY (hourly_comm_metric)
             renderIntensityLine(chartIntensity, s.totalByHour);
             renderChannelStacked(chartChannelStacked, s.voiceByHour, s.textByHour);
         });
@@ -136,6 +142,9 @@ public class ActivityCommunications extends AppCompatActivity {
         tvMessagesValue.setText("0");
         tvTotalCommValue.setText("0");
 
+        lastVoiceByHourMs = null;
+        lastTextByHourMs = null;
+
         chartIntensity.clear();
         chartIntensity.invalidate();
 
@@ -144,7 +153,7 @@ public class ActivityCommunications extends AppCompatActivity {
     }
 
     // =========================================================
-    // LINE CHART (intensidad total por hora) - MINUTOS
+    // LINE CHART
     // =========================================================
 
     private void setupIntensityLineChart(LineChart c) {
@@ -164,7 +173,8 @@ public class ActivityCommunications extends AppCompatActivity {
         x.setTextColor(Color.parseColor("#94A3B8"));
         x.setDrawGridLines(false);
         x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
+            @Override
+            public String getFormattedValue(float value) {
                 int h = Math.round(value);
                 if (h == 24) return "24";
                 if (h % 6 == 0) return String.format(Locale.getDefault(), "%02d", h);
@@ -177,10 +187,9 @@ public class ActivityCommunications extends AppCompatActivity {
         c.getAxisLeft().setGranularity(1f);
         c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
         c.getAxisLeft().setDrawGridLines(true);
-
-        // (solo eje Y) si quieres mantener "m" en el eje
         c.getAxisLeft().setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
+            @Override
+            public String getFormattedValue(float value) {
                 return ((int) value) + "m";
             }
         });
@@ -201,7 +210,8 @@ public class ActivityCommunications extends AppCompatActivity {
             if (m > maxMin) maxMin = m;
             entries.add(new Entry(h, (float) m));
         }
-        entries.add(new Entry(24f, (float) msToMinutes(Math.max(0L, totalByHourMs[23]))));
+
+        entries.add(new Entry(24f, (float) msToMinutes(totalByHourMs[23])));
 
         LineDataSet ds = new LineDataSet(entries, "Comunicación (min)");
         ds.setColor(Color.parseColor("#60A5FA"));
@@ -212,14 +222,13 @@ public class ActivityCommunications extends AppCompatActivity {
         ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
 
         chart.setData(new LineData(ds));
-
         chart.getAxisLeft().setAxisMaximum(Math.max(10f, (float) (maxMin * 1.2)));
 
         chart.invalidate();
     }
 
     // =========================================================
-    // BAR CHART (stacked: voz/texto por hora) - MINUTOS
+    // BAR CHART
     // =========================================================
 
     private void setupChannelStackedChart(BarChart c) {
@@ -229,6 +238,8 @@ public class ActivityCommunications extends AppCompatActivity {
         c.setTouchEnabled(true);
         c.setPinchZoom(false);
         c.setScaleEnabled(false);
+        c.setDrawMarkers(true);
+        c.setHighlightFullBarEnabled(false);
 
         Legend l = c.getLegend();
         l.setEnabled(true);
@@ -247,7 +258,8 @@ public class ActivityCommunications extends AppCompatActivity {
         x.setTextColor(Color.parseColor("#94A3B8"));
         x.setDrawGridLines(false);
         x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
+            @Override
+            public String getFormattedValue(float value) {
                 int h = Math.round(value);
                 if (h == 24) return "24";
                 if (h % 6 == 0) return String.format(Locale.getDefault(), "%02d", h);
@@ -260,39 +272,72 @@ public class ActivityCommunications extends AppCompatActivity {
         c.getAxisLeft().setGranularity(10f);
         c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
         c.getAxisLeft().setDrawGridLines(true);
-
         c.getAxisLeft().setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
+            @Override
+            public String getFormattedValue(float value) {
                 return ((int) value) + "m";
             }
         });
 
         c.setFitBars(false);
         c.setExtraOffsets(4f, 2f, 6f, 6f);
+
+        ChannelMarkerView markerView = new ChannelMarkerView(this);
+        markerView.setChartView(c);
+        c.setMarker(markerView);
+
+        c.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) {
+            }
+
+            @Override
+            public void onNothingSelected() {
+            }
+        });
     }
 
     private void renderChannelStacked(BarChart chart, long[] voiceByHourMs, long[] textByHourMs) {
         if (voiceByHourMs == null || textByHourMs == null
                 || voiceByHourMs.length != 24 || textByHourMs.length != 24) {
+
+            lastVoiceByHourMs = null;
+            lastTextByHourMs = null;
+
             chart.clear();
             chart.invalidate();
             return;
         }
 
+        lastVoiceByHourMs = voiceByHourMs;
+        lastTextByHourMs = textByHourMs;
+
         ArrayList<BarEntry> entries = new ArrayList<>(24);
+
         for (int h = 0; h < 24; h++) {
             float v = (float) msToMinutes(voiceByHourMs[h]);
             float t = (float) msToMinutes(textByHourMs[h]);
-            entries.add(new BarEntry(h, new float[]{v, t}));
+
+            // Solo crear barra si hay datos reales
+            if (v > 0f || t > 0f) {
+                entries.add(new BarEntry(h, new float[]{v, t}));
+            }
+        }
+
+        if (entries.isEmpty()) {
+            chart.clear();
+            chart.invalidate();
+            return;
         }
 
         BarDataSet ds = new BarDataSet(entries, "");
         ds.setDrawValues(false);
         ds.setStackLabels(new String[]{"Voz", "Texto"});
         ds.setColors(
-                Color.parseColor("#60A5FA"), // voz
-                Color.parseColor("#34D399")  // texto
+                Color.parseColor("#60A5FA"),
+                Color.parseColor("#34D399")
         );
+        ds.setHighlightEnabled(true);
 
         BarData data = new BarData(ds);
         data.setBarWidth(0.70f);
@@ -303,6 +348,59 @@ public class ActivityCommunications extends AppCompatActivity {
         chart.getAxisLeft().setAxisMaximum(Math.max(10f, maxY * 1.2f));
 
         chart.invalidate();
+    }
+
+    private String hourSlotLabel(int hour) {
+        return String.format(Locale.getDefault(), "%02d:00–%02d:00", hour, hour + 1);
+    }
+
+    private class ChannelMarkerView extends MarkerView {
+
+        private final TextView tv;
+
+        public ChannelMarkerView(Context context) {
+            super(context, R.layout.marker);
+            tv = findViewById(R.id.tvMarkerText);
+        }
+
+        @Override
+        public void refreshContent(Entry e, Highlight highlight) {
+            int hour = Math.round(e.getX());
+            int stackIndex = highlight != null ? highlight.getStackIndex() : -1;
+
+            if (lastVoiceByHourMs != null && lastTextByHourMs != null
+                    && hour >= 0 && hour < 24) {
+
+                long voiceMin = msToMinutes(lastVoiceByHourMs[hour]);
+                long textMin = msToMinutes(lastTextByHourMs[hour]);
+
+                String labelHour = hourSlotLabel(hour);
+
+                if (stackIndex == 0) {
+                    tv.setText("Voz (" + labelHour + "): " + voiceMin + " mins");
+                } else if (stackIndex == 1) {
+                    tv.setText("Texto (" + labelHour + "): " + textMin + " mins");
+                } else {
+                    tv.setText(labelHour + ": Voz " + voiceMin + " mins · Texto " + textMin + " mins");
+                }
+
+            } else {
+                tv.setText("--");
+            }
+
+            measure(
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            );
+            layout(0, 0, getMeasuredWidth(), getMeasuredHeight());
+
+            super.refreshContent(e, highlight);
+        }
+
+        @Override
+        public MPPointF getOffset() {
+            return new MPPointF(-(getWidth() / 2f), -getHeight() - 12f);
+        }
     }
 
     private static long msToMinutes(long ms) {

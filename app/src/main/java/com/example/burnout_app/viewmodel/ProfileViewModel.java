@@ -10,6 +10,7 @@ import androidx.lifecycle.LiveData;
 
 import com.example.burnout_app.data.entity.UserProfileEntity;
 import com.example.burnout_app.data.repo.UserProfileRepository;
+import com.example.burnout_app.helpers.PasswordUtils;
 
 public class ProfileViewModel extends AndroidViewModel {
 
@@ -79,7 +80,9 @@ public class ProfileViewModel extends AndroidViewModel {
             return true;
         }
 
-        if (!currentUserProfile.passwordHash.equals(currentPassword)) {
+        String hashedCurrentPassword = PasswordUtils.hashPassword(currentPassword);
+
+        if (!currentUserProfile.passwordHash.equals(hashedCurrentPassword)) {
             return false;
         }
 
@@ -98,7 +101,7 @@ public class ProfileViewModel extends AndroidViewModel {
 
         String finalPassword = currentUserProfile.passwordHash;
         if (!TextUtils.isEmpty(newPassword)) {
-            finalPassword = newPassword;
+            finalPassword = PasswordUtils.hashPassword(newPassword);
         }
 
         UserProfileEntity updatedUserProfile = new UserProfileEntity(
@@ -122,7 +125,7 @@ public class ProfileViewModel extends AndroidViewModel {
 
         String finalPassword = currentUserProfile.passwordHash;
         if (!TextUtils.isEmpty(newPassword)) {
-            finalPassword = newPassword;
+            finalPassword = PasswordUtils.hashPassword(newPassword);
         }
 
         UserProfileEntity updatedUserProfile = new UserProfileEntity(

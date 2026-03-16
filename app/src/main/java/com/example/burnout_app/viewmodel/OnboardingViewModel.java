@@ -10,6 +10,7 @@ import androidx.lifecycle.LiveData;
 
 import com.example.burnout_app.data.entity.UserProfileEntity;
 import com.example.burnout_app.data.repo.UserProfileRepository;
+import com.example.burnout_app.helpers.PasswordUtils;
 
 public class OnboardingViewModel extends AndroidViewModel {
 
@@ -34,11 +35,14 @@ public class OnboardingViewModel extends AndroidViewModel {
                                   String lastName,
                                   String email,
                                   String password) {
+
+        String hashedPassword = PasswordUtils.hashPassword(password);
+
         UserProfileEntity userProfile = new UserProfileEntity(
                 firstName.trim(),
                 lastName.trim(),
                 email.trim(),
-                password
+                hashedPassword
         );
 
         userProfileRepository.upsertUserProfile(userProfile);
@@ -82,8 +86,10 @@ public class OnboardingViewModel extends AndroidViewModel {
 
             boolean success = false;
             if (userProfile != null) {
+                String hashedInputPassword = PasswordUtils.hashPassword(password);
+
                 success = email.equals(userProfile.email)
-                        && password.equals(userProfile.passwordHash);
+                        && hashedInputPassword.equals(userProfile.passwordHash);
             }
 
             callback.onResult(success);

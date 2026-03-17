@@ -57,7 +57,7 @@
             android:id="@+id/tvDayLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/notifications_today_label"
+            android:text="@string/today"
             android:textColor="@android:color/white"
             android:textStyle="bold"
             android:textSize="14sp"

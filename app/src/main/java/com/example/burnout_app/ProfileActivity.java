@@ -1,7 +1,9 @@
 package com.example.burnout_app;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.burnout_app.data.entity.UserProfileEntity;
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.SessionManager;
 import com.example.burnout_app.viewmodel.ProfileViewModel;
 import com.google.android.material.button.MaterialButton;
@@ -32,6 +35,14 @@ public class ProfileActivity extends AppCompatActivity {
 
     private ProfileViewModel profileViewModel;
     private UserProfileEntity currentUserProfile;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,9 +71,9 @@ public class ProfileActivity extends AppCompatActivity {
 
         btnDeleteAccount.setOnClickListener(v -> {
             new AlertDialog.Builder(this)
-                    .setTitle("Eliminar cuenta")
-                    .setMessage("¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.")
-                    .setPositiveButton("Sí, eliminar", (dialog, which) -> {
+                    .setTitle(getString(R.string.profile_delete_account_button))
+                    .setMessage(getString(R.string.profile_delete_account_message))
+                    .setPositiveButton(getString(R.string.profile_delete_account_confirm), (dialog, which) -> {
                         SessionManager sessionManager = new SessionManager(ProfileActivity.this);
                         sessionManager.logout();
 
@@ -72,7 +83,7 @@ public class ProfileActivity extends AppCompatActivity {
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
                     })
-                    .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                    .setNegativeButton(getString(R.string.cancel), (dialog, which) -> dialog.dismiss())
                     .show();
         });
     }
@@ -106,7 +117,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void showEditProfileDialog() {
         if (currentUserProfile == null) {
-            Toast.makeText(this, "No se pudo cargar el perfil", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.profile_error_load), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -124,10 +135,10 @@ public class ProfileActivity extends AppCompatActivity {
         etEmail.setText(safe(currentUserProfile.email));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Editar perfil")
+                .setTitle(getString(R.string.profile_edit_title))
                 .setView(dialogView)
-                .setNegativeButton("Cancelar", (d, which) -> d.dismiss())
-                .setPositiveButton("Guardar", null)
+                .setNegativeButton(getString(R.string.cancel), (d, which) -> d.dismiss())
+                .setPositiveButton(getString(R.string.save), null)
                 .create();
 
         dialog.setOnShowListener(d -> {
@@ -152,7 +163,7 @@ public class ProfileActivity extends AppCompatActivity {
                 if (!isValid) {
                     Toast.makeText(
                             this,
-                            "Contraseña antigua incorrecta o nuevas no coincidentes.",
+                            getString(R.string.profile_error_password_mismatch),
                             Toast.LENGTH_LONG
                     ).show();
                     return;
@@ -166,7 +177,7 @@ public class ProfileActivity extends AppCompatActivity {
                         newPassword
                 );
 
-                Toast.makeText(this, "Perfil actualizado", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.profile_updated), Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
             });
         });

@@ -1,9 +1,10 @@
 <resources>
-    <string name="app_name">burnout_app</string>
+    <string name="app_name">Burnout Detection</string>
     <plurals name="kpi_calls">
         <item quantity="one">%d llamada</item>
         <item quantity="other">%d llamadas</item>
     </plurals>
+
     <!-- COMMON -->
     <string name="today">Hoy</string>
     <string name="minutes_abv">min</string>
@@ -18,6 +19,11 @@
     <string name="language_spanish">Español</string>
     <string name="register_button">Crear cuenta</string>
     <string name="login_button">Iniciar sesión</string>
+    <string name="yesterday">Ayer</string>
+    <string name="no_data">Sin datos</string>
+    <string name="minutes_short">m</string>
+    <string name="marker_empty">--</string>
+    <string name="percentage_format">%1$d%%</string>
 
     <!-- activity_communications.xml -->
     <string name="communications_title">Comunicaciones</string>
@@ -85,7 +91,7 @@
     <!-- activity_register.xml -->
     <string name="register_title">Crea tu cuenta</string>
     <string name="register_go_login">¿Ya tienes cuenta? Inicia sesión</string>
-    <string name="confirm_password">Confirmar contraseña</string>ç
+    <string name="confirm_password">Confirmar contraseña</string>
 
     <!-- activity_screen_time.xml -->
     <string name="screen_time_title">Tiempo en pantalla</string>
@@ -115,4 +121,75 @@
     <string name="current_password">Contraseña actual</string>
     <string name="new_password">Nueva contraseña</string>
     <string name="confirm_new_password">Confirmar nueva contraseña</string>
+
+    <!-- ActivityCommunications.java -->
+    <string name="comm_chart_label">Comunicación (min)</string>
+    <string name="comm_channel_voice">Voz</string>
+    <string name="comm_channel_text">Texto</string>
+    <string name="comm_marker_voice_format">%1$s (%2$s): %3$d min</string>
+    <string name="comm_marker_text_format">%1$s (%2$s): %3$d min</string>
+    <string name="comm_marker_both_format">%1$s: %2$s %3$d min · %4$s %5$d min</string>
+    <string name="error_chart_intensity_missing">chartIntensity NULL: falta R.id.chartIntensity en el layout</string>
+    <string name="error_chart_channel_missing">chartChannelDistStacked NULL: falta R.id.chartChannelDistStacked en el layout</string>
+
+    <!-- LoginActivity -->
+    <string name="login_error_empty_fields">Completa todos los campos</string>
+    <string name="login_error_invalid_credentials">Email o contraseña incorrectos</string>
+
+    <!-- MainActivity -->
+    <string name="main_logout_title">Cerrar sesión</string>
+    <string name="main_logout_message">¿Está seguro de que quiere cerrar sesión?</string>
+    <string name="main_logout_confirm">Sí, cerrar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="main_date_prefix">| %1$s</string>
+    <string name="main_chart_dataset_minutes">Minutos</string>
+    <string name="error_main_chart_missing">barChart3h is NULL -> revisa activity_main.xml: falta @+id/barChart3h</string>
+    <string name="error_main_card_missing">%1$s is NULL -> revisa activity_main.xml (o variantes) y el id.</string>
+    <string name="log_main_card_found">%1$s FOUND -> attaching click listener</string>
+    <string name="log_main_card_clicked">%1$s CLICKED -> opening %2$s</string>
+    <string name="main_chart_marker_format">Uso (%1$s - %2$s): %3$d %4$s</string>
+
+    <!-- MultitaskActivity -->
+    <string name="error_multitask_chart_missing">chartSwitches NULL: falta R.id.chartSwitches en el layout</string>
+    <string name="multitask_switches_dataset">Switches</string>
+
+    <!-- NotificationsActivity -->
+    <string name="error_notifications_chart_missing">chartNotifs NULL: falta R.id.chartNotifs en el layout</string>
+    <string name="error_notifications_types_chart_missing">chartNotifTypesStacked NULL: falta R.id.chartNotifTypesStacked en el layout</string>
+    <string name="error_notifications_legend_missing">legendNotifTypes NULL: falta R.id.legendNotifTypes en el layout</string>
+    <string name="notifications_chart_dataset">Notificaciones</string>
+    <string name="notifications_more_categories">+%1$d</string>
+    <string name="notifications_legend_item_format">%1$s %2$d%%</string>
+    <string name="notifications_marker_type_format">%1$s (%2$d%%)</string>
+
+    <!-- ProfileActivity -->
+    <string name="profile_delete_account_message">¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.</string>
+    <string name="profile_delete_account_confirm">Sí, eliminar</string>
+    <string name="profile_edit_title">Editar perfil</string>
+    <string name="save">Guardar</string>
+    <string name="profile_error_load">No se pudo cargar el perfil</string>
+    <string name="profile_error_password_mismatch">Contraseña antigua incorrecta o nuevas no coincidentes.</string>
+    <string name="profile_updated">Perfil actualizado</string>
+
+    <!-- RegisterActivity -->
+    <string name="register_error_invalid_input">Revisa los campos introducidos</string>
+    <string name="register_success">Cuenta creada correctamente</string>
+
+    <!-- ScreenTimeActivity -->
+    <string name="error_screen_time_line_chart_missing">lineChart NULL: falta R.id.lineChart en el layout</string>
+    <string name="error_screen_time_night_chart_missing">barChartNight NULL: falta R.id.barChartNight en el layout</string>
+    <string name="screen_time_chart_dataset_minutes">Minutos</string>
+    <string name="screen_time_hour_suffix">%1$sh</string>
+    <string name="screen_time_night_marker_format">%1$s: %2$d min de uso</string>
+
+    <!-- SettingsActivity -->
+    <string name="settings_comm_permissions_granted">Permisos de comunicación concedidos</string>
+    <string name="settings_comm_permissions_partial">Solo se concedió uno de los permisos</string>
+    <string name="settings_comm_permissions_denied">Permisos de comunicación denegados</string>
+    <string name="settings_error_open_notifications">No se pudo abrir ajustes de notificaciones</string>
+    <string name="settings_error_open_usage">No se pudo abrir acceso de uso</string>
+    <string name="settings_error_open_app_settings">No se pudieron abrir los ajustes de la app</string>
+    <string name="language_english">English</string> <string name="language_galician">Galego</string>
+    <string name="settings_language_dialog_title">Selecciona idioma</string>
+    <string name="settings_language_selected">Idioma seleccionado: %1$s</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.example.burnout_app;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.widget.ImageButton;
@@ -10,6 +12,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.AppsUsageViewModel;
 import com.github.mikephil.charting.charts.LineChart;
@@ -18,7 +21,7 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 
-public class ActivityMultitask extends AppCompatActivity {
+public class MultitaskActivity extends AppCompatActivity {
 
     private AppsUsageViewModel vm;
 
@@ -45,6 +48,14 @@ public class ActivityMultitask extends AppCompatActivity {
 
     // Switches chart
     private LineChart chartSwitches;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,7 +121,7 @@ public class ActivityMultitask extends AppCompatActivity {
         // -------------------
         chartSwitches = findViewById(R.id.chartSwitches);
         if (chartSwitches == null) {
-            throw new IllegalStateException("chartSwitches NULL: falta R.id.chartSwitches en el layout");
+            throw new IllegalStateException(getString(R.string.error_multitask_chart_missing));
         }
         setupSwitchesLineChart(chartSwitches);
 
@@ -122,7 +133,7 @@ public class ActivityMultitask extends AppCompatActivity {
                 return;
             }
 
-            LineDataSet ds = new LineDataSet(st.entries, "Switches");
+            LineDataSet ds = new LineDataSet(st.entries, getString(R.string.multitask_switches_dataset));
             ds.setColor(Color.parseColor("#22D3EE"));
             ds.setLineWidth(2f);
             ds.setCircleColor(Color.parseColor("#22D3EE"));
@@ -161,9 +172,9 @@ public class ActivityMultitask extends AppCompatActivity {
             tvApp2Name.setText(t.name2);
             tvApp3Name.setText(t.name3);
 
-            tvApp1Pct.setText(t.pct1 + "%");
-            tvApp2Pct.setText(t.pct2 + "%");
-            tvApp3Pct.setText(t.pct3 + "%");
+            tvApp1Pct.setText(getString(R.string.percentage_format, t.pct1));
+            tvApp2Pct.setText(getString(R.string.percentage_format, t.pct2));
+            tvApp3Pct.setText(getString(R.string.percentage_format, t.pct3));
 
             pbApp1.setProgress(t.bar1);
             pbApp2.setProgress(t.bar2);
@@ -204,9 +215,9 @@ public class ActivityMultitask extends AppCompatActivity {
         String label;
 
         if (selectedDay == todayDay) {
-            label = "Hoy";
+            label = getString(R.string.today);
         } else if (selectedDay == todayDay - 1) {
-            label = "Ayer";
+            label = getString(R.string.yesterday);
         } else {
             label = TimeKey.dateLabelFromEpochDay(selectedDay);
         }
@@ -221,7 +232,7 @@ public class ActivityMultitask extends AppCompatActivity {
     private void setupSwitchesLineChart(LineChart c) {
         c.getDescription().setEnabled(false);
         c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
+        c.setNoDataText(getString(R.string.no_data));
 
         c.setTouchEnabled(true);
         c.setPinchZoom(true);
@@ -252,12 +263,11 @@ public class ActivityMultitask extends AppCompatActivity {
         c.getAxisLeft().setDrawGridLines(true);
     }
 
-    private static String prettyName(String s) {
-        if (s == null) return "--";
+    private String prettyName(String s) {
+        if (s == null) return getString(R.string.marker_empty);
         s = s.trim();
-        if (s.isEmpty()) return "--";
+        if (s.isEmpty()) return getString(R.string.marker_empty);
 
-        // si es package, coge el último segmento
         if (s.contains(".") && !s.contains(" ")) {
             String[] parts = s.split("\\.");
             return parts[parts.length - 1];

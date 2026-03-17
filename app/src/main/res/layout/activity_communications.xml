@@ -431,28 +431,12 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
-            <LinearLayout
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/chartChannelDistStacked"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:padding="12dp">
+                android:padding="10dp" />
 
-                <com.github.mikephil.charting.charts.BarChart
-                    android:id="@+id/chartChannelDistStacked"
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="8dp" />
-
-                <!-- Leyenda (1 línea o auto-wrap si quieres) -->
-                <LinearLayout
-                    android:id="@+id/legendChannelDist"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal" />
-            </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>

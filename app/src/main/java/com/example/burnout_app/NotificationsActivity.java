@@ -1,6 +1,7 @@
 package com.example.burnout_app;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -13,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.burnout_app.data.repo.NotificationRepository;
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.NotificationsViewModel;
 import com.github.mikephil.charting.charts.HorizontalBarChart;
@@ -35,7 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ActivityNotifications extends AppCompatActivity {
+public class NotificationsActivity extends AppCompatActivity {
 
     private NotificationsViewModel notificationsViewModel;
 
@@ -95,6 +97,14 @@ public class ActivityNotifications extends AppCompatActivity {
     }
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_notifications);
@@ -111,21 +121,21 @@ public class ActivityNotifications extends AppCompatActivity {
         // Trend chart
         chartNotifs = findViewById(R.id.chartNotifs);
         if (chartNotifs == null) {
-            throw new IllegalStateException("chartNotifs NULL: falta R.id.chartNotifs en el layout");
+            throw new IllegalStateException(getString(R.string.error_notifications_chart_missing));
         }
         setupNotifsLineChart(chartNotifs);
 
         // Type strip chart
         chartNotifTypesStacked = findViewById(R.id.chartNotifTypesStacked);
         if (chartNotifTypesStacked == null) {
-            throw new IllegalStateException("chartNotifTypesStacked NULL: falta R.id.chartNotifTypesStacked en el layout");
+            throw new IllegalStateException(getString(R.string.error_notifications_types_chart_missing));
         }
         setupTypeStrip(chartNotifTypesStacked);
 
         // Legend
         legendNotifTypes = findViewById(R.id.legendNotifTypes);
         if (legendNotifTypes == null) {
-            throw new IllegalStateException("legendNotifTypes NULL: falta R.id.legendNotifTypes en el layout");
+            throw new IllegalStateException(getString(R.string.error_notifications_legend_missing));
         }
 
         // Top apps
@@ -182,9 +192,9 @@ public class ActivityNotifications extends AppCompatActivity {
     private void applyDayUi() {
         String label;
         if (selectedDay == todayDay) {
-            label = "Hoy";
+            label = getString(R.string.today);
         } else if (selectedDay == todayDay - 1) {
-            label = "Ayer";
+            label = getString(R.string.yesterday);
         } else {
             label = TimeKey.dateLabelFromEpochDay(selectedDay);
         }
@@ -201,7 +211,7 @@ public class ActivityNotifications extends AppCompatActivity {
     private void setupNotifsLineChart(LineChart chart) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText("Sin datos");
+        chart.setNoDataText(getString(R.string.no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(true);
@@ -246,7 +256,7 @@ public class ActivityNotifications extends AppCompatActivity {
         }
         entries.add(new Entry(24f, notificationCountByHour[23]));
 
-        LineDataSet dataSet = new LineDataSet(entries, "Notificaciones");
+        LineDataSet dataSet = new LineDataSet(entries, getString(R.string.notifications_chart_dataset));
         dataSet.setColor(Color.parseColor("#22D3EE"));
         dataSet.setLineWidth(2f);
         dataSet.setCircleColor(Color.parseColor("#22D3EE"));
@@ -263,7 +273,7 @@ public class ActivityNotifications extends AppCompatActivity {
     private void setupTypeStrip(HorizontalBarChart chart) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText("Sin datos");
+        chart.setNoDataText(getString(R.string.no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(false);
@@ -316,7 +326,12 @@ public class ActivityNotifications extends AppCompatActivity {
         for (String category : FIXED_CATEGORIES) {
             int count = countForCategory(rows, category);
             int pct = (total > 0) ? Math.round((count * 100f) / total) : 0;
-            segs.add(new NotifTypeSeg(category, count, pct, colorForCategory(category)));
+            segs.add(new NotifTypeSeg(
+                    getCategoryDisplayLabel(category),
+                    count,
+                    pct,
+                    colorForCategory(category)
+            ));
         }
         lastTypeSegs = segs;
 
@@ -414,7 +429,7 @@ public class ActivityNotifications extends AppCompatActivity {
         int remaining = nonZero.size() - shown;
         if (remaining > 0) {
             TextView more = new TextView(this);
-            more.setText("+" + remaining);
+            more.setText(getString(R.string.notifications_more_categories, remaining));
             more.setTextColor(Color.parseColor("#94A3B8"));
             more.setTextSize(12f);
             more.setPadding(10, 2, 0, 0);
@@ -441,7 +456,7 @@ public class ActivityNotifications extends AppCompatActivity {
         dot.setBackgroundColor(seg.color);
 
         TextView label = new TextView(this);
-        label.setText(seg.label + " " + seg.pct + "%");
+        label.setText(getString(R.string.notifications_legend_item_format, seg.label, seg.pct));
         label.setTextColor(Color.parseColor("#E2E8F0"));
         label.setTextSize(12f);
         label.setSingleLine(true);
@@ -490,14 +505,14 @@ public class ActivityNotifications extends AppCompatActivity {
         @Override
         public void refreshContent(Entry e, Highlight highlight) {
             if (lastTypeSegs == null || lastTypeSegs.isEmpty() || highlight == null) {
-                tv.setText("--");
+                tv.setText(getString(R.string.marker_empty));
             } else {
                 int stackIndex = highlight.getStackIndex();
                 if (stackIndex >= 0 && stackIndex < lastTypeSegs.size()) {
                     NotifTypeSeg seg = lastTypeSegs.get(stackIndex);
-                    tv.setText(seg.label + " (" + seg.pct + "%)");
+                    tv.setText(getString(R.string.notifications_marker_type_format, seg.label, seg.pct));
                 } else {
-                    tv.setText("--");
+                    tv.setText(getString(R.string.marker_empty));
                 }
             }
 
@@ -598,15 +613,32 @@ public class ActivityNotifications extends AppCompatActivity {
         if (index == 1) {
             tvApp1Name.setText(prettyName);
             pbApp1.setProgress(bar);
-            tvApp1Pct.setText(pct + "%");
+            tvApp1Pct.setText(getString(R.string.percentage_format, pct));
         } else if (index == 2) {
             tvApp2Name.setText(prettyName);
             pbApp2.setProgress(bar);
-            tvApp2Pct.setText(pct + "%");
+            tvApp2Pct.setText(getString(R.string.percentage_format, pct));
         } else if (index == 3) {
             tvApp3Name.setText(prettyName);
             pbApp3.setProgress(bar);
-            tvApp3Pct.setText(pct + "%");
+            tvApp3Pct.setText(getString(R.string.percentage_format, pct));        }
+    }
+
+    private String getCategoryDisplayLabel(String category) {
+        if (category == null) return getString(R.string.multitask_category_other);
+
+        switch (category.trim().toUpperCase()) {
+            case "WORK":
+                return getString(R.string.multitask_category_work);
+            case "ENTERTAINMENT":
+                return getString(R.string.multitask_category_entertainment);
+            case "SOCIAL":
+                return getString(R.string.multitask_category_social);
+            case "COMMUNICATION":
+                return getString(R.string.main_communication_label);
+            case "OTHER":
+            default:
+                return getString(R.string.multitask_category_other);
         }
     }
 

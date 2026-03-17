@@ -1,6 +1,7 @@
 package com.example.burnout_app;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -10,6 +11,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.CommunicationViewModel;
 import com.github.mikephil.charting.charts.BarChart;
@@ -32,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class ActivityCommunications extends AppCompatActivity {
+public class CommunicationsActivity extends AppCompatActivity {
 
     private CommunicationViewModel vm;
 
@@ -58,6 +60,14 @@ public class ActivityCommunications extends AppCompatActivity {
     private long[] lastTextByHourMs;
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_communications);
@@ -74,14 +84,13 @@ public class ActivityCommunications extends AppCompatActivity {
         // Charts
         chartIntensity = findViewById(R.id.chartIntensity);
         if (chartIntensity == null) {
-            throw new IllegalStateException("chartIntensity NULL: falta R.id.chartIntensity en el layout");
+            throw new IllegalStateException(getString(R.string.error_chart_intensity_missing));
         }
         setupIntensityLineChart(chartIntensity);
 
         chartChannelStacked = findViewById(R.id.chartChannelDistStacked);
         if (chartChannelStacked == null) {
-            throw new IllegalStateException("chartChannelDistStacked NULL: falta R.id.chartChannelDistStacked en el layout");
-        }
+            throw new IllegalStateException(getString(R.string.error_chart_channel_missing));        }
         setupChannelStackedChart(chartChannelStacked);
 
         // Day selector
@@ -126,8 +135,8 @@ public class ActivityCommunications extends AppCompatActivity {
 
     private void applyDayUi() {
         String label;
-        if (selectedDay == todayDay) label = "Hoy";
-        else if (selectedDay == todayDay - 1) label = "Ayer";
+        if (selectedDay == todayDay) label = getString(R.string.today);
+        else if (selectedDay == todayDay - 1) label = getString(R.string.yesterday);
         else label = TimeKey.dateLabelFromEpochDay(selectedDay);
 
         tvDayLabel.setText(label);
@@ -159,7 +168,7 @@ public class ActivityCommunications extends AppCompatActivity {
     private void setupIntensityLineChart(LineChart c) {
         c.getDescription().setEnabled(false);
         c.getLegend().setEnabled(false);
-        c.setNoDataText("Sin datos");
+        c.setNoDataText(getString(R.string.no_data));
 
         c.setTouchEnabled(true);
         c.setPinchZoom(true);
@@ -190,8 +199,7 @@ public class ActivityCommunications extends AppCompatActivity {
         c.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
-                return ((int) value) + "m";
-            }
+                return ((int) value) + getString(R.string.minutes_short);            }
         });
     }
 
@@ -213,7 +221,7 @@ public class ActivityCommunications extends AppCompatActivity {
 
         entries.add(new Entry(24f, (float) msToMinutes(totalByHourMs[23])));
 
-        LineDataSet ds = new LineDataSet(entries, "Comunicación (min)");
+        LineDataSet ds = new LineDataSet(entries, getString(R.string.comm_chart_label));
         ds.setColor(Color.parseColor("#60A5FA"));
         ds.setLineWidth(2f);
         ds.setCircleColor(Color.parseColor("#60A5FA"));
@@ -233,7 +241,7 @@ public class ActivityCommunications extends AppCompatActivity {
 
     private void setupChannelStackedChart(BarChart c) {
         c.getDescription().setEnabled(false);
-        c.setNoDataText("Sin datos");
+        c.setNoDataText(getString(R.string.no_data));
 
         c.setTouchEnabled(true);
         c.setPinchZoom(false);
@@ -275,7 +283,7 @@ public class ActivityCommunications extends AppCompatActivity {
         c.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
-                return ((int) value) + "m";
+                return ((int) value) + getString(R.string.minutes_short);
             }
         });
 
@@ -332,7 +340,10 @@ public class ActivityCommunications extends AppCompatActivity {
 
         BarDataSet ds = new BarDataSet(entries, "");
         ds.setDrawValues(false);
-        ds.setStackLabels(new String[]{"Voz", "Texto"});
+        ds.setStackLabels(new String[]{
+                getString(R.string.comm_channel_voice),
+                getString(R.string.comm_channel_text)
+        });
         ds.setColors(
                 Color.parseColor("#60A5FA"),
                 Color.parseColor("#34D399")
@@ -377,15 +388,32 @@ public class ActivityCommunications extends AppCompatActivity {
                 String labelHour = hourSlotLabel(hour);
 
                 if (stackIndex == 0) {
-                    tv.setText("Voz (" + labelHour + "): " + voiceMin + " mins");
+                    tv.setText(getString(
+                            R.string.comm_marker_voice_format,
+                            getString(R.string.comm_channel_voice),
+                            labelHour,
+                            voiceMin
+                    ));
                 } else if (stackIndex == 1) {
-                    tv.setText("Texto (" + labelHour + "): " + textMin + " mins");
+                    tv.setText(getString(
+                            R.string.comm_marker_text_format,
+                            getString(R.string.comm_channel_text),
+                            labelHour,
+                            textMin
+                    ));
                 } else {
-                    tv.setText(labelHour + ": Voz " + voiceMin + " mins · Texto " + textMin + " mins");
+                    tv.setText(getString(
+                            R.string.comm_marker_both_format,
+                            labelHour,
+                            getString(R.string.comm_channel_voice),
+                            voiceMin,
+                            getString(R.string.comm_channel_text),
+                            textMin
+                    ));
                 }
 
             } else {
-                tv.setText("--");
+                tv.setText(getString(R.string.marker_empty));
             }
 
             measure(

@@ -2,6 +2,7 @@ package com.example.burnout_app;
 
 import android.Manifest;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -23,6 +24,7 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import com.example.burnout_app.collectors.UsageStatsProvider;
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.SessionManager;
 import com.example.burnout_app.worker.DailyAggregationWorker;
 
@@ -44,6 +46,14 @@ public class WelcomeActivity extends AppCompatActivity {
 
     private Button btnLogin;
     private Button btnCreateAccount;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,8 +105,7 @@ public class WelcomeActivity extends AppCompatActivity {
         boolean notifOk = isNotificationListenerEnabled();
         if (!notifOk) {
             Log.d(TAG, "Notification Listener NOT enabled -> opening settings");
-            startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
-            return;
+            startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));            return;
         }
 
         ensureAggregationWorkScheduled();

@@ -70,10 +70,10 @@
             android:windowSoftInputMode="adjustResize" />
         <activity android:name=".MainActivity" />
         <activity android:name=".ProfileActivity" />
-        <activity android:name=".ActivityScreenTime" />
-        <activity android:name=".ActivityMultitask" />
-        <activity android:name=".ActivityNotifications" />
-        <activity android:name=".ActivityCommunications" />
+        <activity android:name=".ScreenTimeActivity" />
+        <activity android:name=".MultitaskActivity" />
+        <activity android:name=".NotificationsActivity" />
+        <activity android:name=".CommunicationsActivity" />
         <activity android:name=".SettingsActivity" />
 
         <!-- ========================= -->

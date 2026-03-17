@@ -1,6 +1,7 @@
 package com.example.burnout_app;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -10,6 +11,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DailyDetailViewModel;
 import com.github.mikephil.charting.charts.BarChart;
@@ -30,7 +32,7 @@ import com.github.mikephil.charting.utils.MPPointF;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ActivityScreenTime extends AppCompatActivity {
+public class ScreenTimeActivity extends AppCompatActivity {
 
     private DailyDetailViewModel dailyDetailViewModel;
 
@@ -54,6 +56,14 @@ public class ActivityScreenTime extends AppCompatActivity {
     private int[] lastNightMinutes9;
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_screen_time);
@@ -62,13 +72,13 @@ public class ActivityScreenTime extends AppCompatActivity {
 
         lineChart = findViewById(R.id.lineChart);
         if (lineChart == null) {
-            throw new IllegalStateException("lineChart NULL: falta R.id.lineChart en el layout");
+            throw new IllegalStateException(getString(R.string.error_screen_time_line_chart_missing));
         }
         setupLineChart(lineChart);
 
         barChartNight = findViewById(R.id.barChartNight);
         if (barChartNight == null) {
-            throw new IllegalStateException("barChartNight NULL: falta R.id.barChartNight en el layout");
+            throw new IllegalStateException(getString(R.string.error_screen_time_night_chart_missing));
         }
         setupNightTimeline(barChartNight);
 
@@ -97,7 +107,10 @@ public class ActivityScreenTime extends AppCompatActivity {
 
             if (tvNightTotal != null) {
                 int totalMinutes = Integer.parseInt(safeText(tvNight));
-                tvNightTotal.setText("Uso total: " + TimeKey.formatDurationMinutes(totalMinutes));
+                tvNightTotal.setText(getString(
+                        R.string.screen_time_night_total,
+                        TimeKey.formatDurationMinutes(totalMinutes)
+                ));
             }
         });
 
@@ -115,7 +128,7 @@ public class ActivityScreenTime extends AppCompatActivity {
                 entries.add(new Entry(hour, minutes[i]));
             }
 
-            LineDataSet dataSet = new LineDataSet(entries, "Minutos");
+            LineDataSet dataSet = new LineDataSet(entries, getString(R.string.screen_time_chart_dataset_minutes));
             dataSet.setColor(Color.parseColor("#22D3EE"));
             dataSet.setLineWidth(2f);
             dataSet.setCircleColor(Color.parseColor("#22D3EE"));
@@ -175,9 +188,9 @@ public class ActivityScreenTime extends AppCompatActivity {
 
     private void applyDayUi(int day, int today) {
         if (day == today) {
-            tvDayLabel.setText("Hoy");
+            tvDayLabel.setText(getString(R.string.today));
         } else if (day == today - 1) {
-            tvDayLabel.setText("Ayer");
+            tvDayLabel.setText(getString(R.string.yesterday));
         } else {
             long dayStartLocalMs = TimeKey.startOfDayMsFromEpochDay(day);
             tvDayLabel.setText(TimeKey.dateLabelFromTimestamp(dayStartLocalMs));
@@ -191,7 +204,7 @@ public class ActivityScreenTime extends AppCompatActivity {
     private void setupLineChart(LineChart chart) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText("Sin datos");
+        chart.setNoDataText(getString(R.string.no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(true);
@@ -208,7 +221,7 @@ public class ActivityScreenTime extends AppCompatActivity {
             @Override
             public String getFormattedValue(float value) {
                 int hour = Math.round(value);
-                return hour + "h";
+                return getString(R.string.screen_time_hour_suffix, String.valueOf(hour));
             }
         });
 
@@ -224,7 +237,7 @@ public class ActivityScreenTime extends AppCompatActivity {
     private void setupNightTimeline(BarChart chart) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText("Sin datos");
+        chart.setNoDataText(getString(R.string.no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(false);
@@ -312,7 +325,7 @@ public class ActivityScreenTime extends AppCompatActivity {
             case 6: return "04:00–05:00";
             case 7: return "05:00–06:00";
             case 8: return "06:00–07:00";
-            default: return "--";
+            default: return getString(R.string.marker_empty);
         }
     }
 
@@ -320,7 +333,10 @@ public class ActivityScreenTime extends AppCompatActivity {
         if (tvNightActiveHours == null) return;
 
         if (minutes9 == null || minutes9.length != 9) {
-            tvNightActiveHours.setText("Horas activas: --");
+            tvNightActiveHours.setText(getString(
+                    R.string.screen_time_night_active_hours,
+                    getString(R.string.marker_empty)
+            ));
             return;
         }
 
@@ -328,7 +344,10 @@ public class ActivityScreenTime extends AppCompatActivity {
         for (int minutes : minutes9) {
             if (minutes > 0) activeHours++;
         }
-        tvNightActiveHours.setText("Horas activas: " + activeHours);
+        tvNightActiveHours.setText(getString(
+                R.string.screen_time_night_active_hours,
+                String.valueOf(activeHours)
+        ));
     }
 
     private class NightMarkerView extends MarkerView {
@@ -347,9 +366,9 @@ public class ActivityScreenTime extends AppCompatActivity {
             if (lastNightMinutes9 != null && lastNightMinutes9.length == 9 && index >= 0 && index < 9) {
                 String label = nightSlotLabel(index);
                 int minutes = lastNightMinutes9[index];
-                tv.setText(label + ": " + minutes + " min de uso");
+                tv.setText(getString(R.string.screen_time_night_marker_format, label, minutes));
             } else {
-                tv.setText("--");
+                tv.setText(getString(R.string.marker_empty));
             }
 
             measure(

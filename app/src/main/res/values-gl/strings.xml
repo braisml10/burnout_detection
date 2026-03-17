@@ -1,0 +1,198 @@
+<resources>
+    <string name="app_name">Burnout Detection</string>
+
+    <plurals name="kpi_calls">
+        <item quantity="one">%d chamada</item>
+        <item quantity="other">%d chamadas</item>
+    </plurals>
+
+    <!-- COMMON -->
+    <string name="today">Hoxe</string>
+    <string name="minutes_abv">min</string>
+    <string name="first_name">Nome</string>
+    <string name="last_name">Apelidos</string>
+    <string name="password">Contrasinal</string>
+    <string name="email">Correo electrónico</string>
+    <string name="back">Volver</string>
+    <string name="settings">Configuración</string>
+    <string name="permissions">Permisos</string>
+    <string name="language">Idioma</string>
+    <string name="language_spanish">Español</string>
+    <string name="register_button">Crear conta</string>
+    <string name="login_button">Iniciar sesión</string>
+    <string name="yesterday">Onte</string>
+    <string name="no_data">Sen datos</string>
+    <string name="minutes_short">m</string>
+    <string name="marker_empty">--</string>
+    <string name="percentage_format">%1$d%%</string>
+
+    <!-- activity_communications.xml -->
+    <string name="communications_title">Comunicacións</string>
+    <string name="calls">Chamadas</string>
+    <string name="messages">Mensaxes</string>
+    <string name="duration">Duración</string>
+    <string name="total">total</string>
+    <string name="received">recibidos</string>
+    <string name="communication_intensity_hour">Intensidade de comunicación por hora</string>
+    <string name="channel_distribution">Distribución por canle</string>
+
+    <!-- activity_login.xml -->
+    <string name="login_welcome_back">Benvido de novo</string>
+    <string name="login_subtitle">Inicia sesión na túa conta</string>
+    <string name="login_password_label">Contrasinal</string>
+    <string name="login_password_hint">Contrasinal</string>
+    <string name="login_go_register">Non tes conta? Rexístrate</string>
+
+    <!-- activity_main.xml -->
+    <string name="main_today_activity_title">Actividade de hoxe</string>
+    <string name="main_screen_time_label">Tempo de pantalla</string>
+    <string name="main_notifications_label">Notificacións</string>
+    <string name="main_multitask_label">Multitarefa</string>
+    <string name="main_communication_label">Comunicación</string>
+    <string name="main_hourly_activity_title">Actividade por hora</string>
+    <string name="main_cd_open_screen_time">Abrir tempo de pantalla</string>
+    <string name="main_cd_open_notifications">Abrir notificacións</string>
+    <string name="main_cd_open_multitask">Abrir multitarefa</string>
+    <string name="main_cd_open_communication">Abrir comunicación</string>
+    <string name="main_cd_open_hourly_activity">Abrir actividade por hora</string>
+
+    <!-- activity_multitask.xml -->
+    <string name="multitask_title">Patróns de uso e multitarefa</string>
+    <string name="multitask_apps_time_label">Tempo en apps</string>
+    <string name="multitask_app_switches_label">Cambios de app</string>
+    <string name="multitask_switches_unit">cambios</string>
+    <string name="multitask_used_apps_label">Apps usadas</string>
+    <string name="multitask_apps_unit">apps</string>
+    <string name="multitask_category_time_title">Tempo por categoría</string>
+    <string name="multitask_category_social">Social</string>
+    <string name="multitask_category_entertainment">Entretemento</string>
+    <string name="multitask_category_messaging">Mensaxería</string>
+    <string name="multitask_category_work">Traballo</string>
+    <string name="multitask_category_other">Outros</string>
+    <string name="multitask_switches_chart_title">Frecuencia de cambio (cambios diarios)</string>
+    <string name="multitask_top_apps_title">Apps máis usadas</string>
+
+    <!-- activity_notifications.xml -->
+    <string name="notifications_title">Notificacións e carga de atención</string>
+    <string name="notifications_daily_total_label">Total diario</string>
+    <string name="notifications_daily_total_unit">notif.</string>
+    <string name="notifications_avg_per_hour_label">Promedio/h</string>
+    <string name="notifications_avg_per_hour_unit">notif./h</string>
+    <string name="notifications_most_intrusive_app_label">App máis intrusiva</string>
+    <string name="notifications_trend_title">Tendencia de notificacións</string>
+    <string name="notifications_top_apps_title">Apps con máis notificacións</string>
+    <string name="notifications_types_title">Notificacións por tipo</string>
+
+    <!-- activity_profile.xml -->
+    <string name="profile_title">O meu perfil</string>
+    <string name="profile_edit_button_desc">Editar perfil</string>
+    <string name="profile_personal_info_title">Información persoal</string>
+    <string name="profile_delete_account_button">Eliminar conta</string>
+
+    <!-- activity_register.xml -->
+    <string name="register_title">Crea a túa conta</string>
+    <string name="register_go_login">Xa tes conta? Inicia sesión</string>
+    <string name="confirm_password">Confirmar contrasinal</string>
+
+    <!-- activity_screen_time.xml -->
+    <string name="screen_time_title">Tempo en pantalla</string>
+    <string name="screen_time_total_label">Tempo total</string>
+    <string name="screen_time_sessions_label">Sesións</string>
+    <string name="screen_time_sessions_unit">aperturas</string>
+    <string name="screen_time_night_label">Uso nocturno</string>
+    <string name="screen_time_daily_chart_title">Actividade diurna (07:00–21:00)</string>
+    <string name="screen_time_night_chart_title">Uso nocturno (22:00–06:00)</string>
+    <string name="screen_time_night_total">Uso total: %1$s</string>
+    <string name="screen_time_night_active_hours">Horas activas: %1$s</string>
+
+    <!-- activity_settings.xml -->
+    <string name="settings_notifications_title">Notificacións</string>
+    <string name="settings_notifications_desc">Acceso ás notificacións do sistema</string>
+    <string name="settings_communication_title">Chamadas e mensaxes</string>
+    <string name="settings_communication_desc">Permiso para ler chamadas e SMS</string>
+    <string name="settings_usage_title">Uso do dispositivo</string>
+    <string name="settings_usage_desc">Acceso ás estatísticas de uso</string>
+
+    <!-- activity_welcome.xml -->
+    <string name="welcome_logo_desc">Logo da aplicación</string>
+    <string name="welcome_title">App para a detección do burnout dixital</string>
+    <string name="welcome_subtitle">Accede ou crea a túa conta para continuar</string>
+
+    <!-- dialog_edit_profile.xml -->
+    <string name="current_password">Contrasinal actual</string>
+    <string name="new_password">Novo contrasinal</string>
+    <string name="confirm_new_password">Confirmar novo contrasinal</string>
+
+    <!-- ActivityCommunications.java -->
+    <string name="comm_chart_label">Comunicación (min)</string>
+    <string name="comm_channel_voice">Voz</string>
+    <string name="comm_channel_text">Texto</string>
+    <string name="comm_marker_voice_format">%1$s (%2$s): %3$d min</string>
+    <string name="comm_marker_text_format">%1$s (%2$s): %3$d min</string>
+    <string name="comm_marker_both_format">%1$s: %2$s %3$d min · %4$s %5$d min</string>
+    <string name="error_chart_intensity_missing">chartIntensity NULL: falta R.id.chartIntensity no layout</string>
+    <string name="error_chart_channel_missing">chartChannelDistStacked NULL: falta R.id.chartChannelDistStacked no layout</string>
+
+    <!-- LoginActivity -->
+    <string name="login_error_empty_fields">Completa todos os campos</string>
+    <string name="login_error_invalid_credentials">Correo ou contrasinal incorrectos</string>
+
+    <!-- MainActivity -->
+    <string name="main_logout_title">Pechar sesión</string>
+    <string name="main_logout_message">Estás seguro de que queres pechar sesión?</string>
+    <string name="main_logout_confirm">Si, pechar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="main_date_prefix">| %1$s</string>
+    <string name="main_chart_dataset_minutes">Minutos</string>
+    <string name="error_main_chart_missing">barChart3h é NULL -> revisa activity_main.xml: falta @+id/barChart3h</string>
+    <string name="error_main_card_missing">%1$s é NULL -> revisa activity_main.xml (ou variantes) e o id.</string>
+    <string name="log_main_card_found">%1$s FOUND -> engadindo listener</string>
+    <string name="log_main_card_clicked">%1$s CLICKED -> abrindo %2$s</string>
+    <string name="main_chart_marker_format">Uso (%1$s - %2$s): %3$d %4$s</string>
+
+    <!-- MultitaskActivity -->
+    <string name="error_multitask_chart_missing">chartSwitches NULL: falta R.id.chartSwitches no layout</string>
+    <string name="multitask_switches_dataset">Cambios</string>
+
+    <!-- NotificationsActivity -->
+    <string name="error_notifications_chart_missing">chartNotifs NULL: falta R.id.chartNotifs no layout</string>
+    <string name="error_notifications_types_chart_missing">chartNotifTypesStacked NULL: falta R.id.chartNotifTypesStacked no layout</string>
+    <string name="error_notifications_legend_missing">legendNotifTypes NULL: falta R.id.legendNotifTypes no layout</string>
+    <string name="notifications_chart_dataset">Notificacións</string>
+    <string name="notifications_more_categories">+%1$d</string>
+    <string name="notifications_legend_item_format">%1$s %2$d%%</string>
+    <string name="notifications_marker_type_format">%1$s (%2$d%%)</string>
+
+    <!-- ProfileActivity -->
+    <string name="profile_delete_account_message">Estás seguro de que queres eliminar a túa conta? Esta acción non se pode desfacer.</string>
+    <string name="profile_delete_account_confirm">Si, eliminar</string>
+    <string name="profile_edit_title">Editar perfil</string>
+    <string name="save">Gardar</string>
+    <string name="profile_error_load">Non se puido cargar o perfil</string>
+    <string name="profile_error_password_mismatch">Contrasinal antigo incorrecto ou os novos non coinciden.</string>
+    <string name="profile_updated">Perfil actualizado</string>
+
+    <!-- RegisterActivity -->
+    <string name="register_error_invalid_input">Revisa os campos introducidos</string>
+    <string name="register_success">Conta creada correctamente</string>
+
+    <!-- ScreenTimeActivity -->
+    <string name="error_screen_time_line_chart_missing">lineChart NULL: falta R.id.lineChart no layout</string>
+    <string name="error_screen_time_night_chart_missing">barChartNight NULL: falta R.id.barChartNight no layout</string>
+    <string name="screen_time_chart_dataset_minutes">Minutos</string>
+    <string name="screen_time_hour_suffix">%1$sh</string>
+    <string name="screen_time_night_marker_format">%1$s: %2$d min de uso</string>
+
+    <!-- SettingsActivity -->
+    <string name="settings_comm_permissions_granted">Permisos de comunicación concedidos</string>
+    <string name="settings_comm_permissions_partial">Só se concedeu un dos permisos</string>
+    <string name="settings_comm_permissions_denied">Permisos de comunicación denegados</string>
+    <string name="settings_error_open_notifications">Non se puideron abrir os axustes de notificacións</string>
+    <string name="settings_error_open_usage">Non se puido abrir o acceso de uso</string>
+    <string name="settings_error_open_app_settings">Non se puideron abrir os axustes da app</string>
+
+    <string name="language_english">English</string>
+    <string name="language_galician">Galego</string>
+    <string name="settings_language_dialog_title">Selecciona idioma</string>
+    <string name="settings_language_selected">Idioma seleccionado: %1$s</string>
+</resources>

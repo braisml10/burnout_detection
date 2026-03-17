@@ -1,6 +1,8 @@
 package com.example.burnout_app;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.ImageButton;
@@ -10,6 +12,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.SessionManager;
 import com.example.burnout_app.viewmodel.OnboardingViewModel;
 import com.google.android.material.button.MaterialButton;
@@ -24,6 +27,14 @@ public class LoginActivity extends AppCompatActivity {
     private TextView tvGoRegister;
 
     private OnboardingViewModel viewModel;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,8 +59,7 @@ public class LoginActivity extends AppCompatActivity {
             String password = etPassword.getText() != null ? etPassword.getText().toString() : "";
 
             if (TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
-                Toast.makeText(this, "Completa todos los campos", Toast.LENGTH_SHORT).show();
-                return;
+                Toast.makeText(this, getString(R.string.login_error_empty_fields), Toast.LENGTH_SHORT).show();                return;
             }
 
             viewModel.login(email, password, success -> runOnUiThread(() -> {
@@ -60,8 +70,7 @@ public class LoginActivity extends AppCompatActivity {
                     startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     finishAffinity();
                 } else {
-                    Toast.makeText(this, "Email o contraseña incorrectos", Toast.LENGTH_SHORT).show();
-                }
+                    Toast.makeText(this, getString(R.string.login_error_invalid_credentials), Toast.LENGTH_SHORT).show();                }
             }));
         });
     }

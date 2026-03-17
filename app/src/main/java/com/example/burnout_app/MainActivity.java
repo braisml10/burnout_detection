@@ -1,10 +1,13 @@
 package com.example.burnout_app;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,30 +16,46 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.SessionManager;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DashboardViewModel;
 import com.example.burnout_app.viewmodel.ProfileViewModel;
 import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.components.MarkerView;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+import com.github.mikephil.charting.utils.MPPointF;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.navigation.NavigationView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
 
     private BarChart barChart3h;
+    private long[] lastBucketsMs;
 
     private DrawerLayout drawerLayout;
     private NavigationView navView;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,20 +115,20 @@ public class MainActivity extends AppCompatActivity {
                 if (id == R.id.nav_main) {
                     // Already here
                 } else if (id == R.id.nav_screen_time) {
-                    startActivity(new Intent(this, ActivityScreenTime.class));
+                    startActivity(new Intent(this, ScreenTimeActivity.class));
                 } else if (id == R.id.nav_notifications) {
-                    startActivity(new Intent(this, ActivityNotifications.class));
+                    startActivity(new Intent(this, NotificationsActivity.class));
                 } else if (id == R.id.nav_multitask) {
-                    startActivity(new Intent(this, ActivityMultitask.class));
+                    startActivity(new Intent(this, MultitaskActivity.class));
                 } else if (id == R.id.nav_communication) {
-                    startActivity(new Intent(this, ActivityCommunications.class));
+                    startActivity(new Intent(this, CommunicationsActivity.class));
                 } else if (id == R.id.nav_settings) {
                     startActivity(new Intent(this, SettingsActivity.class));
                 } else if (id == R.id.nav_logout) {
                     new AlertDialog.Builder(this)
-                            .setTitle("Cerrar sesión")
-                            .setMessage("¿Está seguro de que quiere cerrar sesión?")
-                            .setPositiveButton("Sí, cerrar", (dialog, which) -> {
+                            .setTitle(getString(R.string.main_logout_title))
+                            .setMessage(getString(R.string.main_logout_message))
+                            .setPositiveButton(getString(R.string.main_logout_confirm), (dialog, which) -> {
                                 SessionManager sessionManager = new SessionManager(MainActivity.this);
                                 sessionManager.logout();
 
@@ -117,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                 startActivity(intent);
                             })
-                            .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
+                            .setNegativeButton(getString(R.string.cancel), (dialog, which) -> dialog.dismiss())
                             .show();
                 }
 
@@ -126,13 +145,16 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        setupCardNavigation(R.id.cardScreenTime, ActivityScreenTime.class, "cardScreenTime");
-        setupCardNavigation(R.id.cardMultitask, ActivityMultitask.class, "cardMultitask");
-        setupCardNavigation(R.id.cardNotifications, ActivityNotifications.class, "cardNotifications");
-        setupCardNavigation(R.id.cardCommunication, ActivityCommunications.class, "cardCommunication");
+        setupCardNavigation(R.id.cardScreenTime, ScreenTimeActivity.class, "cardScreenTime");
+        setupCardNavigation(R.id.cardMultitask, MultitaskActivity.class, "cardMultitask");
+        setupCardNavigation(R.id.cardNotifications, NotificationsActivity.class, "cardNotifications");
+        setupCardNavigation(R.id.cardCommunication, CommunicationsActivity.class, "cardCommunication");
 
         TextView tvDate = findViewById(R.id.tvDate);
-        tvDate.setText("| " + TimeKey.dateLabelFromTimestamp(System.currentTimeMillis()));
+        tvDate.setText(getString(
+                R.string.main_date_prefix,
+                TimeKey.dateLabelFromTimestamp(System.currentTimeMillis())
+        ));
 
         TextView value1 = findViewById(R.id.value1);
         TextView value2 = findViewById(R.id.value2);
@@ -165,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
         barChart3h = findViewById(R.id.barChart3h);
         if (barChart3h == null) {
-            Log.e(TAG, "barChart3h is NULL -> revisa activity_main.xml: falta @+id/barChart3h");
+            Log.e(TAG, getString(R.string.error_main_chart_missing));
         } else {
             setup3hBarChart(barChart3h);
 
@@ -189,16 +211,20 @@ public class MainActivity extends AppCompatActivity {
         MaterialCardView card = findViewById(cardId);
 
         if (card == null) {
-            Log.e(TAG, labelForLogs + " is NULL -> revisa activity_main.xml (o variantes) y el id.");
+            Log.e(TAG, getString(R.string.error_main_card_missing, labelForLogs));
             return;
         }
 
-        Log.d(TAG, labelForLogs + " FOUND -> attaching click listener");
+        Log.d(TAG, getString(R.string.log_main_card_found, labelForLogs));
         card.setClickable(true);
         card.setFocusable(true);
 
         card.setOnClickListener(v -> {
-            Log.d(TAG, labelForLogs + " CLICKED -> opening " + targetActivity.getSimpleName());
+            Log.d(TAG, getString(
+                    R.string.log_main_card_clicked,
+                    labelForLogs,
+                    targetActivity.getSimpleName()
+            ));
             startActivity(new Intent(MainActivity.this, targetActivity));
         });
     }
@@ -206,11 +232,13 @@ public class MainActivity extends AppCompatActivity {
     private void setup3hBarChart(BarChart chart) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText("Sin datos");
+        chart.setNoDataText(getString(R.string.no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(false);
         chart.setScaleEnabled(false);
+        chart.setDrawMarkers(true);
+        chart.setHighlightFullBarEnabled(true);
 
         XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
@@ -253,12 +281,26 @@ public class MainActivity extends AppCompatActivity {
         chart.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
-                return ((int) value) + "m";
+                return ((int) value) + getString(R.string.minutes_short);
             }
         });
 
         chart.setFitBars(true);
         chart.setExtraOffsets(4f, 2f, 6f, 6f);
+
+        MainBarMarkerView markerView = new MainBarMarkerView(this);
+        markerView.setChartView(chart);
+        chart.setMarker(markerView);
+
+        chart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) {
+            }
+
+            @Override
+            public void onNothingSelected() {
+            }
+        });
     }
 
     private long[] aggregate3hBuckets(List<HourlyMetricsEntity> hourlyMetrics) {
@@ -280,10 +322,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void render3hBars(BarChart chart, long[] bucketsMs) {
         if (bucketsMs == null || bucketsMs.length != 8) {
+            lastBucketsMs = null;
             chart.clear();
             chart.invalidate();
             return;
         }
+
+        lastBucketsMs = bucketsMs;
 
         List<BarEntry> entries = new ArrayList<>(8);
         for (int i = 0; i < 8; i++) {
@@ -291,7 +336,7 @@ public class MainActivity extends AppCompatActivity {
             entries.add(new BarEntry(i, minutes));
         }
 
-        BarDataSet dataSet = new BarDataSet(entries, "Minutos");
+        BarDataSet dataSet = new BarDataSet(entries, getString(R.string.main_chart_dataset_minutes));
         dataSet.setColor(Color.parseColor("#22D3EE"));
         dataSet.setDrawValues(false);
 
@@ -304,6 +349,64 @@ public class MainActivity extends AppCompatActivity {
         chart.getAxisLeft().setAxisMaximum(Math.max(30f, maxY * 1.2f));
 
         chart.invalidate();
+    }
+
+    private String[] bucketRange(int index) {
+        int start = index * 3;
+        int end = start + 3;
+
+        String startStr = String.format(Locale.getDefault(), "%02d:00", start);
+        String endStr = String.format(Locale.getDefault(), "%02d:00", end);
+
+        return new String[]{startStr, endStr};
+    }
+
+    private long msToMinutes(long ms) {
+        if (ms <= 0L) return 0L;
+        return ms / 60000L;
+    }
+
+    private class MainBarMarkerView extends MarkerView {
+
+        private final TextView tv;
+
+        public MainBarMarkerView(Context context) {
+            super(context, R.layout.marker);
+            tv = findViewById(R.id.tvMarkerText);
+        }
+
+        @Override
+        public void refreshContent(Entry e, Highlight highlight) {
+            int index = Math.round(e.getX());
+
+            if (lastBucketsMs != null && index >= 0 && index < lastBucketsMs.length) {
+                String[] range = bucketRange(index);
+                long minutes = msToMinutes(lastBucketsMs[index]);
+
+                tv.setText(getString(
+                        R.string.main_chart_marker_format,
+                        range[0],
+                        range[1],
+                        minutes,
+                        getString(R.string.minutes_short)
+                ));
+            } else {
+                tv.setText(getString(R.string.marker_empty));
+            }
+
+            measure(
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            );
+            layout(0, 0, getMeasuredWidth(), getMeasuredHeight());
+
+            super.refreshContent(e, highlight);
+        }
+
+        @Override
+        public MPPointF getOffset() {
+            return new MPPointF(-(getWidth() / 2f), -getHeight() - 12f);
+        }
     }
 
     private String getInitials(String firstName, String lastName) {

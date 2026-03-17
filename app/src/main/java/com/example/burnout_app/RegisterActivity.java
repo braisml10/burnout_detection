@@ -1,6 +1,8 @@
 package com.example.burnout_app;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -9,6 +11,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.example.burnout_app.helpers.LanguageHelper;
 import com.example.burnout_app.helpers.SessionManager;
 import com.example.burnout_app.viewmodel.OnboardingViewModel;
 import com.google.android.material.button.MaterialButton;
@@ -26,6 +29,14 @@ public class RegisterActivity extends AppCompatActivity {
     private TextView tvGoLogin;
 
     private OnboardingViewModel onboardingViewModel;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        SharedPreferences prefs =
+                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
+        String langCode = prefs.getString("selected_language", "es");
+        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +67,7 @@ public class RegisterActivity extends AppCompatActivity {
             String confirmPassword = etConfirmPassword.getText() != null ? etConfirmPassword.getText().toString() : "";
 
             if (!onboardingViewModel.isInputValid(firstName, lastName, email, password, confirmPassword)) {
-                Toast.makeText(this, "Revisa los campos introducidos", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.register_error_invalid_input), Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -65,7 +76,7 @@ public class RegisterActivity extends AppCompatActivity {
             SessionManager sessionManager = new SessionManager(this);
             sessionManager.setLoggedIn(true);
 
-            Toast.makeText(this, "Cuenta creada correctamente", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.register_success), Toast.LENGTH_SHORT).show();
             startActivity(new Intent(RegisterActivity.this, MainActivity.class));
             finishAffinity();
         });

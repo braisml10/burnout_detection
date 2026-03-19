@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.burnout_app.helpers.LanguageHelper;
+import com.example.burnout_app.helpers.RetentionPolicy;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.AppsUsageViewModel;
 import com.github.mikephil.charting.charts.LineChart;
@@ -36,6 +37,7 @@ public class MultitaskActivity extends AppCompatActivity {
 
     private int todayDay;
     private int selectedDay;
+    private int minAllowedDay;
 
     private TextView tvCatSocialTime, tvCatEntTime, tvCatMsgTime, tvCatWorkTime, tvCatOtherTime;
     private ProgressBar pbCatSocial, pbCatEnt, pbCatMsg, pbCatWork, pbCatOther;
@@ -192,11 +194,14 @@ public class MultitaskActivity extends AppCompatActivity {
 
         todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay = todayDay;
+        minAllowedDay = todayDay - RetentionPolicy.DATA_RETENTION_DAYS;
 
         btnPrevDay.setOnClickListener(v -> {
-            selectedDay--;
-            applyDayUi();
-            vm.loadDay(selectedDay);
+            if (selectedDay > minAllowedDay) {
+                selectedDay--;
+                applyDayUi();
+                vm.loadDay(selectedDay);
+            }
         });
 
         btnNextDay.setOnClickListener(v -> {
@@ -223,6 +228,10 @@ public class MultitaskActivity extends AppCompatActivity {
         }
 
         tvDayLabel.setText(label);
+
+        boolean canGoPrev = selectedDay > minAllowedDay;
+        btnPrevDay.setEnabled(canGoPrev);
+        btnPrevDay.setAlpha(canGoPrev ? 1f : 0.35f);
 
         boolean canGoNext = selectedDay < todayDay;
         btnNextDay.setEnabled(canGoNext);

@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.burnout_app.data.repo.NotificationRepository;
 import com.example.burnout_app.helpers.LanguageHelper;
+import com.example.burnout_app.helpers.RetentionPolicy;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.NotificationsViewModel;
 import com.github.mikephil.charting.charts.HorizontalBarChart;
@@ -53,6 +54,7 @@ public class NotificationsActivity extends AppCompatActivity {
 
     private int todayDay;
     private int selectedDay;
+    private int minAllowedDay;
 
     // Chart 1: trend
     private LineChart chartNotifs;
@@ -158,11 +160,14 @@ public class NotificationsActivity extends AppCompatActivity {
 
         todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay = todayDay;
+        minAllowedDay = todayDay - RetentionPolicy.DATA_RETENTION_DAYS;
 
         btnPrevDay.setOnClickListener(v -> {
-            selectedDay--;
-            applyDayUi();
-            notificationsViewModel.loadDay(selectedDay);
+            if (selectedDay > minAllowedDay) {
+                selectedDay--;
+                applyDayUi();
+                notificationsViewModel.loadDay(selectedDay);
+            }
         });
 
         btnNextDay.setOnClickListener(v -> {
@@ -200,6 +205,10 @@ public class NotificationsActivity extends AppCompatActivity {
         }
 
         tvDayLabel.setText(label);
+
+        boolean canGoPrev = selectedDay > minAllowedDay;
+        btnPrevDay.setEnabled(canGoPrev);
+        btnPrevDay.setAlpha(canGoPrev ? 1f : 0.35f);
 
         boolean canGoNext = selectedDay < todayDay;
         btnNextDay.setEnabled(canGoNext);

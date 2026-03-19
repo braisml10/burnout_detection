@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.example.burnout_app.helpers.LanguageHelper;
+import com.example.burnout_app.helpers.RetentionPolicy;
 import com.example.burnout_app.helpers.TimeKey;
 import com.example.burnout_app.viewmodel.DailyDetailViewModel;
 import com.github.mikephil.charting.charts.BarChart;
@@ -46,6 +47,7 @@ public class ScreenTimeActivity extends AppCompatActivity {
     private TextView tvDayLabel;
     private ImageButton btnPrevDay;
     private ImageButton btnNextDay;
+    private int minAllowedDay;
 
     private LineChart lineChart;
     private BarChart barChartNight;
@@ -97,6 +99,7 @@ public class ScreenTimeActivity extends AppCompatActivity {
 
         todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay = todayDay;
+        minAllowedDay = todayDay - RetentionPolicy.DATA_RETENTION_DAYS;
 
         dailyDetailViewModel.getUiState().observe(this, uiState -> {
             if (uiState == null) return;
@@ -163,9 +166,11 @@ public class ScreenTimeActivity extends AppCompatActivity {
         });
 
         btnPrevDay.setOnClickListener(v -> {
-            selectedDay -= 1;
-            applyDayUi(selectedDay, todayDay);
-            dailyDetailViewModel.loadDay(selectedDay);
+            if (selectedDay > minAllowedDay) {
+                selectedDay -= 1;
+                applyDayUi(selectedDay, todayDay);
+                dailyDetailViewModel.loadDay(selectedDay);
+            }
         });
 
         btnNextDay.setOnClickListener(v -> {
@@ -195,6 +200,10 @@ public class ScreenTimeActivity extends AppCompatActivity {
             long dayStartLocalMs = TimeKey.startOfDayMsFromEpochDay(day);
             tvDayLabel.setText(TimeKey.dateLabelFromTimestamp(dayStartLocalMs));
         }
+
+        boolean canGoPrev = day > minAllowedDay;
+        btnPrevDay.setEnabled(canGoPrev);
+        btnPrevDay.setAlpha(canGoPrev ? 1.0f : 0.35f);
 
         boolean canGoNext = day < today;
         btnNextDay.setEnabled(canGoNext);

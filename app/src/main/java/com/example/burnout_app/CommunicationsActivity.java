@@ -335,7 +335,6 @@ public class CommunicationsActivity extends AppCompatActivity {
             float v = (float) msToMinutes(voiceByHourMs[h]);
             float t = (float) msToMinutes(textByHourMs[h]);
 
-            // Solo crear barra si hay datos reales
             if (v > 0f || t > 0f) {
                 entries.add(new BarEntry(h, new float[]{v, t}));
             }

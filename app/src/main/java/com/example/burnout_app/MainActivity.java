@@ -211,20 +211,13 @@ public class MainActivity extends AppCompatActivity {
         MaterialCardView card = findViewById(cardId);
 
         if (card == null) {
-            Log.e(TAG, getString(R.string.error_main_card_missing, labelForLogs));
             return;
         }
 
-        Log.d(TAG, getString(R.string.log_main_card_found, labelForLogs));
         card.setClickable(true);
         card.setFocusable(true);
 
         card.setOnClickListener(v -> {
-            Log.d(TAG, getString(
-                    R.string.log_main_card_clicked,
-                    labelForLogs,
-                    targetActivity.getSimpleName()
-            ));
             startActivity(new Intent(MainActivity.this, targetActivity));
         });
     }

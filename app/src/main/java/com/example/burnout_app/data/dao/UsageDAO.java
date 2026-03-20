@@ -23,9 +23,6 @@ public interface UsageDAO {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     long insertApp(AppEntity app);
 
-    @Query("SELECT * FROM app ORDER BY name COLLATE NOCASE ASC")
-    List<AppEntity> getAllApps();
-
     @Query("SELECT category FROM app WHERE app_id = :appId LIMIT 1")
     String getAppCategoryByAppId(long appId);
 
@@ -35,32 +32,14 @@ public interface UsageDAO {
     @Query("SELECT package_name FROM app WHERE app_id = :appId LIMIT 1")
     String getAppPackageNameByAppId(long appId);
 
-    @Query("SELECT category FROM app WHERE package_name = :pkg LIMIT 1")
-    String getAppCategoryByPackageName(String pkg);
-
-    @Query("SELECT name FROM app WHERE package_name = :pkg LIMIT 1")
-    String getAppNameByPackageName(String pkg);
-
     @Query("UPDATE app SET category = :category WHERE app_id = :appId")
     int updateAppCategoryByAppId(long appId, String category);
 
     @Query("UPDATE app SET name = :name WHERE app_id = :appId")
     int updateAppNameByAppId(long appId, String name);
 
-    @Query("UPDATE app SET category = :category WHERE package_name = :pkg")
-    int updateAppCategoryByPackageName(String pkg, String category);
-
-    @Query("UPDATE app SET name = :name WHERE package_name = :pkg")
-    int updateAppNameByPackageName(String pkg, String name);
-
     @Query("UPDATE app SET is_ignored = :ignored WHERE app_id = :appId")
     int updateAppIgnoredByAppId(long appId, boolean ignored);
-
-    @Query("UPDATE app SET is_ignored = :ignored WHERE package_name = :pkg")
-    int updateAppIgnoredByPackageName(String pkg, boolean ignored);
-
-    @Query("SELECT app_id, category, is_ignored FROM app")
-    Cursor getAppCategoryMapCursor();
 
     // ===================== APP USAGE EVENTS =====================
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -81,12 +60,6 @@ public interface UsageDAO {
 
     @Query("DELETE FROM daily_app_metric WHERE date < :cutoffDate")
     int deleteDailyAppMetricsOlderThanDate(int cutoffDate);
-
-    @Query("SELECT app_id, SUM(foreground_ms) AS total_ms " +
-            "FROM daily_app_metric " +
-            "WHERE date = :date " +
-            "GROUP BY app_id")
-    Cursor getForegroundMsByAppIdForDayCursor(int date);
 
     @Query(
             "SELECT " +

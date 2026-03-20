@@ -19,7 +19,6 @@ import com.example.burnout_app.data.entity.DailyMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyCommMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
 import com.example.burnout_app.data.entity.NotificationEventEntity;
-import com.example.burnout_app.data.entity.ScreenEventEntity;
 import com.example.burnout_app.data.entity.UserProfileEntity;
 
 @Database(
@@ -32,7 +31,6 @@ import com.example.burnout_app.data.entity.UserProfileEntity;
                 HourlyCommMetricsEntity.class,
                 HourlyMetricsEntity.class,
                 NotificationEventEntity.class,
-                ScreenEventEntity.class,
                 UserProfileEntity.class
         },
         version = 1,

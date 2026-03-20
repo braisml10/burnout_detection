@@ -2,7 +2,6 @@ package com.example.burnout_app.helpers;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.Locale;
 
 public final class TimeKey {
@@ -36,33 +35,6 @@ public final class TimeKey {
         cal.set(Calendar.SECOND, 0);
         cal.set(Calendar.MILLISECOND, 0);
         return cal.getTimeInMillis();
-    }
-
-    public static long endOfDayMs(long timestampMs) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTimeInMillis(timestampMs);
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-        cal.add(Calendar.DAY_OF_MONTH, 1);
-        cal.add(Calendar.MILLISECOND, -1);
-        return cal.getTimeInMillis();
-    }
-
-    public static long clampEnd(long endCandidate, long upperBound) {
-        return Math.min(endCandidate, upperBound);
-    }
-
-    public static String formatEpochDay(int epochDay) {
-        long startOfDayMs = startOfDayMsFromEpochDay(epochDay);
-
-        Calendar cal = Calendar.getInstance();
-        cal.setTimeInMillis(startOfDayMs);
-
-        SimpleDateFormat sdf = new SimpleDateFormat("d MMMM", Locale.getDefault());
-        sdf.setTimeZone(cal.getTimeZone());
-        return sdf.format(cal.getTime());
     }
 
     public static String dateLabelFromTimestamp(long timestampMs) {
@@ -104,9 +76,6 @@ public final class TimeKey {
         return cal.getTimeInMillis();
     }
 
-    public static int epochDayFromTimestamp(long ts) {
-        return epochDayLocal(ts);
-    }
 
     public static String dateLabelFromEpochDay(int epochDay) {
         long tsLocal = startOfDayMsFromEpochDay(epochDay);

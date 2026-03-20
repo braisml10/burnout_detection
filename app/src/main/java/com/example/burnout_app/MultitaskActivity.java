@@ -43,7 +43,6 @@ public class MultitaskActivity extends AppCompatActivity {
     private ProgressBar pbCatSocial, pbCatEnt, pbCatMsg, pbCatWork, pbCatOther;
 
     // Top apps
-    private ImageView imgApp1, imgApp2, imgApp3;
     private TextView tvApp1Name, tvApp2Name, tvApp3Name;
     private ProgressBar pbApp1, pbApp2, pbApp3;
     private TextView tvApp1Pct, tvApp2Pct, tvApp3Pct;
@@ -127,7 +126,6 @@ public class MultitaskActivity extends AppCompatActivity {
         }
         setupSwitchesLineChart(chartSwitches);
 
-        // OJO: esto requiere que tu VM exponga getSwitchesChartState()
         vm.getSwitchesChartState().observe(this, st -> {
             if (st == null || st.entries == null) {
                 chartSwitches.clear();
@@ -151,10 +149,6 @@ public class MultitaskActivity extends AppCompatActivity {
         // -------------------
         // Top apps
         // -------------------
-        imgApp1 = findViewById(R.id.imgApp1);
-        imgApp2 = findViewById(R.id.imgApp2);
-        imgApp3 = findViewById(R.id.imgApp3);
-
         tvApp1Name = findViewById(R.id.tvApp1Name);
         tvApp2Name = findViewById(R.id.tvApp2Name);
         tvApp3Name = findViewById(R.id.tvApp3Name);

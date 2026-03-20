@@ -33,13 +33,6 @@ public class UserProfileRepository {
         return userProfileDao.getUserProfile();
     }
 
-    public void userProfileExists(ProfileExistsCallback callback) {
-        executorService.execute(() -> {
-            UserProfileEntity profile = userProfileDao.getUserProfile();
-            boolean exists = profile != null;
-            callback.onResult(exists);
-        });
-    }
 
     // ===================== PROFILE WRITE =====================
 
@@ -47,15 +40,7 @@ public class UserProfileRepository {
         executorService.execute(() -> userProfileDao.upsertUserProfile(profile));
     }
 
-    public void updateUserProfile(UserProfileEntity profile) {
-        executorService.execute(() -> userProfileDao.updateUserProfile(profile));
-    }
-
     public void deleteAllUserProfiles() {
         executorService.execute(userProfileDao::deleteAllUserProfiles);
-    }
-
-    public interface ProfileExistsCallback {
-        void onResult(boolean exists);
     }
 }

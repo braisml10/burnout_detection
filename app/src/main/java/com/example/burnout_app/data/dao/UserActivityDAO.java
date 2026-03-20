@@ -10,19 +10,11 @@ import androidx.room.Query;
 
 import com.example.burnout_app.data.entity.DailyMetricsEntity;
 import com.example.burnout_app.data.entity.HourlyMetricsEntity;
-import com.example.burnout_app.data.entity.ScreenEventEntity;
 
 import java.util.List;
 
 @Dao
 public interface UserActivityDAO {
-
-    // ===================== SCREEN EVENTS =====================
-    @Insert
-    void insertScreenEvent(ScreenEventEntity event);
-
-    @Query("DELETE FROM screen_event WHERE date < :cutoffDate")
-    int deleteScreenEventsOlderThanDate(int cutoffDate);
 
     // ===================== DAILY METRICS =====================
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -56,13 +48,11 @@ public interface UserActivityDAO {
     @Query("DELETE FROM hourly_metric WHERE date < :cutoffDate")
     int deleteHourlyMetricsOlderThanDate(int cutoffDate);
 
-    @Query("""
-        SELECT hour AS hour,
-               app_switch_count AS switches
-        FROM hourly_metric
-        WHERE date = :date
-        ORDER BY hour ASC
-    """)
+    @Query("SELECT hour AS hour, " +
+            "app_switch_count AS switches " +
+            "FROM hourly_metric " +
+            "WHERE date = :date " +
+            "ORDER BY hour ASC")
     Cursor getAppSwitchCountByHourCursor(int date);
 
     @Query("SELECT hour, notification_count AS notifs FROM hourly_metric WHERE date = :date ORDER BY hour")

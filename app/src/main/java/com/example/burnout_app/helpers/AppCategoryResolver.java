@@ -3,7 +3,6 @@ package com.example.burnout_app.helpers;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.util.Log;
 
 import java.util.Locale;
 

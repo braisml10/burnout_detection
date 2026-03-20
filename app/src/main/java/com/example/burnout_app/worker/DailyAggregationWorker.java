@@ -673,7 +673,6 @@ public class DailyAggregationWorker extends Worker {
         int delUsage = db.usageDao().deleteUsageEventsOlderThanDate(cutoffDate);
         int delDailyApp = db.usageDao().deleteDailyAppMetricsOlderThanDate(cutoffDate);
 
-        int delScreen = db.userActivityDao().deleteScreenEventsOlderThanDate(cutoffDate);
         int delDailyMetrics = db.userActivityDao().deleteDailyMetricsOlderThanDate(cutoffDate);
         int delHourly = db.userActivityDao().deleteHourlyMetricsOlderThanDate(cutoffDate);
 
@@ -685,7 +684,6 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Retention: cutoffDate=" + cutoffDate
                 + " deletedUsage=" + delUsage
                 + " deletedDailyApp=" + delDailyApp
-                + " deletedScreen=" + delScreen
                 + " deletedDailyMetrics=" + delDailyMetrics
                 + " deletedHourly=" + delHourly
                 + " deletedNotif=" + delNotif

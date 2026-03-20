@@ -35,7 +35,6 @@ public class UsageRepository {
                 String category = cursor.getString(categoryIndex);
                 long totalMs = cursor.getLong(totalMsIndex);
 
-                Log.d("CAT_SQL", "category=" + category + " ms=" + totalMs);
                 out.put(category, totalMs);
             }
         } finally {
@@ -52,7 +51,6 @@ public class UsageRepository {
         for (Long value : out.values()) {
             total += value;
         }
-        Log.d("CAT_SQL", "TOTAL SUM FROM SQL = " + total);
 
         return out;
     }
@@ -74,7 +72,6 @@ public class UsageRepository {
             cursor.close();
         }
 
-        Log.d("TOTAL_SQL", "TOTAL FOREGROUND MS = " + total);
         return total;
     }
 
@@ -111,7 +108,6 @@ public class UsageRepository {
                 long totalMs = cursor.getLong(totalMsIndex);
 
                 out.add(new TopAppRow(appId, name, packageName, totalMs));
-                Log.d("TOP_APPS_SQL", "name=" + name + " ms=" + totalMs);
             }
         } finally {
             cursor.close();

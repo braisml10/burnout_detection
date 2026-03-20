@@ -81,7 +81,7 @@ public class NotificationsActivity extends AppCompatActivity {
 
     // Fixed categories shown even when count is zero
     private static final String[] FIXED_CATEGORIES = new String[]{
-            "WORK", "ENTERTAINMENT", "SOCIAL", "COMMUNICATION", "OTHER"
+            "WORK", "ENTERTAINMENT", "SOCIAL", "MESSAGING", "OTHER"
     };
 
     private static class NotifTypeSeg {
@@ -487,7 +487,7 @@ public class NotificationsActivity extends AppCompatActivity {
                 return Color.parseColor("#F59E0B");
             case "SOCIAL":
                 return Color.parseColor("#EC4899");
-            case "COMMUNICATION":
+            case "MESSAGING":
                 return Color.parseColor("#60A5FA");
             case "OTHER":
             default:
@@ -643,7 +643,7 @@ public class NotificationsActivity extends AppCompatActivity {
                 return getString(R.string.multitask_category_entertainment);
             case "SOCIAL":
                 return getString(R.string.multitask_category_social);
-            case "COMMUNICATION":
+            case "MESSAGING":
                 return getString(R.string.main_communication_label);
             case "OTHER":
             default:

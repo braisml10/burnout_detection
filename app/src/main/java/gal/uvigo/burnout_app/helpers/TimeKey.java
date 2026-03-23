@@ -1,8 +1,12 @@
 package gal.uvigo.burnout_app.helpers;
 
+import android.content.Context;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
+
+import gal.uvigo.burnout_app.R;
 
 public final class TimeKey {
     private TimeKey() {}
@@ -90,5 +94,36 @@ public final class TimeKey {
 
         if (h > 0) return h + "h " + m + "min";
         return m + "min";
+    }
+
+    public static int todayEpochDay() {
+        return epochDayLocal(System.currentTimeMillis());
+    }
+
+    public static boolean isToday(int epochDay) {
+        return epochDay == todayEpochDay();
+    }
+
+    public static boolean isYesterday(int epochDay) {
+        return epochDay == todayEpochDay() - 1;
+    }
+
+    public static int minAllowedEpochDay(int retentionDays) {
+        return todayEpochDay() - retentionDays;
+    }
+
+    public static String dayLabel(Context context, int epochDay) {
+        if (isToday(epochDay)) {
+            return context.getString(R.string.today);
+        } else if (isYesterday(epochDay)) {
+            return context.getString(R.string.yesterday);
+        } else {
+            return dateLabelFromEpochDay(epochDay);
+        }
+    }
+
+    public static long minutesFromMs(long ms) {
+        if (ms <= 0L) return 0L;
+        return ms / 60000L;
     }
 }

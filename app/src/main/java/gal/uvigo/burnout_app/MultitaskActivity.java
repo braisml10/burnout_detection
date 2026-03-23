@@ -1,19 +1,14 @@
 package gal.uvigo.burnout_app;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
-import gal.uvigo.burnout_app.helpers.LanguageHelper;
+import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
-import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.AppsUsageViewModel;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -21,22 +16,13 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 
-public class MultitaskActivity extends AppCompatActivity {
+public class MultitaskActivity extends BaseActivity {
 
     private AppsUsageViewModel vm;
 
     private TextView tvAppsTime;
     private TextView tvSwitches;
     private TextView tvUnique;
-
-    private TextView tvDayLabel;
-
-    private ImageButton btnPrevDay;
-    private ImageButton btnNextDay;
-
-    private int todayDay;
-    private int selectedDay;
-    private int minAllowedDay;
 
     private TextView tvCatSocialTime, tvCatEntTime, tvCatMsgTime, tvCatWorkTime, tvCatOtherTime;
     private ProgressBar pbCatSocial, pbCatEnt, pbCatMsg, pbCatWork, pbCatOther;
@@ -50,19 +36,11 @@ public class MultitaskActivity extends AppCompatActivity {
     private LineChart chartSwitches;
 
     @Override
-    protected void attachBaseContext(Context newBase) {
-        SharedPreferences prefs =
-                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
-        String langCode = prefs.getString("selected_language", "es");
-        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_multitask);
 
-        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+        setupBackButton(R.id.btnBack);
 
         vm = new ViewModelProvider(this).get(AppsUsageViewModel.class);
 
@@ -73,12 +51,10 @@ public class MultitaskActivity extends AppCompatActivity {
         tvSwitches = findViewById(R.id.tvAppSwitchesValue);
         tvUnique   = findViewById(R.id.tvUniqueAppsValue);
 
-        // ✅ KPI tiempo total (suma filtrada o total según tu VM)
         vm.getAppsTimeFiltered().observe(this, txt -> {
             if (txt != null) tvAppsTime.setText(txt);
         });
 
-        // KPI switches + unique
         vm.getUiState().observe(this, s -> {
             if (s == null) return;
             tvSwitches.setText(s.appSwitches);
@@ -117,7 +93,7 @@ public class MultitaskActivity extends AppCompatActivity {
         });
 
         // -------------------
-        // Switches chart (acumulado)
+        // Switches chart
         // -------------------
         chartSwitches = findViewById(R.id.chartSwitches);
         if (chartSwitches == null) {
@@ -174,62 +150,23 @@ public class MultitaskActivity extends AppCompatActivity {
             pbApp1.setProgress(t.bar1);
             pbApp2.setProgress(t.bar2);
             pbApp3.setProgress(t.bar3);
-
-            // Iconos opcionales: si luego metes packageName en el state, aquí los cargas.
         });
 
-        // -------------------
-        // Day selector
-        // -------------------
-        btnPrevDay = findViewById(R.id.btnPrevDay);
-        btnNextDay = findViewById(R.id.btnNextDay);
-        tvDayLabel = findViewById(R.id.tvDayLabel);
+        initDaySelector(
+                R.id.tvDayLabel,
+                R.id.btnPrevDay,
+                R.id.btnNextDay,
+                RetentionPolicy.DATA_RETENTION_DAYS
+        );
 
-        todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
-        selectedDay = todayDay;
-        minAllowedDay = todayDay - RetentionPolicy.DATA_RETENTION_DAYS;
+        onDayChanged(selectedDay);
+    }
 
-        btnPrevDay.setOnClickListener(v -> {
-            if (selectedDay > minAllowedDay) {
-                selectedDay--;
-                applyDayUi();
-                vm.loadDay(selectedDay);
-            }
-        });
-
-        btnNextDay.setOnClickListener(v -> {
-            if (selectedDay < todayDay) {
-                selectedDay++;
-                applyDayUi();
-                vm.loadDay(selectedDay);
-            }
-        });
-
-        applyDayUi();
+    @Override
+    protected void onDayChanged(int selectedDay) {
         vm.loadDay(selectedDay);
     }
 
-    private void applyDayUi() {
-        String label;
-
-        if (selectedDay == todayDay) {
-            label = getString(R.string.today);
-        } else if (selectedDay == todayDay - 1) {
-            label = getString(R.string.yesterday);
-        } else {
-            label = TimeKey.dateLabelFromEpochDay(selectedDay);
-        }
-
-        tvDayLabel.setText(label);
-
-        boolean canGoPrev = selectedDay > minAllowedDay;
-        btnPrevDay.setEnabled(canGoPrev);
-        btnPrevDay.setAlpha(canGoPrev ? 1f : 0.35f);
-
-        boolean canGoNext = selectedDay < todayDay;
-        btnNextDay.setEnabled(canGoNext);
-        btnNextDay.setAlpha(canGoNext ? 1f : 0.35f);
-    }
 
     private void setupSwitchesLineChart(LineChart c) {
         c.getDescription().setEnabled(false);

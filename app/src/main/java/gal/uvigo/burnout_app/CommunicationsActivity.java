@@ -1,22 +1,18 @@
 package gal.uvigo.burnout_app;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
-import gal.uvigo.burnout_app.helpers.LanguageHelper;
+import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.CommunicationViewModel;
 
-import gal.uvigo.burnout_app.R;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
@@ -37,7 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class CommunicationsActivity extends AppCompatActivity {
+public class CommunicationsActivity extends BaseActivity {
 
     private CommunicationViewModel vm;
 
@@ -45,15 +41,6 @@ public class CommunicationsActivity extends AppCompatActivity {
     private TextView tvCallsValue;
     private TextView tvMessagesValue;
     private TextView tvTotalCommValue;
-
-    // Day selector
-    private TextView tvDayLabel;
-    private ImageButton btnPrevDay;
-    private ImageButton btnNextDay;
-
-    private int todayDay;
-    private int selectedDay;
-    private int minAllowedDay;
 
     // Charts
     private LineChart chartIntensity;
@@ -64,19 +51,11 @@ public class CommunicationsActivity extends AppCompatActivity {
     private long[] lastTextByHourMs;
 
     @Override
-    protected void attachBaseContext(Context newBase) {
-        SharedPreferences prefs =
-                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
-        String langCode = prefs.getString("selected_language", "es");
-        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_communications);
 
-        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+        setupBackButton(R.id.btnBack);
 
         vm = new ViewModelProvider(this).get(CommunicationViewModel.class);
 
@@ -97,64 +76,19 @@ public class CommunicationsActivity extends AppCompatActivity {
             throw new IllegalStateException(getString(R.string.error_chart_channel_missing));        }
         setupChannelStackedChart(chartChannelStacked);
 
-        // Day selector
-        btnPrevDay = findViewById(R.id.btnPrevDay);
-        btnNextDay = findViewById(R.id.btnNextDay);
-        tvDayLabel = findViewById(R.id.tvDayLabel);
+        initDaySelector(
+                R.id.tvDayLabel,
+                R.id.btnPrevDay,
+                R.id.btnNextDay,
+                RetentionPolicy.DATA_RETENTION_DAYS
+        );
 
-        todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
-        selectedDay = todayDay;
-        minAllowedDay = todayDay - RetentionPolicy.DATA_RETENTION_DAYS;
-
-        btnPrevDay.setOnClickListener(v -> {
-            if (selectedDay > minAllowedDay) {
-                selectedDay--;
-                applyDayUi();
-                vm.loadDay(selectedDay);
-            }
-        });
-
-        btnNextDay.setOnClickListener(v -> {
-            if (selectedDay < todayDay) {
-                selectedDay++;
-                applyDayUi();
-                vm.loadDay(selectedDay);
-            }
-        });
-
-        vm.getUiState().observe(this, s -> {
-            if (s == null) {
-                renderEmpty();
-                return;
-            }
-
-            tvCallsValue.setText(String.valueOf(Math.max(0, s.callsCount)));
-            tvMessagesValue.setText(String.valueOf(Math.max(0, s.messagesCount)));
-            tvTotalCommValue.setText(String.valueOf(msToMinutes(Math.max(0L, s.totalCommMs))));
-
-            renderIntensityLine(chartIntensity, s.totalByHour);
-            renderChannelStacked(chartChannelStacked, s.voiceByHour, s.textByHour);
-        });
-
-        applyDayUi();
-        vm.loadDay(selectedDay);
+        onDayChanged(selectedDay);
     }
 
-    private void applyDayUi() {
-        String label;
-        if (selectedDay == todayDay) label = getString(R.string.today);
-        else if (selectedDay == todayDay - 1) label = getString(R.string.yesterday);
-        else label = TimeKey.dateLabelFromEpochDay(selectedDay);
-
-        tvDayLabel.setText(label);
-
-        boolean canGoPrev = selectedDay > minAllowedDay;
-        btnPrevDay.setEnabled(canGoPrev);
-        btnPrevDay.setAlpha(canGoPrev ? 1f : 0.35f);
-
-        boolean canGoNext = selectedDay < todayDay;
-        btnNextDay.setEnabled(canGoNext);
-        btnNextDay.setAlpha(canGoNext ? 1f : 0.35f);
+    @Override
+    protected void onDayChanged(int selectedDay) {
+        vm.loadDay(selectedDay);
     }
 
     private void renderEmpty() {
@@ -225,12 +159,12 @@ public class CommunicationsActivity extends AppCompatActivity {
 
         long maxMin = 0;
         for (int h = 0; h < 24; h++) {
-            long m = msToMinutes(totalByHourMs[h]);
+            long m = TimeKey.minutesFromMs(totalByHourMs[h]);
             if (m > maxMin) maxMin = m;
             entries.add(new Entry(h, (float) m));
         }
 
-        entries.add(new Entry(24f, (float) msToMinutes(totalByHourMs[23])));
+        entries.add(new Entry(24f, (float) TimeKey.minutesFromMs(totalByHourMs[23])));
 
         LineDataSet ds = new LineDataSet(entries, getString(R.string.comm_chart_label));
         ds.setColor(Color.parseColor("#60A5FA"));
@@ -334,8 +268,8 @@ public class CommunicationsActivity extends AppCompatActivity {
         ArrayList<BarEntry> entries = new ArrayList<>(24);
 
         for (int h = 0; h < 24; h++) {
-            float v = (float) msToMinutes(voiceByHourMs[h]);
-            float t = (float) msToMinutes(textByHourMs[h]);
+            float v = (float) TimeKey.minutesFromMs(voiceByHourMs[h]);
+            float t = (float) TimeKey.minutesFromMs(textByHourMs[h]);
 
             if (v > 0f || t > 0f) {
                 entries.add(new BarEntry(h, new float[]{v, t}));
@@ -392,8 +326,8 @@ public class CommunicationsActivity extends AppCompatActivity {
             if (lastVoiceByHourMs != null && lastTextByHourMs != null
                     && hour >= 0 && hour < 24) {
 
-                long voiceMin = msToMinutes(lastVoiceByHourMs[hour]);
-                long textMin = msToMinutes(lastTextByHourMs[hour]);
+                long voiceMin = TimeKey.minutesFromMs(lastVoiceByHourMs[hour]);
+                long textMin = TimeKey.minutesFromMs(lastTextByHourMs[hour]);
 
                 String labelHour = hourSlotLabel(hour);
 
@@ -439,10 +373,5 @@ public class CommunicationsActivity extends AppCompatActivity {
         public MPPointF getOffset() {
             return new MPPointF(-(getWidth() / 2f), -getHeight() - 12f);
         }
-    }
-
-    private static long msToMinutes(long ms) {
-        if (ms <= 0L) return 0L;
-        return ms / 60000L;
     }
 }

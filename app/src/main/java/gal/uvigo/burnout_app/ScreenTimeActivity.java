@@ -11,6 +11,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
@@ -33,7 +34,7 @@ import com.github.mikephil.charting.utils.MPPointF;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ScreenTimeActivity extends AppCompatActivity {
+public class ScreenTimeActivity extends BaseActivity {
 
     private DailyDetailViewModel dailyDetailViewModel;
 
@@ -44,33 +45,18 @@ public class ScreenTimeActivity extends AppCompatActivity {
     private TextView tvNightTotal;
     private TextView tvNightActiveHours;
 
-    private TextView tvDayLabel;
-    private ImageButton btnPrevDay;
-    private ImageButton btnNextDay;
-    private int minAllowedDay;
-
     private LineChart lineChart;
     private BarChart barChartNight;
 
-    private int todayDay;
-    private int selectedDay;
-
     private int[] lastNightMinutes9;
 
-    @Override
-    protected void attachBaseContext(Context newBase) {
-        SharedPreferences prefs =
-                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
-        String langCode = prefs.getString("selected_language", "es");
-        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_screen_time);
 
-        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+        setupBackButton(R.id.btnBack);
 
         lineChart = findViewById(R.id.lineChart);
         if (lineChart == null) {
@@ -93,13 +79,12 @@ public class ScreenTimeActivity extends AppCompatActivity {
         tvNightTotal = findViewById(R.id.tvNightTotal);
         tvNightActiveHours = findViewById(R.id.tvNightActiveHours);
 
-        btnPrevDay = findViewById(R.id.btnPrevDay);
-        btnNextDay = findViewById(R.id.btnNextDay);
-        tvDayLabel = findViewById(R.id.tvDayLabel);
-
-        todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
-        selectedDay = todayDay;
-        minAllowedDay = todayDay - RetentionPolicy.DATA_RETENTION_DAYS;
+        initDaySelector(
+                R.id.tvDayLabel,
+                R.id.btnPrevDay,
+                R.id.btnNextDay,
+                RetentionPolicy.DATA_RETENTION_DAYS
+        );
 
         dailyDetailViewModel.getUiState().observe(this, uiState -> {
             if (uiState == null) return;
@@ -165,24 +150,7 @@ public class ScreenTimeActivity extends AppCompatActivity {
             setNightActiveHours(minutes);
         });
 
-        btnPrevDay.setOnClickListener(v -> {
-            if (selectedDay > minAllowedDay) {
-                selectedDay -= 1;
-                applyDayUi(selectedDay, todayDay);
-                dailyDetailViewModel.loadDay(selectedDay);
-            }
-        });
-
-        btnNextDay.setOnClickListener(v -> {
-            if (selectedDay < todayDay) {
-                selectedDay += 1;
-                applyDayUi(selectedDay, todayDay);
-                dailyDetailViewModel.loadDay(selectedDay);
-            }
-        });
-
-        applyDayUi(selectedDay, todayDay);
-        dailyDetailViewModel.loadDay(selectedDay);
+        onDayChanged(selectedDay);
     }
 
     private static String safeText(TextView textView) {
@@ -191,23 +159,9 @@ public class ScreenTimeActivity extends AppCompatActivity {
         return value.isEmpty() ? "--" : value;
     }
 
-    private void applyDayUi(int day, int today) {
-        if (day == today) {
-            tvDayLabel.setText(getString(R.string.today));
-        } else if (day == today - 1) {
-            tvDayLabel.setText(getString(R.string.yesterday));
-        } else {
-            long dayStartLocalMs = TimeKey.startOfDayMsFromEpochDay(day);
-            tvDayLabel.setText(TimeKey.dateLabelFromTimestamp(dayStartLocalMs));
-        }
-
-        boolean canGoPrev = day > minAllowedDay;
-        btnPrevDay.setEnabled(canGoPrev);
-        btnPrevDay.setAlpha(canGoPrev ? 1.0f : 0.35f);
-
-        boolean canGoNext = day < today;
-        btnNextDay.setEnabled(canGoNext);
-        btnNextDay.setAlpha(canGoNext ? 1.0f : 0.35f);
+    @Override
+    protected void onDayChanged(int selectedDay) {
+        dailyDetailViewModel.loadDay(selectedDay);
     }
 
     private void setupLineChart(LineChart chart) {

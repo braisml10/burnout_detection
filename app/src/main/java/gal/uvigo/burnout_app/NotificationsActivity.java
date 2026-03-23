@@ -1,22 +1,18 @@
 package gal.uvigo.burnout_app;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.data.repo.NotificationRepository;
-import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
-import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.NotificationsViewModel;
 import com.github.mikephil.charting.charts.HorizontalBarChart;
 import com.github.mikephil.charting.charts.LineChart;
@@ -38,7 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class NotificationsActivity extends AppCompatActivity {
+public class NotificationsActivity extends BaseActivity {
 
     private NotificationsViewModel notificationsViewModel;
 
@@ -46,15 +42,6 @@ public class NotificationsActivity extends AppCompatActivity {
     private TextView tvTotalNotifs;
     private TextView tvAvgPerHour;
     private TextView tvMostIntrusive;
-
-    // Day selector
-    private TextView tvDayLabel;
-    private ImageButton btnPrevDay;
-    private ImageButton btnNextDay;
-
-    private int todayDay;
-    private int selectedDay;
-    private int minAllowedDay;
 
     // Chart 1: trend
     private LineChart chartNotifs;
@@ -98,20 +85,13 @@ public class NotificationsActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void attachBaseContext(Context newBase) {
-        SharedPreferences prefs =
-                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
-        String langCode = prefs.getString("selected_language", "es");
-        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_notifications);
 
-        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+        setupBackButton(R.id.btnBack);
 
         notificationsViewModel = new ViewModelProvider(this).get(NotificationsViewModel.class);
 
@@ -153,30 +133,12 @@ public class NotificationsActivity extends AppCompatActivity {
         tvApp2Pct = findViewById(R.id.tvApp2Pct);
         tvApp3Pct = findViewById(R.id.tvApp3Pct);
 
-        // Day selector
-        btnPrevDay = findViewById(R.id.btnPrevDay);
-        btnNextDay = findViewById(R.id.btnNextDay);
-        tvDayLabel = findViewById(R.id.tvDayLabel);
-
-        todayDay = TimeKey.epochDayLocal(System.currentTimeMillis());
-        selectedDay = todayDay;
-        minAllowedDay = todayDay - RetentionPolicy.DATA_RETENTION_DAYS;
-
-        btnPrevDay.setOnClickListener(v -> {
-            if (selectedDay > minAllowedDay) {
-                selectedDay--;
-                applyDayUi();
-                notificationsViewModel.loadDay(selectedDay);
-            }
-        });
-
-        btnNextDay.setOnClickListener(v -> {
-            if (selectedDay < todayDay) {
-                selectedDay++;
-                applyDayUi();
-                notificationsViewModel.loadDay(selectedDay);
-            }
-        });
+        initDaySelector(
+                R.id.tvDayLabel,
+                R.id.btnPrevDay,
+                R.id.btnNextDay,
+                RetentionPolicy.DATA_RETENTION_DAYS
+        );
 
         notificationsViewModel.getUiState().observe(this, uiState -> {
             if (uiState == null) return;
@@ -190,29 +152,12 @@ public class NotificationsActivity extends AppCompatActivity {
             renderTopApps(uiState.totalDaily, uiState.topNotificationApps);
         });
 
-        applyDayUi();
-        notificationsViewModel.loadDay(selectedDay);
+        onDayChanged(selectedDay);
     }
 
-    private void applyDayUi() {
-        String label;
-        if (selectedDay == todayDay) {
-            label = getString(R.string.today);
-        } else if (selectedDay == todayDay - 1) {
-            label = getString(R.string.yesterday);
-        } else {
-            label = TimeKey.dateLabelFromEpochDay(selectedDay);
-        }
-
-        tvDayLabel.setText(label);
-
-        boolean canGoPrev = selectedDay > minAllowedDay;
-        btnPrevDay.setEnabled(canGoPrev);
-        btnPrevDay.setAlpha(canGoPrev ? 1f : 0.35f);
-
-        boolean canGoNext = selectedDay < todayDay;
-        btnNextDay.setEnabled(canGoNext);
-        btnNextDay.setAlpha(canGoNext ? 1f : 0.35f);
+    @Override
+    protected void onDayChanged(int selectedDay) {
+        notificationsViewModel.loadDay(selectedDay);
     }
 
     // ===================== TREND CHART =====================

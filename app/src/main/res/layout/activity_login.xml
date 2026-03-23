@@ -9,7 +9,7 @@
     android:fitsSystemWindows="true"
     android:clipToPadding="false"
     android:background="#0B1220"
-    tools:context=".LoginActivity">
+    tools:context="gal.uvigo.burnout_app.LoginActivity">
 
     <LinearLayout
         android:layout_width="match_parent"

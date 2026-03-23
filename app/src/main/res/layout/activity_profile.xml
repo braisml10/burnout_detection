@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:fillViewport="true"
     android:background="#0B1220"
-    tools:context=".ProfileActivity">
+    tools:context="gal.uvigo.burnout_app.ProfileActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/main"

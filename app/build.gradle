@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.burnout_app'
+    namespace 'gal.uvigo.burnout_app'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.example.burnout_app"
+        applicationId "gal.uvigo.burnout_app"
         minSdk 24
         targetSdk 36
         versionCode 1

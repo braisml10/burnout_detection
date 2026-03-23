@@ -54,7 +54,7 @@
         <!-- ===== ACTIVITIES ===== -->
 
         <activity
-            android:name=".WelcomeActivity"
+            android:name="gal.uvigo.burnout_app.WelcomeActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -63,18 +63,18 @@
         </activity>
 
         <activity
-            android:name=".LoginActivity"
+            android:name="gal.uvigo.burnout_app.LoginActivity"
             android:windowSoftInputMode="adjustResize" />
         <activity
-            android:name=".RegisterActivity"
+            android:name="gal.uvigo.burnout_app.RegisterActivity"
             android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".MainActivity" />
-        <activity android:name=".ProfileActivity" />
-        <activity android:name=".ScreenTimeActivity" />
-        <activity android:name=".MultitaskActivity" />
-        <activity android:name=".NotificationsActivity" />
-        <activity android:name=".CommunicationsActivity" />
-        <activity android:name=".SettingsActivity" />
+        <activity android:name="gal.uvigo.burnout_app.MainActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ProfileActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ScreenTimeActivity" />
+        <activity android:name="gal.uvigo.burnout_app.MultitaskActivity" />
+        <activity android:name="gal.uvigo.burnout_app.NotificationsActivity" />
+        <activity android:name="gal.uvigo.burnout_app.CommunicationsActivity" />
+        <activity android:name="gal.uvigo.burnout_app.SettingsActivity" />
 
         <!-- ========================= -->
         <!-- ===== RECEIVERS ========= -->
@@ -95,7 +95,7 @@
         <!-- ========================= -->
 
         <service
-            android:name=".collectors.BurnoutNotificationListenerService"
+            android:name="gal.uvigo.burnout_app.collectors.BurnoutNotificationListenerService"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="false">
             <intent-filter>

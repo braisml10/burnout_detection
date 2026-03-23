@@ -11,7 +11,7 @@
     android:paddingEnd="24dp"
     android:paddingTop="50dp"
     android:paddingBottom="32dp"
-    tools:context=".WelcomeActivity">
+    tools:context="gal.uvigo.burnout_app.WelcomeActivity">
 
     <LinearLayout
         android:id="@+id/contentContainer"

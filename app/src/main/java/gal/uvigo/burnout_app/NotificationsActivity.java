@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.data.repo.NotificationRepository;
+import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.viewmodel.NotificationsViewModel;
 import com.github.mikephil.charting.charts.HorizontalBarChart;
@@ -163,38 +164,9 @@ public class NotificationsActivity extends BaseActivity {
     // ===================== TREND CHART =====================
 
     private void setupNotifsLineChart(LineChart chart) {
-        chart.getDescription().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-        chart.setNoDataText(getString(R.string.no_data));
-
-        chart.setTouchEnabled(true);
-        chart.setPinchZoom(true);
-
-        XAxis xAxis = chart.getXAxis();
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setGranularity(1f);
-        xAxis.setAxisMinimum(0f);
-        xAxis.setAxisMaximum(24f);
-        xAxis.setLabelCount(5, true);
-        xAxis.setTextColor(Color.parseColor("#94A3B8"));
-        xAxis.setDrawGridLines(false);
-        xAxis.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                int hour = Math.round(value);
-                if (hour == 24) return "24";
-                if (hour % 6 == 0) return String.format("%02d", hour);
-                return "";
-            }
-        });
-
-        chart.getAxisRight().setEnabled(false);
-
-        YAxis leftAxis = chart.getAxisLeft();
-        leftAxis.setAxisMinimum(0f);
-        leftAxis.setGranularity(1f);
-        leftAxis.setTextColor(Color.parseColor("#94A3B8"));
-        leftAxis.setDrawGridLines(true);
+        ChartHelper.setupBaseLineChart(chart, this, true);
+        ChartHelper.setupHourXAxis24(chart.getXAxis());
+        ChartHelper.setupDefaultLeftAxis(chart.getAxisLeft(), 0f, 1f);
     }
 
     private void renderNotifsLineChart(LineChart chart, int[] notificationCountByHour) {
@@ -225,13 +197,7 @@ public class NotificationsActivity extends BaseActivity {
     // ===================== TYPE STRIP =====================
 
     private void setupTypeStrip(HorizontalBarChart chart) {
-        chart.getDescription().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-        chart.setNoDataText(getString(R.string.no_data));
-
-        chart.setTouchEnabled(true);
-        chart.setPinchZoom(false);
-        chart.setScaleEnabled(false);
+        ChartHelper.setupBaseHorizontalBarChart(chart, this, true);
 
         chart.setDrawGridBackground(false);
         chart.setDrawBorders(false);
@@ -239,8 +205,6 @@ public class NotificationsActivity extends BaseActivity {
         chart.setViewPortOffsets(0f, 0f, 0f, 0f);
         chart.setExtraOffsets(0f, 0f, 0f, 0f);
         chart.setFitBars(true);
-
-        chart.getAxisRight().setEnabled(false);
 
         YAxis leftAxis = chart.getAxisLeft();
         leftAxis.setEnabled(true);
@@ -256,8 +220,6 @@ public class NotificationsActivity extends BaseActivity {
         xAxis.setDrawLabels(false);
         xAxis.setAxisMinimum(-0.5f);
         xAxis.setAxisMaximum(0.5f);
-
-        chart.setDrawMarkers(true);
 
         chart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override

@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.data.entity.HourlyMetricsEntity;
+import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.DashboardViewModel;
@@ -213,14 +214,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void setup3hBarChart(BarChart chart) {
-        chart.getDescription().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-        chart.setNoDataText(getString(R.string.no_data));
-
-        chart.setTouchEnabled(true);
-        chart.setPinchZoom(false);
-        chart.setScaleEnabled(false);
-        chart.setDrawMarkers(true);
+        ChartHelper.setupBaseBarChart(chart, this, false, true);
         chart.setHighlightFullBarEnabled(true);
 
         XAxis xAxis = chart.getXAxis();
@@ -252,21 +246,9 @@ public class MainActivity extends BaseActivity {
             }
         });
 
-        chart.getAxisRight().setEnabled(false);
-
-        chart.getAxisLeft().setAxisMinimum(0f);
+        ChartHelper.setupMinutesLeftAxis(chart.getAxisLeft(), this, 30f);
         chart.getAxisLeft().setAxisMaximum(180f);
-        chart.getAxisLeft().setGranularity(30f);
         chart.getAxisLeft().setLabelCount(7, true);
-        chart.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        chart.getAxisLeft().setDrawGridLines(true);
-
-        chart.getAxisLeft().setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return ((int) value) + getString(R.string.minutes_short);
-            }
-        });
 
         chart.setFitBars(true);
         chart.setExtraOffsets(4f, 2f, 6f, 6f);

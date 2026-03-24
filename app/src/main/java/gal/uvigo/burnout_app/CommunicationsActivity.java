@@ -9,6 +9,7 @@ import android.widget.TextView;
 import androidx.lifecycle.ViewModelProvider;
 
 import gal.uvigo.burnout_app.base.BaseActivity;
+import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.CommunicationViewModel;
@@ -73,7 +74,8 @@ public class CommunicationsActivity extends BaseActivity {
 
         chartChannelStacked = findViewById(R.id.chartChannelDistStacked);
         if (chartChannelStacked == null) {
-            throw new IllegalStateException(getString(R.string.error_chart_channel_missing));        }
+            throw new IllegalStateException(getString(R.string.error_chart_channel_missing));
+        }
         setupChannelStackedChart(chartChannelStacked);
 
         initDaySelector(
@@ -82,6 +84,20 @@ public class CommunicationsActivity extends BaseActivity {
                 R.id.btnNextDay,
                 RetentionPolicy.DATA_RETENTION_DAYS
         );
+
+        vm.getUiState().observe(this, s -> {
+            if (s == null) {
+                renderEmpty();
+                return;
+            }
+
+            tvCallsValue.setText(String.valueOf(Math.max(0, s.callsCount)));
+            tvMessagesValue.setText(String.valueOf(Math.max(0, s.messagesCount)));
+            tvTotalCommValue.setText(String.valueOf(TimeKey.minutesFromMs(Math.max(0L, s.totalCommMs))));
+
+            renderIntensityLine(chartIntensity, s.totalByHour);
+            renderChannelStacked(chartChannelStacked, s.voiceByHour, s.textByHour);
+        });
 
         onDayChanged(selectedDay);
     }
@@ -111,41 +127,9 @@ public class CommunicationsActivity extends BaseActivity {
     // =========================================================
 
     private void setupIntensityLineChart(LineChart c) {
-        c.getDescription().setEnabled(false);
-        c.getLegend().setEnabled(false);
-        c.setNoDataText(getString(R.string.no_data));
-
-        c.setTouchEnabled(true);
-        c.setPinchZoom(true);
-
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setAxisMinimum(0f);
-        x.setAxisMaximum(24f);
-        x.setLabelCount(5, true);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setDrawGridLines(false);
-        x.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                int h = Math.round(value);
-                if (h == 24) return "24";
-                if (h % 6 == 0) return String.format(Locale.getDefault(), "%02d", h);
-                return "";
-            }
-        });
-
-        c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setGranularity(1f);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
-        c.getAxisLeft().setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return ((int) value) + getString(R.string.minutes_short);            }
-        });
+        ChartHelper.setupBaseLineChart(c, this, true);
+        ChartHelper.setupHourXAxis24(c.getXAxis());
+        ChartHelper.setupMinutesLeftAxis(c.getAxisLeft(), this, 1f);
     }
 
     private void renderIntensityLine(LineChart chart, long[] totalByHourMs) {
@@ -185,13 +169,7 @@ public class CommunicationsActivity extends BaseActivity {
     // =========================================================
 
     private void setupChannelStackedChart(BarChart c) {
-        c.getDescription().setEnabled(false);
-        c.setNoDataText(getString(R.string.no_data));
-
-        c.setTouchEnabled(true);
-        c.setPinchZoom(false);
-        c.setScaleEnabled(false);
-        c.setDrawMarkers(true);
+        ChartHelper.setupBaseBarChart(c, this, false, true);
         c.setHighlightFullBarEnabled(false);
 
         Legend l = c.getLegend();
@@ -202,35 +180,8 @@ public class CommunicationsActivity extends BaseActivity {
         l.setOrientation(Legend.LegendOrientation.HORIZONTAL);
         l.setDrawInside(false);
 
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setAxisMinimum(0f);
-        x.setAxisMaximum(24f);
-        x.setLabelCount(5, true);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setDrawGridLines(false);
-        x.setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                int h = Math.round(value);
-                if (h == 24) return "24";
-                if (h % 6 == 0) return String.format(Locale.getDefault(), "%02d", h);
-                return "";
-            }
-        });
-
-        c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setGranularity(10f);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
-        c.getAxisLeft().setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                return ((int) value) + getString(R.string.minutes_short);
-            }
-        });
+        ChartHelper.setupHourXAxis24(c.getXAxis());
+        ChartHelper.setupMinutesLeftAxis(c.getAxisLeft(), this, 10f);
 
         c.setFitBars(false);
         c.setExtraOffsets(4f, 2f, 6f, 6f);

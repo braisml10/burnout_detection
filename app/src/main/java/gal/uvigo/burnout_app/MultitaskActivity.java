@@ -8,6 +8,7 @@ import android.widget.TextView;
 import androidx.lifecycle.ViewModelProvider;
 
 import gal.uvigo.burnout_app.base.BaseActivity;
+import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.viewmodel.AppsUsageViewModel;
 import com.github.mikephil.charting.charts.LineChart;
@@ -169,37 +170,9 @@ public class MultitaskActivity extends BaseActivity {
 
 
     private void setupSwitchesLineChart(LineChart c) {
-        c.getDescription().setEnabled(false);
-        c.getLegend().setEnabled(false);
-        c.setNoDataText(getString(R.string.no_data));
-
-        c.setTouchEnabled(true);
-        c.setPinchZoom(true);
-
-        // X: 0..24
-        XAxis x = c.getXAxis();
-        x.setPosition(XAxis.XAxisPosition.BOTTOM);
-        x.setGranularity(1f);
-        x.setAxisMinimum(0f);
-        x.setAxisMaximum(24f);
-        x.setLabelCount(5, true);
-        x.setTextColor(Color.parseColor("#94A3B8"));
-        x.setDrawGridLines(false);
-        x.setValueFormatter(new ValueFormatter() {
-            @Override public String getFormattedValue(float value) {
-                int h = Math.round(value);
-                if (h == 24) return "24";
-                if (h % 6 == 0) return String.format("%02d", h);
-                return "";
-            }
-        });
-
-        // Y: acumulado (auto max)
-        c.getAxisRight().setEnabled(false);
-        c.getAxisLeft().setAxisMinimum(0f);
-        c.getAxisLeft().setGranularity(5f);
-        c.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        c.getAxisLeft().setDrawGridLines(true);
+        ChartHelper.setupBaseLineChart(c, this, true);
+        ChartHelper.setupHourXAxis24(c.getXAxis());
+        ChartHelper.setupDefaultLeftAxis(c.getAxisLeft(), 0f, 5f);
     }
 
     private String prettyName(String s) {

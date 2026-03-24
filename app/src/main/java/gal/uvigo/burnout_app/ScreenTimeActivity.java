@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import gal.uvigo.burnout_app.base.BaseActivity;
+import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
@@ -165,12 +166,7 @@ public class ScreenTimeActivity extends BaseActivity {
     }
 
     private void setupLineChart(LineChart chart) {
-        chart.getDescription().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-        chart.setNoDataText(getString(R.string.no_data));
-
-        chart.setTouchEnabled(true);
-        chart.setPinchZoom(true);
+        ChartHelper.setupBaseLineChart(chart, this, true);
 
         XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
@@ -188,25 +184,14 @@ public class ScreenTimeActivity extends BaseActivity {
             }
         });
 
-        chart.getAxisRight().setEnabled(false);
-        chart.getAxisLeft().setAxisMinimum(0f);
+        ChartHelper.setupDefaultLeftAxis(chart.getAxisLeft(), 0f, 10f);
         chart.getAxisLeft().setAxisMaximum(60f);
-        chart.getAxisLeft().setGranularity(10f);
         chart.getAxisLeft().setLabelCount(7, true);
-        chart.getAxisLeft().setTextColor(Color.parseColor("#94A3B8"));
-        chart.getAxisLeft().setDrawGridLines(true);
     }
 
     private void setupNightTimeline(BarChart chart) {
-        chart.getDescription().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-        chart.setNoDataText(getString(R.string.no_data));
+        ChartHelper.setupBaseBarChart(chart, this, false, true);
 
-        chart.setTouchEnabled(true);
-        chart.setPinchZoom(false);
-        chart.setScaleEnabled(false);
-
-        chart.getAxisRight().setEnabled(false);
         chart.getAxisLeft().setEnabled(false);
 
         XAxis xAxis = chart.getXAxis();
@@ -219,7 +204,6 @@ public class ScreenTimeActivity extends BaseActivity {
         chart.setViewPortOffsets(0f, topPx, 0f, 0f);
         chart.setExtraOffsets(0f, 0f, 0f, 0f);
         chart.setFitBars(true);
-        chart.setDrawMarkers(true);
 
         chart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override

@@ -1,19 +1,16 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
-import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.DailyDetailViewModel;
@@ -97,7 +94,7 @@ public class ScreenTimeActivity extends BaseActivity {
             if (tvNightTotal != null) {
                 int totalMinutes = Integer.parseInt(safeText(tvNight));
                 tvNightTotal.setText(getString(
-                        R.string.screen_time_night_total,
+                        R.string.format_screen_time_night_total,
                         TimeKey.formatDurationMinutes(totalMinutes)
                 ));
             }
@@ -117,7 +114,7 @@ public class ScreenTimeActivity extends BaseActivity {
                 entries.add(new Entry(hour, minutes[i]));
             }
 
-            LineDataSet dataSet = new LineDataSet(entries, getString(R.string.screen_time_chart_dataset_minutes));
+            LineDataSet dataSet = new LineDataSet(entries, getString(R.string.unit_minutes_full));
             dataSet.setColor(Color.parseColor("#22D3EE"));
             dataSet.setLineWidth(2f);
             dataSet.setCircleColor(Color.parseColor("#22D3EE"));
@@ -180,7 +177,7 @@ public class ScreenTimeActivity extends BaseActivity {
             @Override
             public String getFormattedValue(float value) {
                 int hour = Math.round(value);
-                return getString(R.string.screen_time_hour_suffix, String.valueOf(hour));
+                return getString(R.string.format_hour_suffix, String.valueOf(hour));
             }
         });
 
@@ -272,7 +269,7 @@ public class ScreenTimeActivity extends BaseActivity {
             case 6: return "04:00–05:00";
             case 7: return "05:00–06:00";
             case 8: return "06:00–07:00";
-            default: return getString(R.string.marker_empty);
+            default: return getString(R.string.common_no_data);
         }
     }
 
@@ -281,8 +278,8 @@ public class ScreenTimeActivity extends BaseActivity {
 
         if (minutes9 == null || minutes9.length != 9) {
             tvNightActiveHours.setText(getString(
-                    R.string.screen_time_night_active_hours,
-                    getString(R.string.marker_empty)
+                    R.string.format_screen_time_night_active_hours,
+                    getString(R.string.common_no_data)
             ));
             return;
         }
@@ -292,7 +289,7 @@ public class ScreenTimeActivity extends BaseActivity {
             if (minutes > 0) activeHours++;
         }
         tvNightActiveHours.setText(getString(
-                R.string.screen_time_night_active_hours,
+                R.string.format_screen_time_night_active_hours,
                 String.valueOf(activeHours)
         ));
     }
@@ -313,9 +310,9 @@ public class ScreenTimeActivity extends BaseActivity {
             if (lastNightMinutes9 != null && lastNightMinutes9.length == 9 && index >= 0 && index < 9) {
                 String label = nightSlotLabel(index);
                 int minutes = lastNightMinutes9[index];
-                tv.setText(getString(R.string.screen_time_night_marker_format, label, minutes));
+                tv.setText(getString(R.string.format_screen_time_night_marker, label, minutes));
             } else {
-                tv.setText(getString(R.string.marker_empty));
+                tv.setText(getString(R.string.common_no_data));
             }
 
             measure(

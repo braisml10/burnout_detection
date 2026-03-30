@@ -1,67 +1,142 @@
 <resources>
     <string name="app_name">Burnout Detection</string>
-    <plurals name="kpi_calls">
-        <item quantity="one">%d llamada</item>
-        <item quantity="other">%d llamadas</item>
-    </plurals>
 
     <!-- COMMON -->
-    <string name="today">Hoy</string>
-    <string name="minutes_abv">min</string>
-    <string name="first_name">Nombre</string>
-    <string name="last_name">Apellidos</string>
-    <string name="password">Contraseña</string>
-    <string name="email">Correo electrónico</string>
-    <string name="back">Volver</string>
-    <string name="settings">Configuración</string>
-    <string name="permissions">Permisos</string>
-    <string name="language">Idioma</string>
+    <string name="common_today">Hoy</string>
+    <string name="common_yesterday">Ayer</string>
+    <string name="common_no_data">Sin datos</string>
+    <string name="common_first_name">Nombre</string>
+    <string name="common_last_name">Apellidos</string>
+    <string name="common_email">Correo electrónico</string>
+    <string name="common_password">Contraseña</string>
+    <string name="common_back">Volver</string>
+    <string name="common_settings">Configuración</string>
+    <string name="common_permissions">Permisos</string>
+    <string name="common_language">Idioma</string>
+    <string name="common_calls">Llamadas</string>
+    <string name="common_messages">Mensajes</string>
+    <string name="common_duration">Duración</string>
+    <string name="common_total">Total</string>
+    <string name="common_received">Recibidos</string>
+    <string name="common_save">Guardar</string>
+    <string name="common_cancel">Cancelar</string>
+
+    <!-- LANGUAGE -->
     <string name="language_spanish">Español</string>
-    <string name="register_button">Crear cuenta</string>
-    <string name="login_button">Iniciar sesión</string>
-    <string name="yesterday">Ayer</string>
-    <string name="no_data">Sin datos</string>
-    <string name="minutes_short">m</string>
-    <string name="marker_empty">--</string>
-    <string name="percentage_format">%1$d%%</string>
+    <string name="language_english">English</string>
+    <string name="language_galician">Galego</string>
 
-    <!-- activity_communications.xml -->
-    <string name="communications_title">Comunicaciones</string>
-    <string name="calls">Llamadas</string>
-    <string name="messages">Mensajes</string>
-    <string name="duration">Duración</string>
-    <string name="total">total</string>
-    <string name="received">recibidos</string>
-    <string name="communication_intensity_hour">Intensidad de comunicación por hora</string>
-    <string name="channel_distribution">Distribución por canal</string>
+    <!-- UNITS -->
+    <string name="unit_minutes_short">min</string>
+    <string name="unit_minutes_compact">m</string>
+    <string name="unit_notifications_short">notif.</string>
+    <string name="unit_notifications_per_hour">notif./h</string>
+    <string name="unit_apps">apps</string>
+    <string name="unit_switches">cambios</string>
+    <string name="unit_sessions">aperturas</string>
+    <string name="unit_minutes_full">Minutos</string>
 
-    <!-- activity_login.xml -->
-    <string name="login_welcome_back">Bienvenido de nuevo</string>
+    <!-- FORMATS -->
+    <string name="format_percentage">%1$d%%</string>
+    <string name="format_marker_empty">--</string>
+    <string name="format_date_prefix">| %1$s</string>
+    <string name="format_hour_suffix">%1$sh</string>
+    <string name="format_chart_usage_marker">Uso (%1$s - %2$s): %3$d %4$s</string>
+    <string name="format_comm_marker_voice">%1$s (%2$s): %3$d min</string>
+    <string name="format_comm_marker_text">%1$s (%2$s): %3$d min</string>
+    <string name="format_comm_marker_both">%1$s: %2$s %3$d min · %4$s %5$d min</string>
+    <string name="format_screen_time_night_total">Uso total: %1$s</string>
+    <string name="format_screen_time_night_active_hours">Horas activas: %1$s</string>
+    <string name="format_screen_time_night_marker">%1$s: %2$d min de uso</string>
+    <string name="format_burnout_score">Puntuación: %1$.2f</string>
+    <string name="format_burnout_driver_fragmentation">Fragmentación: %1$s</string>
+    <string name="format_burnout_driver_night_use">Uso nocturno: %1$s</string>
+    <string name="format_burnout_driver_notifications">Notificaciones: %1$s</string>
+    <string name="format_burnout_driver_screen_time">Tiempo de pantalla: %1$s</string>
+    <string name="format_burnout_driver_trend">Tendencia: %1$s</string>
+    <string name="format_burnout_baseline">Media de 7 días: %1$s</string>
+    <string name="format_burnout_today_value">%1$s hoy</string>
+    <string name="format_burnout_response_rate">Tasa de respuesta: %1$s</string>
+    <string name="format_notifications_more_categories">+%1$d</string>
+    <string name="format_notifications_legend_item">%1$s %2$d%%</string>
+    <string name="format_notifications_marker_type">%1$s (%2$d%%)</string>
+
+    <!-- WELCOME -->
+    <string name="welcome_logo_desc">Logo de la aplicación</string>
+    <string name="welcome_title">App para la detección del burnout digital</string>
+    <string name="welcome_subtitle">Accede o crea tu cuenta para continuar</string>
+
+    <!-- LOGIN -->
+    <string name="login_title">Bienvenido de nuevo</string>
     <string name="login_subtitle">Inicia sesión en tu cuenta</string>
-    <string name="login_password_label">Contraseña</string>
-    <string name="login_password_hint">Contraseña</string>
+    <string name="login_action">Iniciar sesión</string>
     <string name="login_go_register">¿No tienes cuenta? Regístrate</string>
+    <string name="login_error_empty_fields">Completa todos los campos</string>
+    <string name="login_error_invalid_credentials">Email o contraseña incorrectos</string>
 
-    <!-- activity_main.xml -->
-    <string name="main_today_activity_title">Actividad hoy</string>
+    <!-- REGISTER -->
+    <string name="register_title">Crea tu cuenta</string>
+    <string name="register_action">Crear cuenta</string>
+    <string name="register_go_login">¿Ya tienes cuenta? Inicia sesión</string>
+    <string name="register_confirm_password">Confirmar contraseña</string>
+    <string name="register_error_invalid_input">Revisa los campos introducidos</string>
+    <string name="register_success">Cuenta creada correctamente</string>
+
+    <!-- PROFILE -->
+    <string name="profile_title">Mi perfil</string>
+    <string name="profile_edit_title">Editar perfil</string>
+    <string name="profile_edit_button_desc">Editar perfil</string>
+    <string name="profile_personal_info_title">Información personal</string>
+    <string name="profile_delete_account_button">Eliminar cuenta</string>
+    <string name="profile_delete_account_message">¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.</string>
+    <string name="profile_delete_account_confirm">Sí, eliminar</string>
+    <string name="profile_error_load">No se pudo cargar el perfil</string>
+    <string name="profile_error_password_mismatch">Contraseña antigua incorrecta o nuevas no coincidentes.</string>
+    <string name="profile_updated">Perfil actualizado</string>
+
+    <!-- EDIT PROFILE DIALOG -->
+    <string name="profile_current_password">Contraseña actual</string>
+    <string name="profile_new_password">Nueva contraseña</string>
+    <string name="profile_confirm_new_password">Confirmar nueva contraseña</string>
+
+    <!-- MAIN -->
+    <string name="main_today_activity_title">Actividad de hoy</string>
     <string name="main_screen_time_label">Tiempo de pantalla</string>
     <string name="main_notifications_label">Notificaciones</string>
     <string name="main_multitask_label">Multitarea</string>
     <string name="main_communication_label">Comunicación</string>
+    <string name="main_burnout_risk_subtitle">Ver evaluación completa</string>
     <string name="main_hourly_activity_title">Actividad por hora</string>
     <string name="main_cd_open_screen_time">Abrir tiempo de pantalla</string>
     <string name="main_cd_open_notifications">Abrir notificaciones</string>
     <string name="main_cd_open_multitask">Abrir multitarea</string>
     <string name="main_cd_open_communication">Abrir comunicación</string>
     <string name="main_cd_open_hourly_activity">Abrir actividad por hora</string>
+    <string name="main_logout_title">Cerrar sesión</string>
+    <string name="main_logout_message">¿Está seguro de que quiere cerrar sesión?</string>
+    <string name="main_logout_confirm">Sí, cerrar</string>
 
-    <!-- activity_multitask.xml -->
+    <!-- COMMUNICATIONS -->
+    <string name="communications_title">Comunicaciones</string>
+    <string name="communications_intensity_title">Intensidad de comunicación por hora</string>
+    <string name="communications_channel_distribution_title">Distribución por canal</string>
+    <string name="communications_chart_label">Comunicación (min)</string>
+    <string name="communications_channel_voice">Voz</string>
+    <string name="communications_channel_text">Texto</string>
+
+    <!-- SCREEN TIME -->
+    <string name="screen_time_title">Tiempo en pantalla</string>
+    <string name="screen_time_total_label">Tiempo total</string>
+    <string name="screen_time_sessions_label">Sesiones</string>
+    <string name="screen_time_night_label">Uso nocturno</string>
+    <string name="screen_time_daily_chart_title">Actividad diurna (07:00–21:00)</string>
+    <string name="screen_time_night_chart_title">Uso nocturno (22:00–06:00)</string>
+
+    <!-- MULTITASK -->
     <string name="multitask_title">Patrones de uso y multitarea</string>
     <string name="multitask_apps_time_label">Tiempo apps</string>
     <string name="multitask_app_switches_label">Cambios app</string>
-    <string name="multitask_switches_unit">cambios</string>
     <string name="multitask_used_apps_label">Apps usadas</string>
-    <string name="multitask_apps_unit">apps</string>
     <string name="multitask_category_time_title">Tiempo por categoría</string>
     <string name="multitask_category_social">Social</string>
     <string name="multitask_category_entertainment">Entretenimiento</string>
@@ -70,126 +145,72 @@
     <string name="multitask_category_other">Otros</string>
     <string name="multitask_switches_chart_title">Frecuencia de cambio (cambios diarios)</string>
     <string name="multitask_top_apps_title">Apps más usadas</string>
+    <string name="multitask_switches_dataset">Cambios</string>
 
-    <!-- activity_notifications.xml -->
+    <!-- NOTIFICATIONS -->
     <string name="notifications_title">Notificaciones y carga atencional</string>
     <string name="notifications_daily_total_label">Total diario</string>
-    <string name="notifications_daily_total_unit">notif.</string>
     <string name="notifications_avg_per_hour_label">Promedio/h</string>
-    <string name="notifications_avg_per_hour_unit">notif./h</string>
     <string name="notifications_most_intrusive_app_label">App más intrusiva</string>
     <string name="notifications_trend_title">Tendencia de notificaciones</string>
     <string name="notifications_top_apps_title">Apps con más notificaciones</string>
     <string name="notifications_types_title">Notificaciones por tipo</string>
+    <string name="notifications_chart_dataset">Notificaciones</string>
 
-    <!-- activity_profile.xml -->
-    <string name="profile_title">Mi perfil</string>
-    <string name="profile_edit_button_desc">Editar perfil</string>
-    <string name="profile_personal_info_title">Información personal</string>
-    <string name="profile_delete_account_button">Eliminar cuenta</string>
-
-    <!-- activity_register.xml -->
-    <string name="register_title">Crea tu cuenta</string>
-    <string name="register_go_login">¿Ya tienes cuenta? Inicia sesión</string>
-    <string name="confirm_password">Confirmar contraseña</string>
-
-    <!-- activity_screen_time.xml -->
-    <string name="screen_time_title">Tiempo en pantalla</string>
-    <string name="screen_time_total_label">Tiempo total</string>
-    <string name="screen_time_sessions_label">Sesiones</string>
-    <string name="screen_time_sessions_unit">aperturas</string>
-    <string name="screen_time_night_label">Uso nocturno</string>
-    <string name="screen_time_daily_chart_title">Actividad diurna (07:00–21:00)</string>
-    <string name="screen_time_night_chart_title">Uso nocturno (22:00–06:00)</string>
-    <string name="screen_time_night_total">Uso total: %1$s</string>
-    <string name="screen_time_night_active_hours">Horas activas: %1$s</string>
-
-    <!-- activity_settings.xml -->
+    <!-- SETTINGS -->
     <string name="settings_notifications_title">Notificaciones</string>
     <string name="settings_notifications_desc">Acceso a notificaciones del sistema</string>
     <string name="settings_communication_title">Llamadas y mensajes</string>
     <string name="settings_communication_desc">Permiso para leer llamadas y SMS</string>
     <string name="settings_usage_title">Uso del dispositivo</string>
     <string name="settings_usage_desc">Acceso a estadísticas de uso</string>
-
-    <!-- activity_welcome.xml -->
-    <string name="welcome_logo_desc">Logo de la aplicación</string>
-    <string name="welcome_title">App para la Detección del Burnout Digital</string>
-    <string name="welcome_subtitle">Accede o crea tu cuenta para continuar</string>
-
-    <!-- dialog_edit_profile.xml -->
-    <string name="current_password">Contraseña actual</string>
-    <string name="new_password">Nueva contraseña</string>
-    <string name="confirm_new_password">Confirmar nueva contraseña</string>
-
-    <!-- ActivityCommunications.java -->
-    <string name="comm_chart_label">Comunicación (min)</string>
-    <string name="comm_channel_voice">Voz</string>
-    <string name="comm_channel_text">Texto</string>
-    <string name="comm_marker_voice_format">%1$s (%2$s): %3$d min</string>
-    <string name="comm_marker_text_format">%1$s (%2$s): %3$d min</string>
-    <string name="comm_marker_both_format">%1$s: %2$s %3$d min · %4$s %5$d min</string>
-    <string name="error_chart_intensity_missing">chartIntensity NULL: falta R.id.chartIntensity en el layout</string>
-    <string name="error_chart_channel_missing">chartChannelDistStacked NULL: falta R.id.chartChannelDistStacked en el layout</string>
-
-    <!-- LoginActivity -->
-    <string name="login_error_empty_fields">Completa todos los campos</string>
-    <string name="login_error_invalid_credentials">Email o contraseña incorrectos</string>
-
-    <!-- MainActivity -->
-    <string name="main_logout_title">Cerrar sesión</string>
-    <string name="main_logout_message">¿Está seguro de que quiere cerrar sesión?</string>
-    <string name="main_logout_confirm">Sí, cerrar</string>
-    <string name="cancel">Cancelar</string>
-    <string name="main_date_prefix">| %1$s</string>
-    <string name="main_chart_dataset_minutes">Minutos</string>
-    <string name="error_main_chart_missing">barChart3h is NULL -> revisa activity_main.xml: falta @+id/barChart3h</string>
-    <string name="error_main_card_missing">%1$s is NULL -> revisa activity_main.xml (o variantes) y el id.</string>
-    <string name="log_main_card_found">%1$s FOUND -> attaching click listener</string>
-    <string name="log_main_card_clicked">%1$s CLICKED -> opening %2$s</string>
-    <string name="main_chart_marker_format">Uso (%1$s - %2$s): %3$d %4$s</string>
-
-    <!-- MultitaskActivity -->
-    <string name="error_multitask_chart_missing">chartSwitches NULL: falta R.id.chartSwitches en el layout</string>
-    <string name="multitask_switches_dataset">Switches</string>
-
-    <!-- NotificationsActivity -->
-    <string name="error_notifications_chart_missing">chartNotifs NULL: falta R.id.chartNotifs en el layout</string>
-    <string name="error_notifications_types_chart_missing">chartNotifTypesStacked NULL: falta R.id.chartNotifTypesStacked en el layout</string>
-    <string name="error_notifications_legend_missing">legendNotifTypes NULL: falta R.id.legendNotifTypes en el layout</string>
-    <string name="notifications_chart_dataset">Notificaciones</string>
-    <string name="notifications_more_categories">+%1$d</string>
-    <string name="notifications_legend_item_format">%1$s %2$d%%</string>
-    <string name="notifications_marker_type_format">%1$s (%2$d%%)</string>
-
-    <!-- ProfileActivity -->
-    <string name="profile_delete_account_message">¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.</string>
-    <string name="profile_delete_account_confirm">Sí, eliminar</string>
-    <string name="profile_edit_title">Editar perfil</string>
-    <string name="save">Guardar</string>
-    <string name="profile_error_load">No se pudo cargar el perfil</string>
-    <string name="profile_error_password_mismatch">Contraseña antigua incorrecta o nuevas no coincidentes.</string>
-    <string name="profile_updated">Perfil actualizado</string>
-
-    <!-- RegisterActivity -->
-    <string name="register_error_invalid_input">Revisa los campos introducidos</string>
-    <string name="register_success">Cuenta creada correctamente</string>
-
-    <!-- ScreenTimeActivity -->
-    <string name="error_screen_time_line_chart_missing">lineChart NULL: falta R.id.lineChart en el layout</string>
-    <string name="error_screen_time_night_chart_missing">barChartNight NULL: falta R.id.barChartNight en el layout</string>
-    <string name="screen_time_chart_dataset_minutes">Minutos</string>
-    <string name="screen_time_hour_suffix">%1$sh</string>
-    <string name="screen_time_night_marker_format">%1$s: %2$d min de uso</string>
-
-    <!-- SettingsActivity -->
+    <string name="settings_language_dialog_title">Selecciona idioma</string>
+    <string name="settings_language_selected">Idioma seleccionado: %1$s</string>
     <string name="settings_comm_permissions_granted">Permisos de comunicación concedidos</string>
     <string name="settings_comm_permissions_partial">Solo se concedió uno de los permisos</string>
     <string name="settings_comm_permissions_denied">Permisos de comunicación denegados</string>
     <string name="settings_error_open_notifications">No se pudo abrir ajustes de notificaciones</string>
     <string name="settings_error_open_usage">No se pudo abrir acceso de uso</string>
     <string name="settings_error_open_app_settings">No se pudieron abrir los ajustes de la app</string>
-    <string name="language_english">English</string> <string name="language_galician">Galego</string>
-    <string name="settings_language_dialog_title">Selecciona idioma</string>
-    <string name="settings_language_selected">Idioma seleccionado: %1$s</string>
+
+    <!-- BURNOUT -->
+    <string name="burnout_title">Riesgo de burnout</string>
+    <string name="burnout_current_risk_label">Nivel de riesgo actual</string>
+    <string name="burnout_main_drivers_title">Factores principales</string>
+    <string name="burnout_trend_title">Tendencia de 7 días</string>
+    <string name="burnout_dimension_analysis_title">Análisis por dimensión (Ayer)</string>
+    <string name="burnout_dimension_fragmentation">Fragmentación</string>
+    <string name="burnout_dimension_trend">Tendencia</string>
+    <string name="burnout_risk_low">Riesgo bajo</string>
+    <string name="burnout_risk_moderate">Riesgo moderado</string>
+    <string name="burnout_risk_high">Riesgo alto</string>
+    <string name="burnout_level_low">Bajo</string>
+    <string name="burnout_level_medium">Medio</string>
+    <string name="burnout_level_high">Alto</string>
+    <string name="burnout_weekly_comparison">Comparado con tu media semanal</string>
+    <string name="burnout_trend_increasing">En aumento</string>
+    <string name="burnout_trend_stable">Estable</string>
+    <string name="burnout_trend_decreasing">En descenso</string>
+
+    <!-- ERRORS -->
+    <string name="error_chart_intensity_missing">chartIntensity NULL: falta R.id.chartIntensity en el layout</string>
+    <string name="error_chart_channel_missing">chartChannelDistStacked NULL: falta R.id.chartChannelDistStacked en el layout</string>
+    <string name="error_main_chart_missing">barChart3h is NULL -&gt; revisa activity_main.xml: falta @+id/barChart3h</string>
+    <string name="error_main_card_missing">%1$s is NULL -&gt; revisa activity_main.xml (o variantes) y el id.</string>
+    <string name="error_multitask_chart_missing">chartSwitches NULL: falta R.id.chartSwitches en el layout</string>
+    <string name="error_notifications_chart_missing">chartNotifs NULL: falta R.id.chartNotifs en el layout</string>
+    <string name="error_notifications_types_chart_missing">chartNotifTypesStacked NULL: falta R.id.chartNotifTypesStacked en el layout</string>
+    <string name="error_notifications_legend_missing">legendNotifTypes NULL: falta R.id.legendNotifTypes en el layout</string>
+    <string name="error_screen_time_line_chart_missing">lineChart NULL: falta R.id.lineChart en el layout</string>
+    <string name="error_screen_time_night_chart_missing">barChartNight NULL: falta R.id.barChartNight en el layout</string>
+
+    <!-- DEBUG -->
+    <string name="debug_main_card_found">%1$s FOUND -&gt; attaching click listener</string>
+    <string name="debug_main_card_clicked">%1$s CLICKED -&gt; opening %2$s</string>
+
+    <!-- PLURALS -->
+    <plurals name="kpi_calls">
+        <item quantity="one">%d llamada</item>
+        <item quantity="other">%d llamadas</item>
+    </plurals>
 </resources>

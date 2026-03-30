@@ -114,9 +114,9 @@ public final class TimeKey {
 
     public static String dayLabel(Context context, int epochDay) {
         if (isToday(epochDay)) {
-            return context.getString(R.string.today);
+            return context.getString(R.string.common_today);
         } else if (isYesterday(epochDay)) {
-            return context.getString(R.string.yesterday);
+            return context.getString(R.string.common_yesterday);
         } else {
             return dateLabelFromEpochDay(epochDay);
         }

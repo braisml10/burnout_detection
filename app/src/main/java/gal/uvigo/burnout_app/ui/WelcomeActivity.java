@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.Manifest;
 import android.content.ComponentName;
@@ -18,11 +18,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.ExistingWorkPolicy;
-import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.collectors.UsageStatsProvider;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
@@ -107,7 +106,8 @@ public class WelcomeActivity extends AppCompatActivity {
         boolean notifOk = isNotificationListenerEnabled();
         if (!notifOk) {
             Log.d(TAG, "Notification Listener NOT enabled -> opening settings");
-            startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));            return;
+            startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+            return;
         }
 
         ensureAggregationWorkScheduled();
@@ -161,22 +161,14 @@ public class WelcomeActivity extends AppCompatActivity {
         PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(
                 DailyAggregationWorker.class,
                 1, TimeUnit.HOURS
-        ).setConstraints(constraints).build();
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-                WORK_DAILY_AGG,
-                ExistingPeriodicWorkPolicy.UPDATE,
-                periodic
-        );
-
-        OneTimeWorkRequest now = new OneTimeWorkRequest.Builder(DailyAggregationWorker.class)
+        )
                 .setConstraints(constraints)
                 .build();
 
-        WorkManager.getInstance(this).enqueueUniqueWork(
-                WORK_DAILY_AGG + "_kickoff",
-                ExistingWorkPolicy.REPLACE,
-                now
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                WORK_DAILY_AGG,
+                ExistingPeriodicWorkPolicy.KEEP,
+                periodic
         );
     }
 }

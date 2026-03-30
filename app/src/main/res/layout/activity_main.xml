@@ -16,7 +16,7 @@
         android:paddingEnd="16dp"
         android:paddingTop="32dp"
         android:paddingBottom="32dp"
-        tools:context="gal.uvigo.burnout_app.MainActivity">
+        tools:context="gal.uvigo.burnout_app.ui.MainActivity">
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/avatarCard"
@@ -410,6 +410,86 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardBurnoutRisk"
+            android:layout_width="0dp"
+            android:layout_height="90dp"
+            android:layout_marginTop="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            app:cardBackgroundColor="#111B2E"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#1E2A44"
+            app:strokeWidth="1dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cardMultitask">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/iconBgRisk"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    app:cardBackgroundColor="#3A2A0A"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="10dp"
+                        app:srcCompat="@drawable/ic_warning"
+                        app:tint="#FACC15" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <ImageView
+                    android:id="@+id/chevRisk"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:srcCompat="@drawable/ic_chevron_right"
+                    app:tint="#64748B" />
+
+                <TextView
+                    android:id="@+id/tvBurnoutRiskLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:text="@string/burnout_title"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    app:layout_constraintStart_toEndOf="@id/iconBgRisk"
+                    app:layout_constraintEnd_toStartOf="@id/chevRisk"
+                    app:layout_constraintTop_toTopOf="@id/iconBgRisk" />
+
+                <TextView
+                    android:id="@+id/tvBurnoutRiskSubtitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/main_burnout_risk_subtitle"
+                    android:textColor="#94A3B8"
+                    android:textSize="14sp"
+                    app:layout_constraintStart_toEndOf="@id/iconBgRisk"
+                    app:layout_constraintEnd_toStartOf="@id/chevRisk"
+                    app:layout_constraintTop_toBottomOf="@id/tvBurnoutRiskLabel" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <TextView
             android:id="@+id/tvHourlyTitle"
             android:layout_width="wrap_content"
@@ -420,7 +500,7 @@
             android:textStyle="bold"
             android:textSize="16sp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cardMultitask" />
+            app:layout_constraintTop_toBottomOf="@id/cardBurnoutRisk" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardChart"

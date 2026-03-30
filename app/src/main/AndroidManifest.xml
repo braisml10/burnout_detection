@@ -54,7 +54,7 @@
         <!-- ===== ACTIVITIES ===== -->
 
         <activity
-            android:name="gal.uvigo.burnout_app.WelcomeActivity"
+            android:name="gal.uvigo.burnout_app.ui.WelcomeActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -63,18 +63,19 @@
         </activity>
 
         <activity
-            android:name="gal.uvigo.burnout_app.LoginActivity"
+            android:name="gal.uvigo.burnout_app.ui.LoginActivity"
             android:windowSoftInputMode="adjustResize" />
         <activity
-            android:name="gal.uvigo.burnout_app.RegisterActivity"
+            android:name="gal.uvigo.burnout_app.ui.RegisterActivity"
             android:windowSoftInputMode="adjustResize" />
-        <activity android:name="gal.uvigo.burnout_app.MainActivity" />
-        <activity android:name="gal.uvigo.burnout_app.ProfileActivity" />
-        <activity android:name="gal.uvigo.burnout_app.ScreenTimeActivity" />
-        <activity android:name="gal.uvigo.burnout_app.MultitaskActivity" />
-        <activity android:name="gal.uvigo.burnout_app.NotificationsActivity" />
-        <activity android:name="gal.uvigo.burnout_app.CommunicationsActivity" />
-        <activity android:name="gal.uvigo.burnout_app.SettingsActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.MainActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.ProfileActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.ScreenTimeActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.MultitaskActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.NotificationsActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.CommunicationsActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.SettingsActivity" />
+        <activity android:name="gal.uvigo.burnout_app.ui.BurnoutRiskActivity" />
 
         <!-- ========================= -->
         <!-- ===== RECEIVERS ========= -->

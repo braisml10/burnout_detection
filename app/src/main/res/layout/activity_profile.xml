@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:fillViewport="true"
     android:background="#0B1220"
-    tools:context="gal.uvigo.burnout_app.ProfileActivity">
+    tools:context="gal.uvigo.burnout_app.ui.ProfileActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/main"
@@ -50,7 +50,7 @@
             android:layout_height="44dp"
             android:background="@android:color/transparent"
             android:contentDescription="@string/profile_edit_button_desc"
-            android:tint="@android:color/white"
+            app:tint="@android:color/white"
             app:srcCompat="@android:drawable/ic_menu_edit"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -134,7 +134,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/first_name"
+                    android:text="@string/common_first_name"
                     android:textColor="#94A3B8"
                     android:textSize="13sp"
                     tools:ignore="HardcodedText" />
@@ -160,7 +160,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/last_name"
+                    android:text="@string/common_last_name"
                     android:textColor="#94A3B8"
                     android:textSize="13sp"
                     tools:ignore="HardcodedText" />
@@ -186,7 +186,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/email"
+                    android:text="@string/common_email"
                     android:textColor="#94A3B8"
                     android:textSize="13sp"
                     tools:ignore="HardcodedText" />

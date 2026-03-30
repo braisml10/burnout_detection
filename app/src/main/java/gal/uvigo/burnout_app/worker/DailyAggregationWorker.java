@@ -19,12 +19,14 @@ import gal.uvigo.burnout_app.collectors.UsageStatsProvider;
 import gal.uvigo.burnout_app.data.db.BurnoutDatabase;
 import gal.uvigo.burnout_app.data.entity.AppEntity;
 import gal.uvigo.burnout_app.data.entity.AppUsageEventEntity;
+import gal.uvigo.burnout_app.data.entity.BurnoutRiskEntity;
 import gal.uvigo.burnout_app.data.entity.DailyAppMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.DailyCommMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.DailyMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.HourlyCommMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.HourlyMetricsEntity;
 import gal.uvigo.burnout_app.helpers.AppCategoryResolver;
+import gal.uvigo.burnout_app.helpers.BurnoutRiskEngine;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 
@@ -87,6 +89,9 @@ public class DailyAggregationWorker extends Worker {
         }
 
         runCommunicationAggregation(ctx, db, now, yesterday, today);
+
+        // Calcula el riesgo del último día cerrado (ayer)
+        computeBurnoutRiskForClosedDay(db, yesterday);
 
         Log.d(TAG, "================ doWork END ================");
         return Result.success();
@@ -1111,5 +1116,48 @@ public class DailyAggregationWorker extends Worker {
     private static boolean shouldIgnorePkg(String pkg) {
         if (pkg == null) return false;
         return PKG_SELF.equals(pkg) || PKG_LAUNCHER.equals(pkg);
+    }
+
+    // ===================== Burnout Engine HELPERS =====================
+
+    private void computeBurnoutRiskForClosedDay(BurnoutDatabase db, int targetDay) {
+        try {
+            DailyMetricsEntity targetMetrics = db.userActivityDao().getDailyMetricsByDate(targetDay);
+
+            if (targetMetrics == null) {
+                Log.d(TAG, "Risk skip: no DailyMetrics for day=" + targetDay);
+                return;
+            }
+
+            List<DailyMetricsEntity> baselineDays =
+                    db.userActivityDao().getDailyMetricsRange(targetDay - 7, targetDay - 1);
+
+            if (baselineDays == null) {
+                baselineDays = new ArrayList<>();
+            }
+
+            BurnoutRiskEngine engine = new BurnoutRiskEngine();
+
+            BurnoutRiskEntity risk = engine.evaluate(
+                    targetDay,
+                    targetMetrics,
+                    baselineDays,
+                    targetMetrics.notification_count,
+                    0.0 // TODO: sustituir por reactiveOpenRatio real cuando lo implementes
+            );
+
+            db.burnoutRiskDao().upsert(risk);
+
+            Log.d(TAG, "Risk saved: day=" + targetDay
+                    + " riskScore=" + risk.riskScore
+                    + " screen=" + risk.screenTimeScore
+                    + " frag=" + risk.fragmentationScore
+                    + " night=" + risk.nightUseScore
+                    + " notif=" + risk.notificationPressureScore
+                    + " trend=" + risk.trendDeviationScore);
+
+        } catch (Exception ex) {
+            Log.e(TAG, "Risk computation failed: " + ex.getMessage(), ex);
+        }
     }
 }

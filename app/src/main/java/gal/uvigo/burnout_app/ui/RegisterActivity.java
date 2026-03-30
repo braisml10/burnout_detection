@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.content.Context;
 import android.content.Intent;
@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.viewmodel.OnboardingViewModel;

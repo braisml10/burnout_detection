@@ -60,4 +60,8 @@ public interface UserActivityDAO {
 
     @Query("SELECT COUNT(*) FROM hourly_metric WHERE date = :date AND screen_ms > 0")
     int getActiveHourCountByDate(int date);
+
+    // ===================== Burnout Risk =====================
+    @Query("SELECT * FROM daily_metrics WHERE date BETWEEN :startDay AND :endDay ORDER BY date ASC")
+    List<DailyMetricsEntity> getDailyMetricsRange(int startDay, int endDay);
 }

@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.graphics.Color;
 import android.os.Bundle;
@@ -7,15 +7,14 @@ import android.widget.TextView;
 
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.viewmodel.AppsUsageViewModel;
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.ValueFormatter;
 
 public class MultitaskActivity extends BaseActivity {
 
@@ -144,9 +143,9 @@ public class MultitaskActivity extends BaseActivity {
             tvApp2Name.setText(t.name2);
             tvApp3Name.setText(t.name3);
 
-            tvApp1Pct.setText(getString(R.string.percentage_format, t.pct1));
-            tvApp2Pct.setText(getString(R.string.percentage_format, t.pct2));
-            tvApp3Pct.setText(getString(R.string.percentage_format, t.pct3));
+            tvApp1Pct.setText(getString(R.string.format_percentage, t.pct1));
+            tvApp2Pct.setText(getString(R.string.format_percentage, t.pct2));
+            tvApp3Pct.setText(getString(R.string.format_percentage, t.pct3));
 
             pbApp1.setProgress(t.bar1);
             pbApp2.setProgress(t.bar2);
@@ -176,9 +175,9 @@ public class MultitaskActivity extends BaseActivity {
     }
 
     private String prettyName(String s) {
-        if (s == null) return getString(R.string.marker_empty);
+        if (s == null) return getString(R.string.common_no_data);
         s = s.trim();
-        if (s.isEmpty()) return getString(R.string.marker_empty);
+        if (s.isEmpty()) return getString(R.string.common_no_data);
 
         if (s.contains(".") && !s.contains(" ")) {
             String[] parts = s.split("\\.");

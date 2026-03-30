@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -13,6 +13,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.data.entity.HourlyMetricsEntity;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
@@ -127,7 +128,7 @@ public class MainActivity extends BaseActivity {
                                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                 startActivity(intent);
                             })
-                            .setNegativeButton(getString(R.string.cancel), (dialog, which) -> dialog.dismiss())
+                            .setNegativeButton(getString(R.string.common_cancel), (dialog, which) -> dialog.dismiss())
                             .show();
                 }
 
@@ -140,10 +141,11 @@ public class MainActivity extends BaseActivity {
         setupCardNavigation(R.id.cardMultitask, MultitaskActivity.class);
         setupCardNavigation(R.id.cardNotifications, NotificationsActivity.class);
         setupCardNavigation(R.id.cardCommunication, CommunicationsActivity.class);
+        setupCardNavigation(R.id.cardBurnoutRisk, BurnoutRiskActivity.class);
 
         TextView tvDate = findViewById(R.id.tvDate);
         tvDate.setText(getString(
-                R.string.main_date_prefix,
+                R.string.format_date_prefix,
                 TimeKey.dateLabelFromTimestamp(System.currentTimeMillis())
         ));
 
@@ -301,7 +303,7 @@ public class MainActivity extends BaseActivity {
             entries.add(new BarEntry(i, minutes));
         }
 
-        BarDataSet dataSet = new BarDataSet(entries, getString(R.string.main_chart_dataset_minutes));
+        BarDataSet dataSet = new BarDataSet(entries, getString(R.string.unit_minutes_full));
         dataSet.setColor(Color.parseColor("#22D3EE"));
         dataSet.setDrawValues(false);
 
@@ -345,14 +347,14 @@ public class MainActivity extends BaseActivity {
                 long minutes = TimeKey.minutesFromMs(lastBucketsMs[index]);
 
                 tv.setText(getString(
-                        R.string.main_chart_marker_format,
+                        R.string.format_chart_usage_marker,
                         range[0],
                         range[1],
                         minutes,
-                        getString(R.string.minutes_short)
+                        getString(R.string.unit_minutes_short)
                 ));
             } else {
-                tv.setText(getString(R.string.marker_empty));
+                tv.setText(getString(R.string.common_no_data));
             }
 
             measure(

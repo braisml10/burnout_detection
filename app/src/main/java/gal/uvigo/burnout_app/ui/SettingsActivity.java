@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.Manifest;
 import android.content.Context;
@@ -19,6 +19,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -221,7 +222,7 @@ public class SettingsActivity extends AppCompatActivity {
 
                     restartAppAtMain();
                 })
-                .setNegativeButton(getString(R.string.cancel), null)
+                .setNegativeButton(getString(R.string.common_cancel), null)
                 .show();
     }
 

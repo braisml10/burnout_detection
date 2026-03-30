@@ -14,4 +14,8 @@
     <color name="icon_blue">#60A5FA</color>
     <color name="icon_purple">#F472B6</color>
     <color name="icon_amber">#F59E0B</color>
+
+    <color name="risk_low">#0AFB3A</color>
+    <color name="risk_medium">#FF9900</color>
+    <color name="risk_high">#FF0000</color>
 </resources>

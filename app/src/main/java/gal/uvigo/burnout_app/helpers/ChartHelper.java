@@ -23,7 +23,7 @@ public final class ChartHelper {
     public static void setupBaseLineChart(LineChart chart, Context context, boolean pinchZoom) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText(context.getString(R.string.no_data));
+        chart.setNoDataText(context.getString(R.string.common_no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(pinchZoom);
@@ -33,7 +33,7 @@ public final class ChartHelper {
     public static void setupBaseBarChart(BarChart chart, Context context, boolean pinchZoom, boolean drawMarkers) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText(context.getString(R.string.no_data));
+        chart.setNoDataText(context.getString(R.string.common_no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(pinchZoom);
@@ -45,7 +45,7 @@ public final class ChartHelper {
     public static void setupBaseHorizontalBarChart(HorizontalBarChart chart, Context context, boolean drawMarkers) {
         chart.getDescription().setEnabled(false);
         chart.getLegend().setEnabled(false);
-        chart.setNoDataText(context.getString(R.string.no_data));
+        chart.setNoDataText(context.getString(R.string.common_no_data));
 
         chart.setTouchEnabled(true);
         chart.setPinchZoom(false);
@@ -81,7 +81,7 @@ public final class ChartHelper {
         axis.setValueFormatter(new ValueFormatter() {
             @Override
             public String getFormattedValue(float value) {
-                return ((int) value) + context.getString(R.string.minutes_short);
+                return ((int) value) + context.getString(R.string.unit_minutes_short);
             }
         });
     }

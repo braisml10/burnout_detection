@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -15,6 +15,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.data.entity.UserProfileEntity;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
@@ -83,7 +84,7 @@ public class ProfileActivity extends AppCompatActivity {
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
                     })
-                    .setNegativeButton(getString(R.string.cancel), (dialog, which) -> dialog.dismiss())
+                    .setNegativeButton(getString(R.string.common_cancel), (dialog, which) -> dialog.dismiss())
                     .show();
         });
     }
@@ -137,8 +138,8 @@ public class ProfileActivity extends AppCompatActivity {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.profile_edit_title))
                 .setView(dialogView)
-                .setNegativeButton(getString(R.string.cancel), (d, which) -> d.dismiss())
-                .setPositiveButton(getString(R.string.save), null)
+                .setNegativeButton(getString(R.string.common_cancel), (d, which) -> d.dismiss())
+                .setPositiveButton(getString(R.string.common_save), null)
                 .create();
 
         dialog.setOnShowListener(d -> {

@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:fillViewport="true"
     android:background="#0B1220"
-    tools:context="gal.uvigo.burnout_app.SettingsActivity">
+    tools:context="gal.uvigo.burnout_app.ui.SettingsActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -22,7 +22,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="@android:color/transparent"
-            android:contentDescription="@string/back"
+            android:contentDescription="@string/common_back"
             android:padding="10dp"
             app:srcCompat="@drawable/ic_chevron_left"
             app:tint="@android:color/white"
@@ -33,7 +33,7 @@
             android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/settings"
+            android:text="@string/common_settings"
             android:textColor="@android:color/white"
             android:textSize="24sp"
             android:textStyle="bold"
@@ -49,7 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
-            android:text="@string/permissions"
+            android:text="@string/common_permissions"
             android:textColor="#94A3B8"
             android:textSize="14sp"
             android:textStyle="bold"
@@ -288,7 +288,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/language"
+                    android:text="@string/common_language"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
                     android:textStyle="bold" />

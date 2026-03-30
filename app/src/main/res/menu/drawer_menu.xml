@@ -31,7 +31,7 @@
         <item
             android:id="@+id/nav_settings"
             android:icon="@drawable/ic_settings"
-            android:title="@string/settings" />
+            android:title="@string/common_settings" />
     </group>
 
     <item

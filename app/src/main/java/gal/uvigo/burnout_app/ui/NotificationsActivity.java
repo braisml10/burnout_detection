@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.data.repo.NotificationRepository;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
@@ -26,7 +27,6 @@ import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.utils.MPPointF;
@@ -345,7 +345,7 @@ public class NotificationsActivity extends BaseActivity {
         int remaining = nonZero.size() - shown;
         if (remaining > 0) {
             TextView more = new TextView(this);
-            more.setText(getString(R.string.notifications_more_categories, remaining));
+            more.setText(getString(R.string.format_notifications_more_categories, remaining));
             more.setTextColor(Color.parseColor("#94A3B8"));
             more.setTextSize(12f);
             more.setPadding(10, 2, 0, 0);
@@ -372,7 +372,7 @@ public class NotificationsActivity extends BaseActivity {
         dot.setBackgroundColor(seg.color);
 
         TextView label = new TextView(this);
-        label.setText(getString(R.string.notifications_legend_item_format, seg.label, seg.pct));
+        label.setText(getString(R.string.format_notifications_legend_item, seg.label, seg.pct));
         label.setTextColor(Color.parseColor("#E2E8F0"));
         label.setTextSize(12f);
         label.setSingleLine(true);
@@ -421,14 +421,14 @@ public class NotificationsActivity extends BaseActivity {
         @Override
         public void refreshContent(Entry e, Highlight highlight) {
             if (lastTypeSegs == null || lastTypeSegs.isEmpty() || highlight == null) {
-                tv.setText(getString(R.string.marker_empty));
+                tv.setText(getString(R.string.common_no_data));
             } else {
                 int stackIndex = highlight.getStackIndex();
                 if (stackIndex >= 0 && stackIndex < lastTypeSegs.size()) {
                     NotifTypeSeg seg = lastTypeSegs.get(stackIndex);
-                    tv.setText(getString(R.string.notifications_marker_type_format, seg.label, seg.pct));
+                    tv.setText(getString(R.string.format_notifications_marker_type, seg.label, seg.pct));
                 } else {
-                    tv.setText(getString(R.string.marker_empty));
+                    tv.setText(getString(R.string.common_yesterday));
                 }
             }
 
@@ -529,15 +529,15 @@ public class NotificationsActivity extends BaseActivity {
         if (index == 1) {
             tvApp1Name.setText(prettyName);
             pbApp1.setProgress(bar);
-            tvApp1Pct.setText(getString(R.string.percentage_format, pct));
+            tvApp1Pct.setText(getString(R.string.format_percentage, pct));
         } else if (index == 2) {
             tvApp2Name.setText(prettyName);
             pbApp2.setProgress(bar);
-            tvApp2Pct.setText(getString(R.string.percentage_format, pct));
+            tvApp2Pct.setText(getString(R.string.format_percentage, pct));
         } else if (index == 3) {
             tvApp3Name.setText(prettyName);
             pbApp3.setProgress(bar);
-            tvApp3Pct.setText(getString(R.string.percentage_format, pct));        }
+            tvApp3Pct.setText(getString(R.string.format_percentage, pct));        }
     }
 
     private String getCategoryDisplayLabel(String category) {

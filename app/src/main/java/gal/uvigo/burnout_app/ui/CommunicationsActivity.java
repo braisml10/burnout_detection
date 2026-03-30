@@ -1,4 +1,4 @@
-package gal.uvigo.burnout_app;
+package gal.uvigo.burnout_app.ui;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -8,6 +8,7 @@ import android.widget.TextView;
 
 import androidx.lifecycle.ViewModelProvider;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
@@ -18,14 +19,12 @@ import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.MarkerView;
-import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.utils.MPPointF;
@@ -150,7 +149,7 @@ public class CommunicationsActivity extends BaseActivity {
 
         entries.add(new Entry(24f, (float) TimeKey.minutesFromMs(totalByHourMs[23])));
 
-        LineDataSet ds = new LineDataSet(entries, getString(R.string.comm_chart_label));
+        LineDataSet ds = new LineDataSet(entries, getString(R.string.communications_chart_label));
         ds.setColor(Color.parseColor("#60A5FA"));
         ds.setLineWidth(2f);
         ds.setCircleColor(Color.parseColor("#60A5FA"));
@@ -236,8 +235,8 @@ public class CommunicationsActivity extends BaseActivity {
         BarDataSet ds = new BarDataSet(entries, "");
         ds.setDrawValues(false);
         ds.setStackLabels(new String[]{
-                getString(R.string.comm_channel_voice),
-                getString(R.string.comm_channel_text)
+                getString(R.string.communications_channel_voice),
+                getString(R.string.communications_channel_text)
         });
         ds.setColors(
                 Color.parseColor("#60A5FA"),
@@ -284,31 +283,31 @@ public class CommunicationsActivity extends BaseActivity {
 
                 if (stackIndex == 0) {
                     tv.setText(getString(
-                            R.string.comm_marker_voice_format,
-                            getString(R.string.comm_channel_voice),
+                            R.string.format_comm_marker_voice,
+                            getString(R.string.communications_channel_voice),
                             labelHour,
                             voiceMin
                     ));
                 } else if (stackIndex == 1) {
                     tv.setText(getString(
-                            R.string.comm_marker_text_format,
-                            getString(R.string.comm_channel_text),
+                            R.string.format_comm_marker_text,
+                            getString(R.string.communications_channel_text),
                             labelHour,
                             textMin
                     ));
                 } else {
                     tv.setText(getString(
-                            R.string.comm_marker_both_format,
+                            R.string.format_comm_marker_both,
                             labelHour,
-                            getString(R.string.comm_channel_voice),
+                            getString(R.string.communications_channel_voice),
                             voiceMin,
-                            getString(R.string.comm_channel_text),
+                            getString(R.string.communications_channel_text),
                             textMin
                     ));
                 }
 
             } else {
-                tv.setText(getString(R.string.marker_empty));
+                tv.setText(getString(R.string.common_no_data));
             }
 
             measure(

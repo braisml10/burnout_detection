@@ -1,21 +1,25 @@
 package gal.uvigo.burnout_app.ui;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.MarkerView;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.utils.MPPointF;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -37,27 +41,22 @@ public class BurnoutRiskActivity extends BaseActivity {
     private TextView tvDriver2;
     private TextView tvDriver3;
 
-    private TextView tvFragLabel;
     private TextView tvFragLevel;
     private TextView tvFragValue;
     private TextView tvFragBaseline;
 
-    private TextView tvNightLabel;
     private TextView tvNightLevel;
     private TextView tvNightValue;
     private TextView tvNightBaseline;
 
-    private TextView tvNotifLabel;
     private TextView tvNotifLevel;
     private TextView tvNotifValue;
     private TextView tvNotifBaseline;
 
-    private TextView tvScreenLabel;
     private TextView tvScreenLevel;
     private TextView tvScreenValue;
     private TextView tvScreenBaseline;
 
-    private TextView tvTrendDimLabel;
     private TextView tvTrendDimLevel;
     private TextView tvTrendDimValue;
     private TextView tvTrendDimBaseline;
@@ -86,27 +85,22 @@ public class BurnoutRiskActivity extends BaseActivity {
         tvDriver2 = findViewById(R.id.tvDriver2);
         tvDriver3 = findViewById(R.id.tvDriver3);
 
-        tvFragLabel = findViewById(R.id.tvFragLabel);
         tvFragLevel = findViewById(R.id.tvFragLevel);
         tvFragValue = findViewById(R.id.tvFragValue);
         tvFragBaseline = findViewById(R.id.tvFragBaseline);
 
-        tvNightLabel = findViewById(R.id.tvNightLabel);
         tvNightLevel = findViewById(R.id.tvNightLevel);
         tvNightValue = findViewById(R.id.tvNightValue);
         tvNightBaseline = findViewById(R.id.tvNightBaseline);
 
-        tvNotifLabel = findViewById(R.id.tvNotifLabel);
         tvNotifLevel = findViewById(R.id.tvNotifLevel);
         tvNotifValue = findViewById(R.id.tvNotifValue);
         tvNotifBaseline = findViewById(R.id.tvNotifBaseline);
 
-        tvScreenLabel = findViewById(R.id.tvScreenLabel);
         tvScreenLevel = findViewById(R.id.tvScreenLevel);
         tvScreenValue = findViewById(R.id.tvScreenValue);
         tvScreenBaseline = findViewById(R.id.tvScreenBaseline);
 
-        tvTrendDimLabel = findViewById(R.id.tvTrendDimLabel);
         tvTrendDimLevel = findViewById(R.id.tvTrendDimLevel);
         tvTrendDimValue = findViewById(R.id.tvTrendDimValue);
         tvTrendDimBaseline = findViewById(R.id.tvTrendDimBaseline);
@@ -132,10 +126,10 @@ public class BurnoutRiskActivity extends BaseActivity {
         ));
 
         tvNightLevel.setText(getLevelLabel(state.nightUse.level));
-        tvNightValue.setText(formatDurationMinutes(state.nightUse.valueMinutes));
+        tvNightValue.setText(TimeKey.formatDurationMinutes((int) state.nightUse.valueMinutes));
         tvNightBaseline.setText(getString(
                 R.string.format_burnout_baseline,
-                formatDurationMinutes(state.nightUse.baselineMinutes)
+                TimeKey.formatDurationMinutes((int) state.nightUse.baselineMinutes)
         ));
 
         tvNotifLevel.setText(getLevelLabel(state.notifications.level));
@@ -146,10 +140,12 @@ public class BurnoutRiskActivity extends BaseActivity {
         ));
 
         tvScreenLevel.setText(getLevelLabel(state.screenTime.level));
-        tvScreenValue.setText(formatYesterdayValue(formatOneDecimal(state.screenTime.valueHours) + "h"));
+        tvScreenValue.setText(
+                formatYesterdayValue(formatOneDecimal(state.screenTime.valueHours) + getString(R.string.unit_hours_short))
+        );
         tvScreenBaseline.setText(getString(
                 R.string.format_burnout_baseline,
-                formatOneDecimal(state.screenTime.baselineHours) + "h"
+                formatOneDecimal(state.screenTime.baselineHours) + getString(R.string.unit_hours_short)
         ));
 
         tvTrendDimLevel.setText(getLevelLabel(state.trend.level));
@@ -175,7 +171,7 @@ public class BurnoutRiskActivity extends BaseActivity {
             case BurnoutRiskViewModel.RISK_HIGH:
                 return getString(R.string.burnout_risk_high);
             default:
-                return getString(R.string.unit_minutes_short);
+                return getString(R.string.common_no_data);
         }
     }
 
@@ -188,7 +184,7 @@ public class BurnoutRiskActivity extends BaseActivity {
             case BurnoutRiskViewModel.LEVEL_HIGH:
                 return getString(R.string.burnout_level_high);
             default:
-                return getString(R.string.unit_minutes_short);
+                return getString(R.string.common_no_data);
         }
     }
 
@@ -201,13 +197,13 @@ public class BurnoutRiskActivity extends BaseActivity {
             case BurnoutRiskViewModel.TREND_DECREASING:
                 return getString(R.string.burnout_trend_decreasing);
             default:
-                return getString(R.string.unit_minutes_short);
+                return getString(R.string.common_no_data);
         }
     }
 
     private String formatDriver(int driverType, int level) {
         if (driverType == BurnoutRiskViewModel.DRIVER_NONE || level == BurnoutRiskViewModel.LEVEL_NONE) {
-            return getString(R.string.unit_minutes_short);
+            return getString(R.string.common_no_data);
         }
 
         String levelText = getLevelLabel(level);
@@ -233,22 +229,11 @@ public class BurnoutRiskActivity extends BaseActivity {
     }
 
     private String formatFragmentationValue(double value) {
-        return formatOneDecimal(value) + " cambios/h";
+        return formatOneDecimal(value) + " " + getString(R.string.unit_changes_per_hour);
     }
 
     private String formatYesterdayValue(String value) {
         return value + " " + getString(R.string.common_yesterday).toLowerCase(Locale.getDefault());
-    }
-
-    private String formatDurationMinutes(long totalMinutes) {
-        long safeMinutes = Math.max(0L, totalMinutes);
-        long hours = safeMinutes / 60L;
-        long minutes = safeMinutes % 60L;
-
-        if (hours > 0) {
-            return hours + "h " + minutes + getString(R.string.unit_minutes_short);
-        }
-        return minutes + getString(R.string.unit_minutes_short);
     }
 
     private int getRiskColor(String level) {
@@ -279,14 +264,14 @@ public class BurnoutRiskActivity extends BaseActivity {
     }
 
     private void applySectionRiskStyle(TextView levelView, String level) {
-        int color = getRiskColor(level);
-        levelView.setTextColor(color);
+        levelView.setTextColor(getRiskColor(level));
     }
 
     private void setupChart() {
         ChartHelper.setupBaseLineChart(lineChartRiskTrend, this, false);
 
-        lineChartRiskTrend.setTouchEnabled(false);
+        lineChartRiskTrend.setTouchEnabled(true);
+        lineChartRiskTrend.setHighlightPerTapEnabled(true);
         lineChartRiskTrend.setDragEnabled(false);
         lineChartRiskTrend.setScaleEnabled(false);
         lineChartRiskTrend.setPinchZoom(false);
@@ -298,6 +283,45 @@ public class BurnoutRiskActivity extends BaseActivity {
 
         ChartHelper.setupDefaultLeftAxis(lineChartRiskTrend.getAxisLeft(), 0f, 1f);
         lineChartRiskTrend.getAxisLeft().setAxisMaximum(2f);
+
+        RiskMarkerView markerView = new RiskMarkerView(this);
+        markerView.setChartView(lineChartRiskTrend);
+        lineChartRiskTrend.setMarker(markerView);
+    }
+
+    private class RiskMarkerView extends MarkerView {
+
+        private final TextView tv;
+
+        public RiskMarkerView(Context context) {
+            super(context, R.layout.marker);
+            tv = findViewById(R.id.tvMarkerText);
+        }
+
+        @Override
+        public void refreshContent(Entry e, Highlight highlight) {
+            if (e != null) {
+                tv.setText(getString(
+                        R.string.format_burnout_score,
+                        (double) e.getY()
+                ));
+            } else {
+                tv.setText(getString(R.string.common_no_data));
+            }
+
+            measure(
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            );
+            layout(0, 0, getMeasuredWidth(), getMeasuredHeight());
+
+            super.refreshContent(e, highlight);
+        }
+
+        @Override
+        public MPPointF getOffset() {
+            return new MPPointF(-(getWidth() / 2f), -getHeight() - 12f);
+        }
     }
 
     private void renderTrendChart(List<BurnoutRiskEntity> items) {
@@ -307,7 +331,7 @@ public class BurnoutRiskActivity extends BaseActivity {
         }
 
         List<BurnoutRiskEntity> sorted = new ArrayList<>(items);
-        Collections.sort(sorted, Comparator.comparingLong(a -> a.epochDay));
+        sorted.sort(Comparator.comparingLong(a -> a.epochDay));
 
         List<Entry> entries = new ArrayList<>();
         List<String> labels = new ArrayList<>();
@@ -316,10 +340,9 @@ public class BurnoutRiskActivity extends BaseActivity {
             BurnoutRiskEntity item = sorted.get(i);
             entries.add(new Entry(i, (float) item.riskScore));
 
-            long dayMs = TimeKey.startOfDayMsFromEpochDay((int) item.epochDay);
-            java.util.Calendar cal = java.util.Calendar.getInstance();
-            cal.setTimeInMillis(dayMs);
-            labels.add(String.valueOf(cal.get(java.util.Calendar.DAY_OF_MONTH)));
+            String dateLabel = TimeKey.dateLabelFromEpochDay((int) item.epochDay);
+            String shortLabel = dateLabel.split(" ")[0];
+            labels.add(shortLabel);
         }
 
         LineDataSet dataSet = new LineDataSet(entries, "Risk");
@@ -330,8 +353,7 @@ public class BurnoutRiskActivity extends BaseActivity {
         dataSet.setCircleColor(Color.parseColor("#60A5FA"));
         dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
 
-        LineData lineData = new LineData(dataSet);
-        lineChartRiskTrend.setData(lineData);
+        lineChartRiskTrend.setData(new LineData(dataSet));
 
         XAxis xAxis = lineChartRiskTrend.getXAxis();
         xAxis.setGranularity(1f);

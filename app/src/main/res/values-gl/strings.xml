@@ -29,12 +29,14 @@
     <!-- UNITS -->
     <string name="unit_minutes_short">min</string>
     <string name="unit_minutes_compact">m</string>
+    <string name="unit_hours_short">h</string>
     <string name="unit_notifications_short">notif.</string>
     <string name="unit_notifications_per_hour">notif./h</string>
     <string name="unit_apps">apps</string>
     <string name="unit_switches">cambios</string>
     <string name="unit_sessions">aperturas</string>
     <string name="unit_minutes_full">Minutos</string>
+    <string name="unit_changes_per_hour">cambios/h</string>
 
     <!-- FORMATS -->
     <string name="format_percentage">%1$d%%</string>

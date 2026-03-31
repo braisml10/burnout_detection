@@ -1143,7 +1143,7 @@ public class DailyAggregationWorker extends Worker {
                     targetMetrics,
                     baselineDays,
                     targetMetrics.notification_count,
-                    0.0 // TODO: sustituir por reactiveOpenRatio real cuando lo implementes
+                    0.0
             );
 
             db.burnoutRiskDao().upsert(risk);

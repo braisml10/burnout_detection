@@ -114,6 +114,8 @@ public class MainActivity extends BaseActivity {
                     startActivity(new Intent(this, MultitaskActivity.class));
                 } else if (id == R.id.nav_communication) {
                     startActivity(new Intent(this, CommunicationsActivity.class));
+                } else if (id == R.id.nav_risk) {
+                    startActivity(new Intent(this, BurnoutRiskActivity.class));
                 } else if (id == R.id.nav_settings) {
                     startActivity(new Intent(this, SettingsActivity.class));
                 } else if (id == R.id.nav_logout) {

@@ -29,6 +29,11 @@
             android:title="@string/communications_title" />
 
         <item
+            android:id="@+id/nav_risk"
+            android:icon="@drawable/ic_warning"
+            android:title="@string/burnout_title" />
+
+        <item
             android:id="@+id/nav_settings"
             android:icon="@drawable/ic_settings"
             android:title="@string/common_settings" />

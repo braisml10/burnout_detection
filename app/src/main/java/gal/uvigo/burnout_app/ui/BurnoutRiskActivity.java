@@ -1,9 +1,11 @@
 package gal.uvigo.burnout_app.ui;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
@@ -36,7 +38,7 @@ public class BurnoutRiskActivity extends BaseActivity {
     private BurnoutRiskViewModel viewModel;
 
     private TextView tvRiskLevel;
-    private TextView tvRiskScore;
+    private TextView tvRiskScoreCard;
     private TextView tvDriver1;
     private TextView tvDriver2;
     private TextView tvDriver3;
@@ -63,6 +65,8 @@ public class BurnoutRiskActivity extends BaseActivity {
 
     private LineChart lineChartRiskTrend;
 
+    private ImageView ivInfoScore;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,6 +76,8 @@ public class BurnoutRiskActivity extends BaseActivity {
         setupBackButton(R.id.btnBack);
         setupChart();
 
+        setupInfoButton();
+
         viewModel = new ViewModelProvider(this).get(BurnoutRiskViewModel.class);
 
         viewModel.getUiState().observe(this, this::renderState);
@@ -80,7 +86,7 @@ public class BurnoutRiskActivity extends BaseActivity {
 
     private void bindViews() {
         tvRiskLevel = findViewById(R.id.tvRiskLevel);
-        tvRiskScore = findViewById(R.id.tvRiskScore);
+        tvRiskScoreCard = findViewById(R.id.tvRiskScoreCard);
         tvDriver1 = findViewById(R.id.tvDriver1);
         tvDriver2 = findViewById(R.id.tvDriver2);
         tvDriver3 = findViewById(R.id.tvDriver3);
@@ -106,13 +112,15 @@ public class BurnoutRiskActivity extends BaseActivity {
         tvTrendDimBaseline = findViewById(R.id.tvTrendDimBaseline);
 
         lineChartRiskTrend = findViewById(R.id.lineChartRiskTrend);
+
+        ivInfoScore = findViewById(R.id.ivInfoScore);
     }
 
     private void renderState(BurnoutRiskViewModel.BurnoutRiskUiState state) {
         if (state == null) return;
 
         tvRiskLevel.setText(getRiskLabel(state.riskLevel));
-        tvRiskScore.setText(getString(R.string.format_burnout_score, state.riskScore));
+        tvRiskScoreCard.setText(getString(R.string.burnout_score_card, state.riskScore));
 
         tvDriver1.setText(formatDriver(state.driver1Type, state.driver1Level));
         tvDriver2.setText(formatDriver(state.driver2Type, state.driver2Level));
@@ -368,5 +376,17 @@ public class BurnoutRiskActivity extends BaseActivity {
         });
 
         lineChartRiskTrend.invalidate();
+    }
+
+    private void setupInfoButton() {
+        if (ivInfoScore == null) return;
+
+        ivInfoScore.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.burnout_score_info_title)
+                    .setMessage(getString(R.string.burnout_score_info_message))
+                    .setPositiveButton(R.string.common_ok, (dialog, which) -> dialog.dismiss())
+                    .show();
+        });
     }
 }

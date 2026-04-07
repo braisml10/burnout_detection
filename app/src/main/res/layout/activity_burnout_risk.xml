@@ -47,6 +47,57 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="@id/btnBack" />
 
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardRiskScore"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                app:cardBackgroundColor="#111B2E"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#1E2A44"
+                app:strokeWidth="1dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/btnBack">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp">
+
+                    <TextView
+                        android:id="@+id/tvRiskScoreCard"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:text="@string/format_marker_empty"
+                        android:textColor="@android:color/white"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/ivInfoScore"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <ImageView
+                        android:id="@+id/ivInfoScore"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:srcCompat="@drawable/ic_info"
+                        app:tint="@android:color/white"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- RESUMEN RIESGO ACTUAL -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardCurrentRisk"
@@ -60,44 +111,23 @@
                 app:strokeWidth="1dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/btnBack">
+                app:layout_constraintTop_toBottomOf="@id/cardRiskScore">
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="16dp">
 
-                    <TextView
-                        android:id="@+id/tvRiskSectionLabel"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:text="@string/burnout_current_risk_label"
-                        android:textColor="#94A3B8"
-                        android:textSize="13sp"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toStartOf="@id/tvRiskScore"
-                        app:layout_constraintTop_toTopOf="parent" />
-
-                    <TextView
-                        android:id="@+id/tvRiskScore"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/format_marker_empty"
-                        android:textColor="#94A3B8"
-                        android:textSize="13sp"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintBaseline_toBaselineOf="@id/tvRiskSectionLabel" />
-
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/iconRiskBg"
                         android:layout_width="42dp"
                         android:layout_height="42dp"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="4dp"
                         app:cardBackgroundColor="#3A2A0A"
                         app:cardCornerRadius="14dp"
                         app:cardElevation="0dp"
                         app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@id/tvRiskScore">
+                        app:layout_constraintTop_toTopOf="parent">
 
                         <ImageView
                             android:id="@+id/ivRiskIcon"

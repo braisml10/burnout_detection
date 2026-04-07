@@ -20,6 +20,7 @@
     <string name="common_received">Received</string>
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>
+    <string name="common_ok">OK</string>
 
     <!-- LANGUAGE -->
     <string name="language_spanish">Spanish</string>
@@ -193,6 +194,27 @@
     <string name="burnout_trend_increasing">Increasing</string>
     <string name="burnout_trend_stable">Stable</string>
     <string name="burnout_trend_decreasing">Decreasing</string>
+    <string name="burnout_score_card">Score: %1$.2f</string>
+    <string name="burnout_score_info_title">How is the score calculated?</string>
+    <string name="burnout_score_info_message">
+    This score summarizes your level of digital fatigue based on your smartphone usage.\n\n
+    It is calculated using five aspects:\n
+    • Screen time\n
+    • Usage fragmentation\n
+    • Night usage\n
+    • Notifications\n
+    • Recent changes in your habits\n\n
+
+    Each aspect is evaluated as low, medium, or high risk by comparing it to your usual usage.\n\n
+
+    They are then combined to produce a final score between 0 and 2:\n\n
+
+    0–0.7 → Low risk\n
+    0.7–1.3 → Moderate risk\n
+    >1.3 → High risk\n\n
+
+    A higher value indicates a higher risk of digital burnout.
+    </string>
 
     <!-- ERRORS -->
     <string name="error_chart_intensity_missing">chartIntensity NULL: missing R.id.chartIntensity in the layout</string>

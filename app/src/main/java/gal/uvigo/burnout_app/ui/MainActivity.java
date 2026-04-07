@@ -155,6 +155,7 @@ public class MainActivity extends BaseActivity {
         TextView value2 = findViewById(R.id.value2);
         TextView value3 = findViewById(R.id.value3);
         TextView value4 = findViewById(R.id.value4);
+        TextView tvBurnoutRiskScore = findViewById(R.id.tvBurnoutRiskScore);
 
         DashboardViewModel dashboardViewModel = new ViewModelProvider(this).get(DashboardViewModel.class);
         dashboardViewModel.getUiState().observe(this, uiState -> {
@@ -177,6 +178,12 @@ public class MainActivity extends BaseActivity {
                         calls
                 );
                 value4.setText(callsText);
+            }
+
+            if (tvBurnoutRiskScore != null) {
+                tvBurnoutRiskScore.setText(
+                        getString(R.string.burnout_score_card, uiState.riskScore)
+                );
             }
         });
 

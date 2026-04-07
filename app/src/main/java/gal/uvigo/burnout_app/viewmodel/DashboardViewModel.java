@@ -9,9 +9,11 @@ import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
+import gal.uvigo.burnout_app.data.entity.BurnoutRiskEntity;
 import gal.uvigo.burnout_app.data.entity.DailyCommMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.DailyMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.HourlyMetricsEntity;
+import gal.uvigo.burnout_app.data.repo.BurnoutRiskRepository;
 import gal.uvigo.burnout_app.data.repo.CommunicationRepository;
 import gal.uvigo.burnout_app.data.repo.UserActivityRepository;
 import gal.uvigo.burnout_app.helpers.TimeKey;
@@ -25,20 +27,25 @@ public class DashboardViewModel extends AndroidViewModel {
         public final String notifications;
         public final String multitask;
         public final String communication;
+        public final double riskScore;
 
         public UiState(String screenTime,
                        String notifications,
                        String multitask,
-                       String communication) {
+                       String communication,
+                       double riskScore) {
             this.screenTime = screenTime;
             this.notifications = notifications;
             this.multitask = multitask;
             this.communication = communication;
+            this.riskScore = riskScore;
         }
     }
 
     private final UserActivityRepository userActivityRepository;
     private final CommunicationRepository communicationRepository;
+
+    private final BurnoutRiskRepository burnoutRiskRepository;
 
     private final MutableLiveData<Integer> selectedDay = new MutableLiveData<>();
 
@@ -48,6 +55,9 @@ public class DashboardViewModel extends AndroidViewModel {
     private LiveData<DailyMetricsEntity> dailyMetricsSource;
     private LiveData<DailyCommMetricsEntity> communicationMetricsSource;
 
+    private LiveData<BurnoutRiskEntity> burnoutRiskSource;
+    private BurnoutRiskEntity lastBurnoutRisk;
+
     private DailyMetricsEntity lastDailyMetrics;
     private DailyCommMetricsEntity lastCommunicationMetrics;
 
@@ -56,6 +66,7 @@ public class DashboardViewModel extends AndroidViewModel {
 
         userActivityRepository = new UserActivityRepository(application);
         communicationRepository = new CommunicationRepository(application);
+        burnoutRiskRepository = new BurnoutRiskRepository(application);
 
         int today = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay.setValue(today);
@@ -79,6 +90,14 @@ public class DashboardViewModel extends AndroidViewModel {
 
         uiState.addSource(communicationMetricsSource, communicationMetrics -> {
             lastCommunicationMetrics = communicationMetrics;
+            uiState.setValue(buildUiState());
+        });
+
+        // ===================== BURNOUT RISK =====================
+        burnoutRiskSource = burnoutRiskRepository.observeLatestRisk();
+
+        uiState.addSource(burnoutRiskSource, burnoutRisk -> {
+            lastBurnoutRisk = burnoutRisk;
             uiState.setValue(buildUiState());
         });
 
@@ -118,11 +137,15 @@ public class DashboardViewModel extends AndroidViewModel {
         int callsCount =
                 (lastCommunicationMetrics != null) ? lastCommunicationMetrics.calls_count : 0;
 
+        double riskScore =
+                (lastBurnoutRisk != null) ? lastBurnoutRisk.riskScore : 0.0;
+
         return new UiState(
                 formatScreenTime(screenTimeMs),
                 String.valueOf(Math.max(0, notificationCount)),
                 String.valueOf(Math.max(0, appSwitchCount)),
-                String.valueOf(Math.max(0, callsCount))
+                String.valueOf(Math.max(0, callsCount)),
+                riskScore
         );
     }
 

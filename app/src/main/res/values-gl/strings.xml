@@ -20,6 +20,7 @@
     <string name="common_received">Recibidos</string>
     <string name="common_save">Gardar</string>
     <string name="common_cancel">Cancelar</string>
+    <string name="common_ok">OK</string>
 
     <!-- LANGUAGE -->
     <string name="language_spanish">Español</string>
@@ -193,6 +194,28 @@
     <string name="burnout_trend_increasing">En aumento</string>
     <string name="burnout_trend_stable">Estable</string>
     <string name="burnout_trend_decreasing">En descenso</string>
+    <string name="burnout_score_card">Puntuación: %1$.2f</string>
+    <string name="burnout_score_info_title">Como se calcula a puntuación?</string>
+    <string name="burnout_score_info_message">
+    Esta puntuación resume o teu nivel de fatiga dixital a partir do uso do móbil.\n\n
+    Calcúlase tendo en conta cinco aspectos:\n
+    • Tempo de pantalla\n
+    • Fragmentación do uso\n
+    • Uso nocturno\n
+    • Notificacións\n
+    • Cambios recentes nos teus hábitos\n\n
+
+    Cada un avalíase como risco baixo, medio ou alto, comparándoo co teu uso habitual.\n\n
+
+    Despois combínanse para obter unha puntuación final entre 0 e 2:\n\n
+
+    0–0,7 → Risco baixo\n
+    0,7–1,3 → Risco moderado\n
+    >1,3 → Risco alto\n\n
+
+    Un valor máis alto indica un maior risco de burnout dixital.
+    </string>
+
 
     <!-- ERRORS -->
     <string name="error_chart_intensity_missing">chartIntensity NULL: falta R.id.chartIntensity no layout</string>

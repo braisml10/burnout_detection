@@ -160,14 +160,13 @@ public class BurnoutRiskActivity extends BaseActivity {
         tvTrendDimValue.setText(getTrendLabel(state.trend.trendKind));
         tvTrendDimBaseline.setText(getString(R.string.burnout_weekly_comparison));
 
-        String riskLabel = getRiskLabel(state.riskLevel);
-        tvRiskLevel.setTextColor(getRiskColor(riskLabel));
+        tvRiskLevel.setTextColor(getRiskColor(state.riskLevel));
 
-        applySectionRiskStyle(tvFragLevel, getLevelLabel(state.fragmentation.level));
-        applySectionRiskStyle(tvNightLevel, getLevelLabel(state.nightUse.level));
-        applySectionRiskStyle(tvNotifLevel, getLevelLabel(state.notifications.level));
-        applySectionRiskStyle(tvScreenLevel, getLevelLabel(state.screenTime.level));
-        applySectionRiskStyle(tvTrendDimLevel, getLevelLabel(state.trend.level));
+        applySectionRiskStyle(tvFragLevel, state.fragmentation.level);
+        applySectionRiskStyle(tvNightLevel, state.nightUse.level);
+        applySectionRiskStyle(tvNotifLevel, state.notifications.level);
+        applySectionRiskStyle(tvScreenLevel, state.screenTime.level);
+        applySectionRiskStyle(tvTrendDimLevel, state.trend.level);
     }
 
     private String getRiskLabel(int riskLevel) {
@@ -244,34 +243,20 @@ public class BurnoutRiskActivity extends BaseActivity {
         return value + " " + getString(R.string.common_yesterday).toLowerCase(Locale.getDefault());
     }
 
-    private int getRiskColor(String level) {
-        if (level == null) {
-            return ContextCompat.getColor(this, R.color.risk_medium);
-        }
-
-        String normalized = level.trim().toLowerCase(Locale.ROOT);
-
-        switch (normalized) {
-            case "bajo":
-            case "baixo":
-            case "low":
+    private int getRiskColor(int level) {
+        switch (level) {
+            case BurnoutRiskViewModel.LEVEL_LOW:
                 return ContextCompat.getColor(this, R.color.risk_low);
-
-            case "medio":
-            case "moderado":
-            case "medium":
+            case BurnoutRiskViewModel.LEVEL_MEDIUM:
                 return ContextCompat.getColor(this, R.color.risk_medium);
-
-            case "alto":
-            case "high":
+            case BurnoutRiskViewModel.LEVEL_HIGH:
                 return ContextCompat.getColor(this, R.color.risk_high);
-
             default:
                 return ContextCompat.getColor(this, R.color.risk_medium);
         }
     }
 
-    private void applySectionRiskStyle(TextView levelView, String level) {
+    private void applySectionRiskStyle(TextView levelView, int level) {
         levelView.setTextColor(getRiskColor(level));
     }
 

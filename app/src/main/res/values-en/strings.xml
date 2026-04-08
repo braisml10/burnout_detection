@@ -197,7 +197,7 @@
     <string name="burnout_score_card">Score: %1$.2f</string>
     <string name="burnout_score_info_title">How is the score calculated?</string>
     <string name="burnout_score_info_message">
-    This score summarizes your level of digital fatigue based on your smartphone usage.\n\n
+    This score summarizes your level of Digital Burnout based on your smartphone usage.\n\n
     It is calculated using five aspects:\n
     • Screen time\n
     • Usage fragmentation\n

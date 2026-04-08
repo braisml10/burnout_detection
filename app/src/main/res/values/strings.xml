@@ -197,7 +197,7 @@
     <string name="burnout_score_card">Puntuación: %1$.2f</string>
     <string name="burnout_score_info_title">¿Cómo se calcula la puntuación?</string>
     <string name="burnout_score_info_message">
-    Esta puntuación resume tu nivel de fatiga digital a partir de tu uso del móvil.\n\n
+    Esta puntuación resume tu nivel de Burnout Digital a partir de tu uso del móvil.\n\n
     Se calcula teniendo en cuenta cinco aspectos:\n
     • Tiempo de pantalla\n
     • Fragmentación del uso\n

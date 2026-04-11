@@ -346,6 +346,9 @@ public class BurnoutRiskActivity extends BaseActivity {
         dataSet.setCircleColor(Color.parseColor("#60A5FA"));
         dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
 
+        dataSet.setDrawHorizontalHighlightIndicator(false);
+        dataSet.setDrawVerticalHighlightIndicator(false);
+
         lineChartRiskTrend.setData(new LineData(dataSet));
 
         XAxis xAxis = lineChartRiskTrend.getXAxis();

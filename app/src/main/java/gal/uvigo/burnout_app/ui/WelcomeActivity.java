@@ -36,6 +36,9 @@ public class WelcomeActivity extends AppCompatActivity {
     private static final String TAG = "WelcomeActivity";
     private static final String WORK_DAILY_AGG = "daily_aggregation_work";
 
+    private boolean usageSettingsOpened = false;
+    private boolean notifSettingsOpened = false;
+
     private static final int REQ_COMM_PERMS = 1001;
     private static final String[] COMM_PERMS = new String[] {
             Manifest.permission.READ_CALL_LOG,
@@ -76,7 +79,6 @@ public class WelcomeActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // útil al volver desde ajustes de Usage Access / Notification Listener
         ensureSpecialAccessAndRuntimePerms();
     }
 
@@ -90,27 +92,29 @@ public class WelcomeActivity extends AppCompatActivity {
                 Log.d(TAG, "Comm runtime permissions missing -> requesting (first time)");
                 prefs.edit().putBoolean(KEY_ASKED_COMM_PERMS, true).apply();
                 ActivityCompat.requestPermissions(this, COMM_PERMS, REQ_COMM_PERMS);
-                return;
             } else {
                 Log.w(TAG, "Comm perms missing but already asked once -> not requesting again");
             }
         }
 
         boolean usageOk = UsageStatsProvider.hasUsageAccess(this);
-        if (!usageOk) {
-            Log.d(TAG, "Usage Access NOT granted -> opening settings");
-            startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
-            return;
-        }
-
         boolean notifOk = isNotificationListenerEnabled();
-        if (!notifOk) {
-            Log.d(TAG, "Notification Listener NOT enabled -> opening settings");
+
+        Log.d(TAG, "Permissions state -> usage=" + usageOk + ", notif=" + notifOk);
+
+        if (!usageOk && !usageSettingsOpened) {
+            Log.d(TAG, "Opening Usage Access settings (once)");
+            usageSettingsOpened = true;
+            startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+        } else if (!notifOk && !notifSettingsOpened) {
+            Log.d(TAG, "Opening Notification Listener settings (once)");
+            notifSettingsOpened = true;
             startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
-            return;
         }
 
-        ensureAggregationWorkScheduled();
+        if (usageOk && notifOk) {
+            ensureAggregationWorkScheduled();
+        }
 
         SessionManager sessionManager = new SessionManager(this);
         if (sessionManager.isLoggedIn()) {

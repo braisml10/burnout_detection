@@ -138,6 +138,7 @@
     <!-- MULTITASK -->
     <string name="multitask_title">Usage patterns and multitasking</string>
     <string name="multitask_apps_time_label">App time</string>
+    <string name="multitask_app_title_label">App switches</string>
     <string name="multitask_app_switches_label">App switches</string>
     <string name="multitask_used_apps_label">Apps used</string>
     <string name="multitask_category_time_title">Time by category</string>

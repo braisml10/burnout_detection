@@ -387,7 +387,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
-                        android:text="@string/main_multitask_label"
+                        android:text="@string/multitask_app_title_label"
                         android:textColor="#94A3B8"
                         android:textSize="14sp"
                         app:layout_constraintEnd_toEndOf="parent"

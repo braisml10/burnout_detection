@@ -94,7 +94,7 @@ public class DashboardViewModel extends AndroidViewModel {
         });
 
         // ===================== BURNOUT RISK =====================
-        burnoutRiskSource = burnoutRiskRepository.observeLatestRisk();
+        burnoutRiskSource = burnoutRiskRepository.observeLatestBurnoutRisk();
 
         uiState.addSource(burnoutRiskSource, burnoutRisk -> {
             lastBurnoutRisk = burnoutRisk;

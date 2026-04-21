@@ -19,11 +19,19 @@ public class BurnoutRiskRepository {
         burnoutRiskDao = db.burnoutRiskDao();
     }
 
-    public LiveData<BurnoutRiskEntity> observeLatestRisk() {
-        return burnoutRiskDao.observeLatest();
+    public LiveData<BurnoutRiskEntity> observeBurnoutRiskByDate(int date) {
+        return burnoutRiskDao.observeBurnoutRiskByDate(date);
     }
 
-    public LiveData<List<BurnoutRiskEntity>> observeLatestDays(int limit) {
-        return burnoutRiskDao.observeLatestDays(limit);
+    public LiveData<BurnoutRiskEntity> observeLatestBurnoutRisk() {
+        return burnoutRiskDao.observeLatestBurnoutRisk();
+    }
+
+    public LiveData<List<BurnoutRiskEntity>> observeLatestBurnoutRiskDays(int limit) {
+        return burnoutRiskDao.observeLatestBurnoutRiskDays(limit);
+    }
+
+    public LiveData<List<BurnoutRiskEntity>> observeBurnoutRiskRange(int startDay, int endDay) {
+        return burnoutRiskDao.observeBurnoutRiskRange(startDay, endDay);
     }
 }

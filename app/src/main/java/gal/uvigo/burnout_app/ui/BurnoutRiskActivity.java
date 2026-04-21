@@ -64,7 +64,6 @@ public class BurnoutRiskActivity extends BaseActivity {
     private TextView tvTrendDimBaseline;
 
     private LineChart lineChartRiskTrend;
-
     private ImageView ivInfoScore;
 
     @Override
@@ -75,13 +74,12 @@ public class BurnoutRiskActivity extends BaseActivity {
         bindViews();
         setupBackButton(R.id.btnBack);
         setupChart();
-
         setupInfoButton();
 
         viewModel = new ViewModelProvider(this).get(BurnoutRiskViewModel.class);
 
         viewModel.getUiState().observe(this, this::renderState);
-        viewModel.getTrend7Days().observe(this, this::renderTrendChart);
+        viewModel.getBurnoutRiskTrend7Days().observe(this, this::renderTrendChart);
     }
 
     private void bindViews() {
@@ -112,12 +110,13 @@ public class BurnoutRiskActivity extends BaseActivity {
         tvTrendDimBaseline = findViewById(R.id.tvTrendDimBaseline);
 
         lineChartRiskTrend = findViewById(R.id.lineChartRiskTrend);
-
         ivInfoScore = findViewById(R.id.ivInfoScore);
     }
 
-    private void renderState(BurnoutRiskViewModel.BurnoutRiskUiState state) {
-        if (state == null) return;
+    private void renderState(BurnoutRiskViewModel.UiState state) {
+        if (state == null) {
+            return;
+        }
 
         tvRiskLevel.setText(getRiskLabel(state.riskLevel));
         tvRiskScoreCard.setText(getString(R.string.burnout_score_card, state.riskScore));
@@ -149,7 +148,9 @@ public class BurnoutRiskActivity extends BaseActivity {
 
         tvScreenLevel.setText(getLevelLabel(state.screenTime.level));
         tvScreenValue.setText(
-                formatYesterdayValue(formatOneDecimal(state.screenTime.valueHours) + getString(R.string.unit_hours_short))
+                formatYesterdayValue(
+                        formatOneDecimal(state.screenTime.valueHours) + getString(R.string.unit_hours_short)
+                )
         );
         tvScreenBaseline.setText(getString(
                 R.string.format_burnout_baseline,
@@ -160,7 +161,7 @@ public class BurnoutRiskActivity extends BaseActivity {
         tvTrendDimValue.setText(getTrendLabel(state.trend.trendKind));
         tvTrendDimBaseline.setText(getString(R.string.burnout_weekly_comparison));
 
-        tvRiskLevel.setTextColor(getRiskColor(state.riskLevel));
+        tvRiskLevel.setTextColor(getOverallRiskColor(state.riskLevel));
 
         applySectionRiskStyle(tvFragLevel, state.fragmentation.level);
         applySectionRiskStyle(tvNightLevel, state.nightUse.level);
@@ -243,7 +244,20 @@ public class BurnoutRiskActivity extends BaseActivity {
         return value + " " + getString(R.string.common_yesterday).toLowerCase(Locale.getDefault());
     }
 
-    private int getRiskColor(int level) {
+    private int getOverallRiskColor(int riskLevel) {
+        switch (riskLevel) {
+            case BurnoutRiskViewModel.RISK_LOW:
+                return ContextCompat.getColor(this, R.color.risk_low);
+            case BurnoutRiskViewModel.RISK_MODERATE:
+                return ContextCompat.getColor(this, R.color.risk_medium);
+            case BurnoutRiskViewModel.RISK_HIGH:
+                return ContextCompat.getColor(this, R.color.risk_high);
+            default:
+                return ContextCompat.getColor(this, R.color.risk_medium);
+        }
+    }
+
+    private int getDimensionLevelColor(int level) {
         switch (level) {
             case BurnoutRiskViewModel.LEVEL_LOW:
                 return ContextCompat.getColor(this, R.color.risk_low);
@@ -257,7 +271,7 @@ public class BurnoutRiskActivity extends BaseActivity {
     }
 
     private void applySectionRiskStyle(TextView levelView, int level) {
-        levelView.setTextColor(getRiskColor(level));
+        levelView.setTextColor(getDimensionLevelColor(level));
     }
 
     private void setupChart() {
@@ -294,10 +308,7 @@ public class BurnoutRiskActivity extends BaseActivity {
         @Override
         public void refreshContent(Entry e, Highlight highlight) {
             if (e != null) {
-                tv.setText(getString(
-                        R.string.format_burnout_score,
-                        (double) e.getY()
-                ));
+                tv.setText(getString(R.string.format_burnout_score, (double) e.getY()));
             } else {
                 tv.setText(getString(R.string.common_no_data));
             }
@@ -324,7 +335,7 @@ public class BurnoutRiskActivity extends BaseActivity {
         }
 
         List<BurnoutRiskEntity> sorted = new ArrayList<>(items);
-        sorted.sort(Comparator.comparingLong(a -> a.epochDay));
+        sorted.sort(Comparator.comparingLong(item -> item.epochDay));
 
         List<Entry> entries = new ArrayList<>();
         List<String> labels = new ArrayList<>();
@@ -345,7 +356,6 @@ public class BurnoutRiskActivity extends BaseActivity {
         dataSet.setColor(Color.parseColor("#60A5FA"));
         dataSet.setCircleColor(Color.parseColor("#60A5FA"));
         dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-
         dataSet.setDrawHorizontalHighlightIndicator(false);
         dataSet.setDrawVerticalHighlightIndicator(false);
 
@@ -358,7 +368,9 @@ public class BurnoutRiskActivity extends BaseActivity {
             @Override
             public String getFormattedValue(float value) {
                 int index = Math.round(value);
-                if (index < 0 || index >= labels.size()) return "";
+                if (index < 0 || index >= labels.size()) {
+                    return "";
+                }
                 return labels.get(index);
             }
         });
@@ -367,14 +379,14 @@ public class BurnoutRiskActivity extends BaseActivity {
     }
 
     private void setupInfoButton() {
-        if (ivInfoScore == null) return;
+        if (ivInfoScore == null) {
+            return;
+        }
 
-        ivInfoScore.setOnClickListener(v -> {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.burnout_score_info_title)
-                    .setMessage(getString(R.string.burnout_score_info_message))
-                    .setPositiveButton(R.string.common_ok, (dialog, which) -> dialog.dismiss())
-                    .show();
-        });
+        ivInfoScore.setOnClickListener(v -> new AlertDialog.Builder(this)
+                .setTitle(R.string.burnout_score_info_title)
+                .setMessage(getString(R.string.burnout_score_info_message))
+                .setPositiveButton(R.string.common_ok, (dialog, which) -> dialog.dismiss())
+                .show());
     }
 }

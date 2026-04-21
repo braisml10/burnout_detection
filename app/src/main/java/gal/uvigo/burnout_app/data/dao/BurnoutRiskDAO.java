@@ -12,24 +12,26 @@ import gal.uvigo.burnout_app.data.entity.BurnoutRiskEntity;
 
 @Dao
 public interface BurnoutRiskDAO {
+
+    // ===================== DAILY BURNOUT RISK =====================
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void upsert(BurnoutRiskEntity entity);
+    void upsertBurnoutRisk(BurnoutRiskEntity burnoutRisk);
 
     @Query("SELECT * FROM burnout_risk WHERE epochDay = :epochDay LIMIT 1")
-    BurnoutRiskEntity getByDay(long epochDay);
+    BurnoutRiskEntity getBurnoutRiskByDate(int epochDay);
 
     @Query("SELECT * FROM burnout_risk WHERE epochDay = :epochDay LIMIT 1")
-    LiveData<BurnoutRiskEntity> observeByDay(long epochDay);
+    LiveData<BurnoutRiskEntity> observeBurnoutRiskByDate(int epochDay);
 
     @Query("SELECT * FROM burnout_risk ORDER BY epochDay DESC LIMIT 1")
-    LiveData<BurnoutRiskEntity> observeLatest();
+    LiveData<BurnoutRiskEntity> observeLatestBurnoutRisk();
 
     @Query("SELECT * FROM burnout_risk ORDER BY epochDay DESC LIMIT :limit")
-    LiveData<List<BurnoutRiskEntity>> observeLatestDays(int limit);
+    LiveData<List<BurnoutRiskEntity>> observeLatestBurnoutRiskDays(int limit);
 
     @Query("SELECT * FROM burnout_risk WHERE epochDay BETWEEN :startDay AND :endDay ORDER BY epochDay ASC")
-    LiveData<List<BurnoutRiskEntity>> observeRange(long startDay, long endDay);
+    LiveData<List<BurnoutRiskEntity>> observeBurnoutRiskRange(int startDay, int endDay);
 
-    @Query("DELETE FROM burnout_risk WHERE epochDay < :minEpochDay")
-    int deleteOlderThan(long minEpochDay);
+    @Query("DELETE FROM burnout_risk WHERE epochDay < :cutoffDate")
+    int deleteBurnoutRiskOlderThanDate(int cutoffDate);
 }

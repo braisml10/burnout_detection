@@ -1146,7 +1146,7 @@ public class DailyAggregationWorker extends Worker {
                     0.0
             );
 
-            db.burnoutRiskDao().upsert(risk);
+            db.burnoutRiskDao().upsertBurnoutRisk(risk);
 
             Log.d(TAG, "Risk saved: day=" + targetDay
                     + " riskScore=" + risk.riskScore

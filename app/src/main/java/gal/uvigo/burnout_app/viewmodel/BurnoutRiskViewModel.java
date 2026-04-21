@@ -42,63 +42,66 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
     public static final int DRIVER_SCREEN_TIME = 3;
     public static final int DRIVER_TREND = 4;
 
-    private final BurnoutRiskRepository riskRepository;
+    private final BurnoutRiskRepository burnoutRiskRepository;
     private final BurnoutDatabase db;
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
 
-    private final LiveData<BurnoutRiskEntity> latestRiskSource;
-    private final LiveData<List<BurnoutRiskEntity>> trendSource;
+    private final LiveData<BurnoutRiskEntity> latestBurnoutRiskSource;
+    private final LiveData<List<BurnoutRiskEntity>> burnoutRiskTrendSource;
 
-    private final MediatorLiveData<BurnoutRiskUiState> uiState = new MediatorLiveData<>();
+    private final MediatorLiveData<UiState> uiState = new MediatorLiveData<>();
 
     public BurnoutRiskViewModel(@NonNull Application application) {
         super(application);
-        riskRepository = new BurnoutRiskRepository(application);
+
+        burnoutRiskRepository = new BurnoutRiskRepository(application);
         db = BurnoutDatabase.getInstance(application.getApplicationContext());
 
-        latestRiskSource = riskRepository.observeLatestRisk();
-        trendSource = riskRepository.observeLatestDays(7);
+        latestBurnoutRiskSource = burnoutRiskRepository.observeLatestBurnoutRisk();
+        burnoutRiskTrendSource = burnoutRiskRepository.observeLatestBurnoutRiskDays(7);
 
-        uiState.addSource(latestRiskSource, latestRisk -> {
-            if (latestRisk == null) {
-                uiState.postValue(BurnoutRiskUiState.empty());
+        uiState.addSource(latestBurnoutRiskSource, latestBurnoutRisk -> {
+            if (latestBurnoutRisk == null) {
+                uiState.postValue(UiState.empty());
                 return;
             }
-            loadUiState(latestRisk);
+            loadUiState(latestBurnoutRisk);
         });
     }
 
-    public LiveData<BurnoutRiskUiState> getUiState() {
+    public LiveData<UiState> getUiState() {
         return uiState;
     }
 
-    public LiveData<List<BurnoutRiskEntity>> getTrend7Days() {
-        return trendSource;
+    public LiveData<List<BurnoutRiskEntity>> getBurnoutRiskTrend7Days() {
+        return burnoutRiskTrendSource;
     }
 
-    private void loadUiState(BurnoutRiskEntity latestRisk) {
+    private void loadUiState(BurnoutRiskEntity latestBurnoutRisk) {
         ioExecutor.execute(() -> {
-            int day = (int) latestRisk.epochDay;
+            int day = (int) latestBurnoutRisk.epochDay;
 
             DailyMetricsEntity todayMetrics = db.userActivityDao().getDailyMetricsByDate(day);
             List<DailyMetricsEntity> baselineDays = db.userActivityDao().getDailyMetricsRange(day - 7, day - 1);
-            if (baselineDays == null) baselineDays = new ArrayList<>();
+            if (baselineDays == null) {
+                baselineDays = new ArrayList<>();
+            }
 
-            BurnoutRiskUiState state = buildUiState(latestRisk, todayMetrics, baselineDays);
+            UiState state = buildUiState(latestBurnoutRisk, todayMetrics, baselineDays);
             uiState.postValue(state);
         });
     }
 
-    private BurnoutRiskUiState buildUiState(BurnoutRiskEntity risk,
-                                            DailyMetricsEntity today,
-                                            List<DailyMetricsEntity> baselineDays) {
+    private UiState buildUiState(BurnoutRiskEntity burnoutRisk,
+                                 DailyMetricsEntity todayMetrics,
+                                 List<DailyMetricsEntity> baselineDays) {
 
-        BurnoutRiskUiState state = new BurnoutRiskUiState();
+        UiState state = new UiState();
 
-        state.riskScore = risk.riskScore;
-        state.riskLevel = riskLevel(risk.riskScore);
+        state.riskScore = burnoutRisk.riskScore;
+        state.riskLevel = riskLevel(burnoutRisk.riskScore);
 
-        List<DriverItem> drivers = buildTopDrivers(risk);
+        List<DriverItem> drivers = buildTopDrivers(burnoutRisk);
         state.driver1Type = drivers.size() > 0 ? drivers.get(0).type : DRIVER_NONE;
         state.driver1Level = drivers.size() > 0 ? drivers.get(0).level : LEVEL_NONE;
         state.driver2Type = drivers.size() > 1 ? drivers.get(1).type : DRIVER_NONE;
@@ -106,59 +109,61 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
         state.driver3Type = drivers.size() > 2 ? drivers.get(2).type : DRIVER_NONE;
         state.driver3Level = drivers.size() > 2 ? drivers.get(2).level : LEVEL_NONE;
 
-        double todayScreenHours = today != null ? millisToHours(today.screen_ms) : 0.0;
+        double todayScreenHours = todayMetrics != null ? millisToHours(todayMetrics.screen_ms) : 0.0;
         double baselineScreenHours = avgScreenHours(baselineDays);
 
-        double todayFragmentation = today != null ? fragmentationIndex(today) : 0.0;
+        double todayFragmentation = todayMetrics != null ? fragmentationIndex(todayMetrics) : 0.0;
         double baselineFragmentation = avgFragmentationIndex(baselineDays);
 
-        long todayNightMs = today != null ? Math.max(0L, today.night_ms) : 0L;
+        long todayNightMs = todayMetrics != null ? Math.max(0L, todayMetrics.night_ms) : 0L;
         long baselineNightMs = avgNightMs(baselineDays);
 
-        int todayNotif = today != null ? Math.max(0, today.notification_count) : 0;
-        double baselineNotif = avgNotificationCount(baselineDays);
+        int todayNotificationCount = todayMetrics != null ? Math.max(0, todayMetrics.notification_count) : 0;
+        double baselineNotificationCount = avgNotificationCount(baselineDays);
 
         state.fragmentation = new DimensionUi();
-        state.fragmentation.level = levelFromScore(risk.fragmentationScore);
+        state.fragmentation.level = levelFromScore(burnoutRisk.fragmentationScore);
         state.fragmentation.value = todayFragmentation;
         state.fragmentation.baseline = baselineFragmentation;
 
         state.nightUse = new DimensionUi();
-        state.nightUse.level = levelFromScore(risk.nightUseScore);
+        state.nightUse.level = levelFromScore(burnoutRisk.nightUseScore);
         state.nightUse.valueMinutes = todayNightMs / 60000L;
         state.nightUse.baselineMinutes = baselineNightMs / 60000L;
 
         state.notifications = new DimensionUi();
-        state.notifications.level = levelFromScore(risk.notificationPressureScore);
-        state.notifications.valueCount = todayNotif;
-        state.notifications.baselineCount = baselineNotif;
+        state.notifications.level = levelFromScore(burnoutRisk.notificationPressureScore);
+        state.notifications.valueCount = todayNotificationCount;
+        state.notifications.baselineCount = baselineNotificationCount;
 
         state.screenTime = new DimensionUi();
-        state.screenTime.level = levelFromScore(risk.screenTimeScore);
+        state.screenTime.level = levelFromScore(burnoutRisk.screenTimeScore);
         state.screenTime.valueHours = todayScreenHours;
         state.screenTime.baselineHours = baselineScreenHours;
 
         state.trend = new DimensionUi();
-        state.trend.level = levelFromScore(risk.trendDeviationScore);
-        state.trend.trendKind = trendKind(risk.trendDeviationScore);
+        state.trend.level = levelFromScore(burnoutRisk.trendDeviationScore);
+        state.trend.trendKind = trendKind(burnoutRisk.trendDeviationScore);
 
         return state;
     }
 
-    private List<DriverItem> buildTopDrivers(BurnoutRiskEntity risk) {
+    private List<DriverItem> buildTopDrivers(BurnoutRiskEntity burnoutRisk) {
         List<DriverItem> items = new ArrayList<>();
 
-        items.add(new DriverItem(DRIVER_FRAGMENTATION, levelFromScore(risk.fragmentationScore), risk.fragmentationScore));
-        items.add(new DriverItem(DRIVER_NIGHT_USE, levelFromScore(risk.nightUseScore), risk.nightUseScore));
-        items.add(new DriverItem(DRIVER_NOTIFICATIONS, levelFromScore(risk.notificationPressureScore), risk.notificationPressureScore));
-        items.add(new DriverItem(DRIVER_SCREEN_TIME, levelFromScore(risk.screenTimeScore), risk.screenTimeScore));
-        items.add(new DriverItem(DRIVER_TREND, levelFromScore(risk.trendDeviationScore), risk.trendDeviationScore));
+        items.add(new DriverItem(DRIVER_FRAGMENTATION, levelFromScore(burnoutRisk.fragmentationScore), burnoutRisk.fragmentationScore));
+        items.add(new DriverItem(DRIVER_NIGHT_USE, levelFromScore(burnoutRisk.nightUseScore), burnoutRisk.nightUseScore));
+        items.add(new DriverItem(DRIVER_NOTIFICATIONS, levelFromScore(burnoutRisk.notificationPressureScore), burnoutRisk.notificationPressureScore));
+        items.add(new DriverItem(DRIVER_SCREEN_TIME, levelFromScore(burnoutRisk.screenTimeScore), burnoutRisk.screenTimeScore));
+        items.add(new DriverItem(DRIVER_TREND, levelFromScore(burnoutRisk.trendDeviationScore), burnoutRisk.trendDeviationScore));
 
         Collections.sort(items, (a, b) -> Double.compare(b.score, a.score));
 
         List<DriverItem> filtered = new ArrayList<>();
         for (DriverItem item : items) {
-            if (item.score > 0.0) filtered.add(item);
+            if (item.score > 0.0) {
+                filtered.add(item);
+            }
         }
 
         return filtered;
@@ -184,44 +189,52 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
 
     private double fragmentationIndex(DailyMetricsEntity day) {
         if (day == null) return 0.0;
+
         double screenHours = millisToHours(day.screen_ms);
         if (screenHours <= 0.0) return 0.0;
 
         double sessionsPerHour = Math.max(0, day.session_count) / screenHours;
         double switchesPerHour = Math.max(0, day.app_switch_count) / screenHours;
+
         return (sessionsPerHour + switchesPerHour) / 2.0;
     }
 
     private double avgFragmentationIndex(List<DailyMetricsEntity> days) {
         if (days == null || days.isEmpty()) return 0.0;
+
         double sum = 0.0;
-        for (DailyMetricsEntity d : days) sum += fragmentationIndex(d);
+        for (DailyMetricsEntity day : days) {
+            sum += fragmentationIndex(day);
+        }
         return sum / days.size();
     }
 
     private double avgScreenHours(List<DailyMetricsEntity> days) {
         if (days == null || days.isEmpty()) return 0.0;
+
         double sum = 0.0;
-        for (DailyMetricsEntity d : days) {
-            sum += millisToHours(d.screen_ms);
+        for (DailyMetricsEntity day : days) {
+            sum += millisToHours(day.screen_ms);
         }
         return sum / days.size();
     }
 
     private long avgNightMs(List<DailyMetricsEntity> days) {
         if (days == null || days.isEmpty()) return 0L;
+
         long sum = 0L;
-        for (DailyMetricsEntity d : days) {
-            sum += Math.max(0L, d.night_ms);
+        for (DailyMetricsEntity day : days) {
+            sum += Math.max(0L, day.night_ms);
         }
         return sum / days.size();
     }
 
     private double avgNotificationCount(List<DailyMetricsEntity> days) {
         if (days == null || days.isEmpty()) return 0.0;
+
         double sum = 0.0;
-        for (DailyMetricsEntity d : days) {
-            sum += Math.max(0, d.notification_count);
+        for (DailyMetricsEntity day : days) {
+            sum += Math.max(0, day.notification_count);
         }
         return sum / days.size();
     }
@@ -266,7 +279,7 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
         public int trendKind = TREND_NONE;
     }
 
-    public static class BurnoutRiskUiState {
+    public static class UiState {
         public double riskScore;
         public int riskLevel;
 
@@ -283,8 +296,8 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
         public DimensionUi screenTime;
         public DimensionUi trend;
 
-        public static BurnoutRiskUiState empty() {
-            BurnoutRiskUiState state = new BurnoutRiskUiState();
+        public static UiState empty() {
+            UiState state = new UiState();
             state.riskScore = 0.0;
             state.riskLevel = RISK_NONE;
 

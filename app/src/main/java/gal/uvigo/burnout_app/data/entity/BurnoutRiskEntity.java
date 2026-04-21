@@ -1,7 +1,5 @@
 package gal.uvigo.burnout_app.data.entity;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
@@ -18,5 +16,4 @@ public class BurnoutRiskEntity {
     public double trendDeviationScore;
 
     public double riskScore;
-
 }

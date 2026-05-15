@@ -49,6 +49,7 @@ public class DailyAggregationWorker extends Worker {
     private static final String KEY_SCREEN_IS_ON = "screen_is_on";
     private static final String KEY_LAST_UNLOCK_EVENT_TS = "last_unlock_event_ts";
     private static final String KEY_LAST_SCREEN_ACCOUNTED_TS = "last_screen_accounted_ts";
+    private static final String KEY_LAST_RISK_COMPUTED_DAY = "last_risk_computed_day";
 
     // Time constants used throughout the worker to avoid repeated literal conversions.
     private static final long MINUTE_MS = 60_000L;
@@ -91,7 +92,7 @@ public class DailyAggregationWorker extends Worker {
         runCommunicationAggregation(ctx, db, now, yesterday, today);
 
         // Calcula el riesgo del último día cerrado (ayer)
-        computeBurnoutRiskForClosedDay(db, yesterday);
+        computeBurnoutRiskForClosedDay(db, prefs, yesterday);
 
         Log.d(TAG, "================ doWork END ================");
         return Result.success();
@@ -686,6 +687,8 @@ public class DailyAggregationWorker extends Worker {
         int delDailyComm = db.communicationDao().deleteDailyCommMetricsOlderThanDate(cutoffDate);
         int delHourlyComm = db.communicationDao().deleteHourlyCommMetricsOlderThanDate(cutoffDate);
 
+        int delRisk = db.burnoutRiskDao().deleteBurnoutRiskOlderThanDate(cutoffDate);
+
         Log.d(TAG, "Retention: cutoffDate=" + cutoffDate
                 + " deletedUsage=" + delUsage
                 + " deletedDailyApp=" + delDailyApp
@@ -693,7 +696,8 @@ public class DailyAggregationWorker extends Worker {
                 + " deletedHourly=" + delHourly
                 + " deletedNotif=" + delNotif
                 + " deletedDailyComm=" + delDailyComm
-                + " deletedHourlyComm=" + delHourlyComm);
+                + " deletedHourlyComm=" + delHourlyComm
+                + " deletedRisk=" + delRisk);
     }
 
     // ===================== HOURLY HELPERS =====================
@@ -1120,8 +1124,17 @@ public class DailyAggregationWorker extends Worker {
 
     // ===================== Burnout Engine HELPERS =====================
 
-    private void computeBurnoutRiskForClosedDay(BurnoutDatabase db, int targetDay) {
+    private void computeBurnoutRiskForClosedDay(BurnoutDatabase db,
+                                                SharedPreferences prefs,
+                                                int targetDay) {
         try {
+            int lastComputedDay = prefs.getInt(KEY_LAST_RISK_COMPUTED_DAY, -1);
+
+            if (lastComputedDay >= targetDay) {
+                Log.d(TAG, "Risk skip: already computed for day=" + targetDay);
+                return;
+            }
+
             DailyMetricsEntity targetMetrics = db.userActivityDao().getDailyMetricsByDate(targetDay);
 
             if (targetMetrics == null) {
@@ -1148,13 +1161,12 @@ public class DailyAggregationWorker extends Worker {
 
             db.burnoutRiskDao().upsertBurnoutRisk(risk);
 
+            prefs.edit()
+                    .putInt(KEY_LAST_RISK_COMPUTED_DAY, targetDay)
+                    .apply();
+
             Log.d(TAG, "Risk saved: day=" + targetDay
-                    + " riskScore=" + risk.riskScore
-                    + " screen=" + risk.screenTimeScore
-                    + " frag=" + risk.fragmentationScore
-                    + " night=" + risk.nightUseScore
-                    + " notif=" + risk.notificationPressureScore
-                    + " trend=" + risk.trendDeviationScore);
+                    + " riskScore=" + risk.riskScore);
 
         } catch (Exception ex) {
             Log.e(TAG, "Risk computation failed: " + ex.getMessage(), ex);

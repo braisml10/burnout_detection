@@ -43,11 +43,7 @@ public class BurnoutRiskEngine {
         out.screenTimeScore = scoreScreenTime(todayScreenMs, avgScreenMs7d, hasBaseline);
         out.fragmentationScore = scoreFragmentation(todayFragmentation, avgFragmentation7d, hasBaseline);
         out.nightUseScore = scoreNightUse(todayNightRatio, avgNightRatio7d, hasBaseline);
-        out.notificationPressureScore = scoreNotificationPressure(
-                todayNotificationPressure,
-                avgNotificationPressure7d,
-                hasBaseline
-        );
+        out.notificationPressureScore = scoreNotificationPressure(todayNotificationPressure, avgNotificationPressure7d, hasBaseline);
         out.trendDeviationScore = scoreTrendDeviation(
                 todayScreenMs,
                 avgScreenMs7d,

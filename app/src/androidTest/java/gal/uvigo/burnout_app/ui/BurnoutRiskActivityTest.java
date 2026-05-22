@@ -11,6 +11,8 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -85,15 +87,15 @@ public class BurnoutRiskActivityTest {
 
     @Test
     public void infoButton_opensInfoDialog() {
-        onView(withId(R.id.ivInfoScore)).perform(click());
-
-        onView(withText(R.string.burnout_score_info_title))
-                .check(matches(isDisplayed()));
+        onView(withId(R.id.ivInfoScore))
+                .check(matches(isDisplayed()))
+                .perform(click());
 
         onView(withText(R.string.common_ok))
-                .check(matches(isDisplayed()));
+                .inRoot(isDialog())
+                .check(matches(isDisplayed()))
+                .perform(click());
     }
-
     @Test
     public void backButton_closesScreen() {
         onView(withId(R.id.btnBack)).perform(click());

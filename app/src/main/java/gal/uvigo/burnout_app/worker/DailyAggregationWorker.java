@@ -71,31 +71,53 @@ public class DailyAggregationWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        Context ctx = getApplicationContext();
-        BurnoutDatabase db = BurnoutDatabase.getInstance(ctx);
-        SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
 
-        long now = System.currentTimeMillis();
-        int today = TimeKey.epochDayLocal(now);
-        int yesterday = today - 1;
-        int tomorrow = today + 1;
+        long start = System.currentTimeMillis();
 
-        ensureDailyRows(db, yesterday, today, tomorrow);
+        try {
 
-        boolean hasUsage = UsageStatsProvider.hasUsageAccess(ctx);
-        if (hasUsage) {
-            runUsageAggregation(ctx, db, prefs, now, yesterday, today, tomorrow);
-        } else {
-            Log.w(TAG, "No Usage Access -> skipping USAGE/SCREEN/NOTIF/HOURLY/RETENTION(usage), but COMM will run");
+            Context ctx = getApplicationContext();
+            BurnoutDatabase db = BurnoutDatabase.getInstance(ctx);
+            SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+
+            long now = System.currentTimeMillis();
+            int today = TimeKey.epochDayLocal(now);
+            int yesterday = today - 1;
+            int tomorrow = today + 1;
+
+            ensureDailyRows(db, yesterday, today, tomorrow);
+
+            boolean hasUsage = UsageStatsProvider.hasUsageAccess(ctx);
+            if (hasUsage) {
+                runUsageAggregation(ctx, db, prefs, now, yesterday, today, tomorrow);
+            } else {
+                Log.w(TAG,
+                        "No Usage Access -> skipping USAGE/SCREEN/NOTIF/HOURLY/RETENTION(usage), but COMM will run");
+            }
+
+            runCommunicationAggregation(ctx, db, now, yesterday, today);
+
+            // Calcula el riesgo del último día cerrado (ayer)
+            computeBurnoutRiskForClosedDay(db, prefs, yesterday);
+
+            long durationMs = System.currentTimeMillis() - start;
+
+            Log.d(TAG,
+                    "================ doWork END ================ (" +
+                            durationMs + " ms)");
+
+            return Result.success();
+
+        } catch (Exception e) {
+
+            long durationMs = System.currentTimeMillis() - start;
+
+            Log.e(TAG,
+                    "Worker failed after " + durationMs + " ms",
+                    e);
+
+            return Result.failure();
         }
-
-        runCommunicationAggregation(ctx, db, now, yesterday, today);
-
-        // Calcula el riesgo del último día cerrado (ayer)
-        computeBurnoutRiskForClosedDay(db, prefs, yesterday);
-
-        Log.d(TAG, "================ doWork END ================");
-        return Result.success();
     }
 
     // ===================== MAIN ORCHESTRATION HELPERS =====================

@@ -37,16 +37,13 @@ public class CommunicationsActivity extends BaseActivity {
 
     private CommunicationViewModel vm;
 
-    // KPIs
     private TextView tvCallsValue;
     private TextView tvMessagesValue;
     private TextView tvTotalCommValue;
 
-    // Charts
     private LineChart chartIntensity;
     private BarChart chartChannelStacked;
 
-    // Últimos datos (para MarkerView)
     private long[] lastVoiceByHourMs;
     private long[] lastTextByHourMs;
 
@@ -59,12 +56,10 @@ public class CommunicationsActivity extends BaseActivity {
 
         vm = new ViewModelProvider(this).get(CommunicationViewModel.class);
 
-        // KPIs
         tvCallsValue = findViewById(R.id.tvCallsValue);
         tvMessagesValue = findViewById(R.id.tvMsgsValue);
         tvTotalCommValue = findViewById(R.id.tvDurValue);
 
-        // Charts
         chartIntensity = findViewById(R.id.chartIntensity);
         if (chartIntensity == null) {
             throw new IllegalStateException(getString(R.string.error_chart_intensity_missing));
@@ -121,10 +116,6 @@ public class CommunicationsActivity extends BaseActivity {
         chartChannelStacked.invalidate();
     }
 
-    // =========================================================
-    // LINE CHART
-    // =========================================================
-
     private void setupIntensityLineChart(LineChart c) {
         ChartHelper.setupBaseLineChart(c, this, true);
         ChartHelper.setupHourXAxis24(c.getXAxis());
@@ -162,10 +153,6 @@ public class CommunicationsActivity extends BaseActivity {
 
         chart.invalidate();
     }
-
-    // =========================================================
-    // BAR CHART
-    // =========================================================
 
     private void setupChannelStackedChart(BarChart c) {
         ChartHelper.setupBaseBarChart(c, this, false, true);

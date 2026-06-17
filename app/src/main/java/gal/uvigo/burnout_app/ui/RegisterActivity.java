@@ -15,6 +15,7 @@ import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.viewmodel.OnboardingViewModel;
+
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 

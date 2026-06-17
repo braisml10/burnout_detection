@@ -40,7 +40,7 @@ public class WelcomeActivity extends AppCompatActivity {
     private boolean notifSettingsOpened = false;
 
     private static final int REQ_COMM_PERMS = 1001;
-    private static final String[] COMM_PERMS = new String[] {
+    private static final String[] COMM_PERMS = new String[]{
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_SMS
     };

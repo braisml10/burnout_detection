@@ -18,7 +18,8 @@ public final class ChartHelper {
 
     private static final int COLOR_AXIS_TEXT = Color.parseColor("#94A3B8");
 
-    private ChartHelper() {}
+    private ChartHelper() {
+    }
 
     public static void setupBaseLineChart(LineChart chart, Context context, boolean pinchZoom) {
         chart.getDescription().setEnabled(false);

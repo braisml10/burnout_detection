@@ -16,6 +16,7 @@ import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.viewmodel.OnboardingViewModel;
+
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -60,7 +61,8 @@ public class LoginActivity extends AppCompatActivity {
             String password = etPassword.getText() != null ? etPassword.getText().toString() : "";
 
             if (TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
-                Toast.makeText(this, getString(R.string.login_error_empty_fields), Toast.LENGTH_SHORT).show();                return;
+                Toast.makeText(this, getString(R.string.login_error_empty_fields), Toast.LENGTH_SHORT).show();
+                return;
             }
 
             viewModel.login(email, password, success -> runOnUiThread(() -> {
@@ -71,7 +73,8 @@ public class LoginActivity extends AppCompatActivity {
                     startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     finishAffinity();
                 } else {
-                    Toast.makeText(this, getString(R.string.login_error_invalid_credentials), Toast.LENGTH_SHORT).show();                }
+                    Toast.makeText(this, getString(R.string.login_error_invalid_credentials), Toast.LENGTH_SHORT).show();
+                }
             }));
         });
     }

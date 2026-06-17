@@ -14,6 +14,7 @@ import gal.uvigo.burnout_app.data.repo.UsageRepository;
 import gal.uvigo.burnout_app.data.repo.UserActivityRepository;
 import gal.uvigo.burnout_app.helpers.AppCategoryResolver;
 import gal.uvigo.burnout_app.helpers.TimeKey;
+
 import com.github.mikephil.charting.data.Entry;
 
 import java.util.ArrayList;
@@ -25,7 +26,6 @@ import java.util.concurrent.Executors;
 
 public class AppsUsageViewModel extends AndroidViewModel {
 
-    // ===================== TOP KPIS =====================
     public static class UiState {
         public final String appSwitches;
         public final String uniqueApps;
@@ -36,7 +36,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
-    // ===================== CATEGORY TIME =====================
     public static class CategoryState {
         public final String socialTxt;
         public final String entTxt;
@@ -73,7 +72,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
-    // ===================== TOP APPS =====================
     public static class TopAppsState {
         public final String name1;
         public final String name2;
@@ -106,7 +104,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
         }
     }
 
-    // ===================== SWITCHES CHART =====================
     public static class SwitchesChartState {
         public final List<Entry> entries;
         public final int maxY;
@@ -154,7 +151,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
         loadAll(today);
     }
 
-    // ===================== GETTERS =====================
 
     public LiveData<UiState> getUiState() {
         return uiState;
@@ -176,7 +172,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
         return switchesChartState;
     }
 
-    // ===================== LOADING =====================
 
     public void loadDay(int day) {
         Integer currentDay = selectedDay.getValue();
@@ -315,8 +310,6 @@ public class AppsUsageViewModel extends AndroidViewModel {
             switchesChartState.postValue(new SwitchesChartState(entries, maxY));
         });
     }
-
-    // ===================== HELPERS =====================
 
     private static long get(Map<String, Long> map, String key) {
         Long value = (map != null) ? map.get(key) : null;

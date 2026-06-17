@@ -16,6 +16,7 @@ import gal.uvigo.burnout_app.data.repo.NotificationRepository;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.viewmodel.NotificationsViewModel;
+
 import com.github.mikephil.charting.charts.HorizontalBarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.MarkerView;
@@ -39,24 +40,18 @@ public class NotificationsActivity extends BaseActivity {
 
     private NotificationsViewModel notificationsViewModel;
 
-    // KPIs
     private TextView tvTotalNotifs;
     private TextView tvAvgPerHour;
     private TextView tvMostIntrusive;
 
-    // Chart 1: trend
     private LineChart chartNotifs;
 
-    // Chart 2: stacked horizontal bar by category
     private HorizontalBarChart chartNotifTypesStacked;
 
-    // Custom legend
     private LinearLayout legendNotifTypes;
 
-    // Cache for tooltip by stack index
     private List<NotifTypeSeg> lastTypeSegs;
 
-    // Top apps
     private TextView tvApp1Name;
     private TextView tvApp2Name;
     private TextView tvApp3Name;
@@ -67,10 +62,7 @@ public class NotificationsActivity extends BaseActivity {
     private TextView tvApp2Pct;
     private TextView tvApp3Pct;
 
-    // Fixed categories shown even when count is zero
-    private static final String[] FIXED_CATEGORIES = new String[]{
-            "WORK", "ENTERTAINMENT", "SOCIAL", "MESSAGING", "OTHER"
-    };
+    private static final String[] FIXED_CATEGORIES = new String[]{"WORK", "ENTERTAINMENT", "SOCIAL", "MESSAGING", "OTHER"};
 
     private static class NotifTypeSeg {
         final String label;
@@ -96,32 +88,27 @@ public class NotificationsActivity extends BaseActivity {
 
         notificationsViewModel = new ViewModelProvider(this).get(NotificationsViewModel.class);
 
-        // KPIs
         tvTotalNotifs = findViewById(R.id.tvTotalNotifsValue);
         tvAvgPerHour = findViewById(R.id.tvAvgPerHourValue);
         tvMostIntrusive = findViewById(R.id.tvMostIntrusiveValue);
 
-        // Trend chart
         chartNotifs = findViewById(R.id.chartNotifs);
         if (chartNotifs == null) {
             throw new IllegalStateException(getString(R.string.error_notifications_chart_missing));
         }
         setupNotifsLineChart(chartNotifs);
 
-        // Type strip chart
         chartNotifTypesStacked = findViewById(R.id.chartNotifTypesStacked);
         if (chartNotifTypesStacked == null) {
             throw new IllegalStateException(getString(R.string.error_notifications_types_chart_missing));
         }
         setupTypeStrip(chartNotifTypesStacked);
 
-        // Legend
         legendNotifTypes = findViewById(R.id.legendNotifTypes);
         if (legendNotifTypes == null) {
             throw new IllegalStateException(getString(R.string.error_notifications_legend_missing));
         }
 
-        // Top apps
         tvApp1Name = findViewById(R.id.tvApp1Name);
         tvApp2Name = findViewById(R.id.tvApp2Name);
         tvApp3Name = findViewById(R.id.tvApp3Name);
@@ -134,12 +121,7 @@ public class NotificationsActivity extends BaseActivity {
         tvApp2Pct = findViewById(R.id.tvApp2Pct);
         tvApp3Pct = findViewById(R.id.tvApp3Pct);
 
-        initDaySelector(
-                R.id.tvDayLabel,
-                R.id.btnPrevDay,
-                R.id.btnNextDay,
-                RetentionPolicy.DATA_RETENTION_DAYS
-        );
+        initDaySelector(R.id.tvDayLabel, R.id.btnPrevDay, R.id.btnNextDay, RetentionPolicy.DATA_RETENTION_DAYS);
 
         notificationsViewModel.getUiState().observe(this, uiState -> {
             if (uiState == null) return;
@@ -160,8 +142,6 @@ public class NotificationsActivity extends BaseActivity {
     protected void onDayChanged(int selectedDay) {
         notificationsViewModel.loadDay(selectedDay);
     }
-
-    // ===================== TREND CHART =====================
 
     private void setupNotifsLineChart(LineChart chart) {
         ChartHelper.setupBaseLineChart(chart, this, true);
@@ -194,8 +174,6 @@ public class NotificationsActivity extends BaseActivity {
         chart.invalidate();
     }
 
-    // ===================== TYPE STRIP =====================
-
     private void setupTypeStrip(HorizontalBarChart chart) {
         ChartHelper.setupBaseHorizontalBarChart(chart, this, true);
 
@@ -223,15 +201,16 @@ public class NotificationsActivity extends BaseActivity {
 
         chart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override
-            public void onValueSelected(Entry e, Highlight h) { }
+            public void onValueSelected(Entry e, Highlight h) {
+            }
 
             @Override
-            public void onNothingSelected() { }
+            public void onNothingSelected() {
+            }
         });
     }
 
-    private void renderTypeStrip(HorizontalBarChart chart,
-                                 List<NotificationRepository.NotificationCategoryCountRow> rows) {
+    private void renderTypeStrip(HorizontalBarChart chart, List<NotificationRepository.NotificationCategoryCountRow> rows) {
 
         int total = 0;
         for (String category : FIXED_CATEGORIES) {
@@ -242,12 +221,7 @@ public class NotificationsActivity extends BaseActivity {
         for (String category : FIXED_CATEGORIES) {
             int count = countForCategory(rows, category);
             int pct = (total > 0) ? Math.round((count * 100f) / total) : 0;
-            segs.add(new NotifTypeSeg(
-                    getCategoryDisplayLabel(category),
-                    count,
-                    pct,
-                    colorForCategory(category)
-            ));
+            segs.add(new NotifTypeSeg(getCategoryDisplayLabel(category), count, pct, colorForCategory(category)));
         }
         lastTypeSegs = segs;
 
@@ -300,8 +274,7 @@ public class NotificationsActivity extends BaseActivity {
         renderTypeLegend(segs);
     }
 
-    private int countForCategory(List<NotificationRepository.NotificationCategoryCountRow> rows,
-                                 String category) {
+    private int countForCategory(List<NotificationRepository.NotificationCategoryCountRow> rows, String category) {
         if (rows == null || rows.isEmpty()) return 0;
 
         String target = safeCategoryLabel(category);
@@ -358,10 +331,7 @@ public class NotificationsActivity extends BaseActivity {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.HORIZONTAL);
 
-        LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
+        LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         itemParams.rightMargin = 18;
         item.setLayoutParams(itemParams);
 
@@ -432,10 +402,7 @@ public class NotificationsActivity extends BaseActivity {
                 }
             }
 
-            measure(
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            );
+            measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
             layout(0, 0, getMeasuredWidth(), getMeasuredHeight());
 
             super.refreshContent(e, highlight);
@@ -482,8 +449,7 @@ public class NotificationsActivity extends BaseActivity {
 
     // ===================== TOP APPS =====================
 
-    private void renderTopApps(int totalDaily,
-                               List<NotificationRepository.TopNotificationAppRow> topNotificationApps) {
+    private void renderTopApps(int totalDaily, List<NotificationRepository.TopNotificationAppRow> topNotificationApps) {
         setTopRow(1, "--", 0, 0, totalDaily);
         setTopRow(2, "--", 0, 0, totalDaily);
         setTopRow(3, "--", 0, 0, totalDaily);
@@ -537,7 +503,8 @@ public class NotificationsActivity extends BaseActivity {
         } else if (index == 3) {
             tvApp3Name.setText(prettyName);
             pbApp3.setProgress(bar);
-            tvApp3Pct.setText(getString(R.string.format_percentage, pct));        }
+            tvApp3Pct.setText(getString(R.string.format_percentage, pct));
+        }
     }
 
     private String getCategoryDisplayLabel(String category) {

@@ -21,6 +21,7 @@ import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.DashboardViewModel;
 import gal.uvigo.burnout_app.viewmodel.ProfileViewModel;
+
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.components.MarkerView;
 import com.github.mikephil.charting.components.XAxis;
@@ -105,7 +106,7 @@ public class MainActivity extends BaseActivity {
                 int id = item.getItemId();
 
                 if (id == R.id.nav_main) {
-                    // Already here
+
                 } else if (id == R.id.nav_screen_time) {
                     startActivity(new Intent(this, ScreenTimeActivity.class));
                 } else if (id == R.id.nav_notifications) {
@@ -244,15 +245,24 @@ public class MainActivity extends BaseActivity {
             public String getFormattedValue(float value) {
                 int i = Math.round(value);
                 switch (i) {
-                    case 0: return "03";
-                    case 1: return "06";
-                    case 2: return "09";
-                    case 3: return "12";
-                    case 4: return "15";
-                    case 5: return "18";
-                    case 6: return "21";
-                    case 7: return "24";
-                    default: return "";
+                    case 0:
+                        return "03";
+                    case 1:
+                        return "06";
+                    case 2:
+                        return "09";
+                    case 3:
+                        return "12";
+                    case 4:
+                        return "15";
+                    case 5:
+                        return "18";
+                    case 6:
+                        return "21";
+                    case 7:
+                        return "24";
+                    default:
+                        return "";
                 }
             }
         });

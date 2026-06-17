@@ -12,6 +12,7 @@ import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.viewmodel.AppsUsageViewModel;
+
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -27,12 +28,10 @@ public class MultitaskActivity extends BaseActivity {
     private TextView tvCatSocialTime, tvCatEntTime, tvCatMsgTime, tvCatWorkTime, tvCatOtherTime;
     private ProgressBar pbCatSocial, pbCatEnt, pbCatMsg, pbCatWork, pbCatOther;
 
-    // Top apps
     private TextView tvApp1Name, tvApp2Name, tvApp3Name;
     private ProgressBar pbApp1, pbApp2, pbApp3;
     private TextView tvApp1Pct, tvApp2Pct, tvApp3Pct;
 
-    // Switches chart
     private LineChart chartSwitches;
 
     @Override
@@ -44,12 +43,9 @@ public class MultitaskActivity extends BaseActivity {
 
         vm = new ViewModelProvider(this).get(AppsUsageViewModel.class);
 
-        // -------------------
-        // KPIs
-        // -------------------
         tvAppsTime = findViewById(R.id.tvAppsTimeValue);
         tvSwitches = findViewById(R.id.tvAppSwitchesValue);
-        tvUnique   = findViewById(R.id.tvUniqueAppsValue);
+        tvUnique = findViewById(R.id.tvUniqueAppsValue);
 
         vm.getAppsTimeFiltered().observe(this, txt -> {
             if (txt != null) tvAppsTime.setText(txt);
@@ -61,20 +57,17 @@ public class MultitaskActivity extends BaseActivity {
             tvUnique.setText(s.uniqueApps);
         });
 
-        // -------------------
-        // Categorías
-        // -------------------
         tvCatSocialTime = findViewById(R.id.tvCatSocialTime);
-        tvCatEntTime    = findViewById(R.id.tvCatEntTime);
-        tvCatMsgTime    = findViewById(R.id.tvCatMsgTime);
-        tvCatWorkTime   = findViewById(R.id.tvCatWorkTime);
-        tvCatOtherTime  = findViewById(R.id.tvCatOtherTime);
+        tvCatEntTime = findViewById(R.id.tvCatEntTime);
+        tvCatMsgTime = findViewById(R.id.tvCatMsgTime);
+        tvCatWorkTime = findViewById(R.id.tvCatWorkTime);
+        tvCatOtherTime = findViewById(R.id.tvCatOtherTime);
 
         pbCatSocial = findViewById(R.id.pbCatSocial);
-        pbCatEnt    = findViewById(R.id.pbCatEnt);
-        pbCatMsg    = findViewById(R.id.pbCatMsg);
-        pbCatWork   = findViewById(R.id.pbCatWork);
-        pbCatOther  = findViewById(R.id.pbCatOther);
+        pbCatEnt = findViewById(R.id.pbCatEnt);
+        pbCatMsg = findViewById(R.id.pbCatMsg);
+        pbCatWork = findViewById(R.id.pbCatWork);
+        pbCatOther = findViewById(R.id.pbCatOther);
 
         vm.getCategoryState().observe(this, cs -> {
             if (cs == null) return;
@@ -92,9 +85,6 @@ public class MultitaskActivity extends BaseActivity {
             pbCatOther.setProgress(cs.otherPct);
         });
 
-        // -------------------
-        // Switches chart
-        // -------------------
         chartSwitches = findViewById(R.id.chartSwitches);
         if (chartSwitches == null) {
             throw new IllegalStateException(getString(R.string.error_multitask_chart_missing));
@@ -121,9 +111,6 @@ public class MultitaskActivity extends BaseActivity {
             chartSwitches.invalidate();
         });
 
-        // -------------------
-        // Top apps
-        // -------------------
         tvApp1Name = findViewById(R.id.tvApp1Name);
         tvApp2Name = findViewById(R.id.tvApp2Name);
         tvApp3Name = findViewById(R.id.tvApp3Name);

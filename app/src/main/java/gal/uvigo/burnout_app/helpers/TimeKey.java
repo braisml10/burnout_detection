@@ -9,7 +9,8 @@ import java.util.Locale;
 import gal.uvigo.burnout_app.R;
 
 public final class TimeKey {
-    private TimeKey() {}
+    private TimeKey() {
+    }
 
     public static int epochDayLocal(long timestampMs) {
         Calendar cal = Calendar.getInstance();

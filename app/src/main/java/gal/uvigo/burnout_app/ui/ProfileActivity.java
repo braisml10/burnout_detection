@@ -20,6 +20,7 @@ import gal.uvigo.burnout_app.data.entity.UserProfileEntity;
 import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.viewmodel.ProfileViewModel;
+
 import com.google.android.material.button.MaterialButton;
 
 public class ProfileActivity extends AppCompatActivity {

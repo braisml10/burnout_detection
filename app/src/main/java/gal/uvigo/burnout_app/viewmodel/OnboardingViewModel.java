@@ -23,13 +23,9 @@ public class OnboardingViewModel extends AndroidViewModel {
         userProfileLiveData = userProfileRepository.observeUserProfile();
     }
 
-    // ===================== PROFILE OBSERVATION =====================
-
     public LiveData<UserProfileEntity> observeUserProfile() {
         return userProfileLiveData;
     }
-
-    // ===================== PROFILE CREATION =====================
 
     public void createUserProfile(String firstName,
                                   String lastName,
@@ -47,8 +43,6 @@ public class OnboardingViewModel extends AndroidViewModel {
 
         userProfileRepository.upsertUserProfile(userProfile);
     }
-
-    // ===================== INPUT VALIDATION =====================
 
     public boolean isInputValid(String firstName,
                                 String lastName,
@@ -73,8 +67,6 @@ public class OnboardingViewModel extends AndroidViewModel {
 
         return password.equals(confirmPassword);
     }
-
-    // ===================== LOGIN =====================
 
     public interface LoginCallback {
         void onResult(boolean success);

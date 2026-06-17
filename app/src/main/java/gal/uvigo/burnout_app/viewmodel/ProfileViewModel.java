@@ -23,13 +23,9 @@ public class ProfileViewModel extends AndroidViewModel {
         userProfileLiveData = userProfileRepository.observeUserProfile();
     }
 
-    // ===================== PROFILE OBSERVATION =====================
-
     public LiveData<UserProfileEntity> observeUserProfile() {
         return userProfileLiveData;
     }
-
-    // ===================== INPUT VALIDATION =====================
 
     public boolean isProfileInputValid(String firstName, String lastName, String email) {
         if (TextUtils.isEmpty(firstName)
@@ -88,8 +84,6 @@ public class ProfileViewModel extends AndroidViewModel {
 
         return isPasswordInputValid(newPassword, confirmPassword);
     }
-
-    // ===================== PROFILE WRITE =====================
 
     public void updateUserProfile(UserProfileEntity currentUserProfile,
                                   String firstName,

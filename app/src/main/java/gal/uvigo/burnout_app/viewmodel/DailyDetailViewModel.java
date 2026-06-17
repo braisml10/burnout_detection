@@ -45,10 +45,8 @@ public class DailyDetailViewModel extends AndroidViewModel {
     private final LiveData<List<HourlyMetricsEntity>> hourlyMetricsToday;
     private final LiveData<List<HourlyMetricsEntity>> hourlyMetricsPreviousDay;
 
-    // 07..21 -> 15 puntos
     private final LiveData<int[]> screenMinutesFrom7To21;
 
-    // 22,23,00..06 -> 9 puntos
     private final MediatorLiveData<int[]> nightMinutesFrom22To06 = new MediatorLiveData<>();
 
     private List<HourlyMetricsEntity> cachedPreviousDayHourlyMetrics;
@@ -61,7 +59,6 @@ public class DailyDetailViewModel extends AndroidViewModel {
         int today = TimeKey.epochDayLocal(System.currentTimeMillis());
         selectedDay.setValue(today);
 
-        // ===================== DAILY METRICS =====================
         dailyMetrics = Transformations.switchMap(
                 selectedDay,
                 userActivityRepository::observeDailyMetrics
@@ -81,7 +78,6 @@ public class DailyDetailViewModel extends AndroidViewModel {
             );
         });
 
-        // ===================== HOURLY METRICS =====================
         hourlyMetricsToday = Transformations.switchMap(
                 selectedDay,
                 userActivityRepository::observeHourlyMetrics
@@ -92,7 +88,6 @@ public class DailyDetailViewModel extends AndroidViewModel {
                 day -> userActivityRepository.observeHourlyMetrics(day - 1)
         );
 
-        // ===================== SCREEN TREND 07..21 =====================
         screenMinutesFrom7To21 = Transformations.map(hourlyMetricsToday, hourlyRows -> {
             int[] out = new int[15];
             if (hourlyRows == null) return out;
@@ -109,7 +104,6 @@ public class DailyDetailViewModel extends AndroidViewModel {
             return out;
         });
 
-        // ===================== NIGHT TREND 22..06 =====================
         nightMinutesFrom22To06.addSource(hourlyMetricsPreviousDay, hourlyRows -> {
             cachedPreviousDayHourlyMetrics = hourlyRows;
             recomputeNightMinutesFrom22To06();
@@ -122,8 +116,6 @@ public class DailyDetailViewModel extends AndroidViewModel {
 
         nightMinutesFrom22To06.setValue(new int[9]);
     }
-
-    // ===================== PUBLIC API =====================
 
     public LiveData<UiState> getUiState() {
         return uiState;
@@ -148,10 +140,8 @@ public class DailyDetailViewModel extends AndroidViewModel {
         }
     }
 
-    // ===================== INTERNAL HELPERS =====================
-
     private void recomputeNightMinutesFrom22To06() {
-        int[] out = new int[9]; // 0=22, 1=23, 2=00, ..., 8=06
+        int[] out = new int[9];
 
         if (cachedPreviousDayHourlyMetrics != null) {
             for (HourlyMetricsEntity hourlyRow : cachedPreviousDayHourlyMetrics) {

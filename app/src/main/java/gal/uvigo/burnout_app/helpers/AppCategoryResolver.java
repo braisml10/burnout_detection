@@ -14,31 +14,18 @@ public class AppCategoryResolver {
     public static final String WORK = "WORK";
     public static final String OTHER = "OTHER";
 
-    /**
-     * Resuelve una categoría "macro" (SOCIAL / MESSAGING / ENTERTAINMENT / WORK / OTHER).
-     *
-     * Estrategia (robusta):
-     *  1) Heurística por packageName (para separar mensajería y cubrir apps que vienen undefined).
-     *  2) Si no se pudo, usa ApplicationInfo.category (cuando el sistema lo expone).
-     *  3) Fallback -> OTHER.
-     *
-     * Nota: para que PackageManager vea apps externas en Android 11+, añade <queries> en el Manifest.
-     */
     public static String resolveCategory(Context ctx, String packageName) {
         if (ctx == null || packageName == null || packageName.trim().isEmpty()) return OTHER;
 
-        // 1) Heurística por packageName (lo más fiable para tus 4 buckets)
         String byPkg = mapByPackageName(packageName);
         if (!OTHER.equals(byPkg)) return byPkg;
 
-        // 2) ApplicationInfo.category (best effort)
         try {
             PackageManager pm = ctx.getPackageManager();
             ApplicationInfo ai = pm.getApplicationInfo(packageName, 0);
             int c = ai.category;
 
             if (c == ApplicationInfo.CATEGORY_SOCIAL) {
-                // si el sistema la marca como social pero es mensajería, lo corrige mapByPackageName arriba
                 return SOCIAL;
             }
 
@@ -54,13 +41,11 @@ public class AppCategoryResolver {
                 return ENTERTAINMENT;
             }
 
-            // CATEGORY_UNDEFINED u otras categorías -> OTHER
             return OTHER;
 
         } catch (PackageManager.NameNotFoundException e) {
             return OTHER;
         } catch (SecurityException e) {
-            // Sin visibilidad de paquetes (falta <queries>) o ROM restrictiva
             return OTHER;
         } catch (Throwable t) {
             return OTHER;
@@ -85,16 +70,9 @@ public class AppCategoryResolver {
         return packageName;
     }
 
-
-
-    // ==========================
-    // Heurísticas por paquete
-    // ==========================
-
     private static String mapByPackageName(String pkg) {
         String p = pkg.toLowerCase(Locale.ROOT);
 
-        // Ignorar "ruido" / sistema -> OTHER
         if (isNoisePackage(p)) return OTHER;
 
         // Mensajería
@@ -119,8 +97,8 @@ public class AppCategoryResolver {
         if (containsAny(p,
                 "instagram",
                 "facebook",
-                "fb.",              // ok
-                "twitter",          // suficiente para X
+                "fb.",
+                "twitter",
                 "tiktok",
                 "reddit",
                 "snapchat",
@@ -186,22 +164,18 @@ public class AppCategoryResolver {
     private static boolean isNoisePackage(String p) {
         if (p == null) return true;
 
-        // launcher/home (varía por fabricante)
         if (p.contains("launcher")) return true;
         if (p.contains("quickstep")) return true;
 
-        // system ui / settings / permission controller
         if (p.equals("com.android.systemui")) return true;
         if (p.contains("permissioncontroller")) return true;
         if (p.equals("com.android.settings")) return true;
 
-        // Google “módulos/servicios” que NO quieres tratar como apps reales
-        if (p.contains("dynamite")) return true;                 // com.google.android.apps.dynamite
-        if (p.contains("googlequicksearchbox")) return true;     // search / assistant
-        if (p.contains("tachyon")) return true;                  // meet core
-        if (p.startsWith("com.google.android.gms")) return true; // play services
+        if (p.contains("dynamite")) return true;
+        if (p.contains("googlequicksearchbox")) return true;
+        if (p.contains("tachyon")) return true;
+        if (p.startsWith("com.google.android.gms")) return true;
 
-        // Samsung / OEM
         if (p.startsWith("com.sec.android.app.launcher")) return true;
 
         return false;

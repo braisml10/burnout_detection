@@ -14,6 +14,7 @@ import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 import gal.uvigo.burnout_app.viewmodel.DailyDetailViewModel;
+
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.MarkerView;
@@ -100,7 +101,6 @@ public class ScreenTimeActivity extends BaseActivity {
             }
         });
 
-        // 07..21
         dailyDetailViewModel.getScreenMinutesFrom7To21().observe(this, minutes -> {
             if (minutes == null) {
                 lineChart.clear();
@@ -126,7 +126,6 @@ public class ScreenTimeActivity extends BaseActivity {
             lineChart.invalidate();
         });
 
-        // 22..06
         dailyDetailViewModel.getNightMinutesFrom22To06().observe(this, minutes -> {
             if (minutes == null || minutes.length != 9) {
                 lastNightMinutes9 = null;
@@ -260,16 +259,26 @@ public class ScreenTimeActivity extends BaseActivity {
 
     public String nightSlotLabel(int index) {
         switch (index) {
-            case 0: return "22:00–23:00";
-            case 1: return "23:00–00:00";
-            case 2: return "00:00–01:00";
-            case 3: return "01:00–02:00";
-            case 4: return "02:00–03:00";
-            case 5: return "03:00–04:00";
-            case 6: return "04:00–05:00";
-            case 7: return "05:00–06:00";
-            case 8: return "06:00–07:00";
-            default: return getString(R.string.common_no_data);
+            case 0:
+                return "22:00–23:00";
+            case 1:
+                return "23:00–00:00";
+            case 2:
+                return "00:00–01:00";
+            case 3:
+                return "01:00–02:00";
+            case 4:
+                return "02:00–03:00";
+            case 5:
+                return "03:00–04:00";
+            case 6:
+                return "04:00–05:00";
+            case 7:
+                return "05:00–06:00";
+            case 8:
+                return "06:00–07:00";
+            default:
+                return getString(R.string.common_no_data);
         }
     }
 

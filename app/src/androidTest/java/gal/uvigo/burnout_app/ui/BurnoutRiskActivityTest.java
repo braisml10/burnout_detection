@@ -96,6 +96,7 @@ public class BurnoutRiskActivityTest {
                 .check(matches(isDisplayed()))
                 .perform(click());
     }
+
     @Test
     public void backButton_closesScreen() {
         onView(withId(R.id.btnBack)).perform(click());

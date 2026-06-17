@@ -59,9 +59,14 @@ public abstract class BurnoutDatabase extends RoomDatabase {
     }
 
     public abstract UserActivityDAO userActivityDao();
+
     public abstract NotificationDAO notificationDao();
+
     public abstract UsageDAO usageDao();
+
     public abstract CommunicationDAO communicationDao();
+
     public abstract UserProfileDAO userProfileDAO();
+
     public abstract BurnoutRiskDAO burnoutRiskDao();
 }

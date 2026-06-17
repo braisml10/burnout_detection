@@ -51,7 +51,6 @@ public class DailyAggregationWorker extends Worker {
     private static final String KEY_LAST_SCREEN_ACCOUNTED_TS = "last_screen_accounted_ts";
     private static final String KEY_LAST_RISK_COMPUTED_DAY = "last_risk_computed_day";
 
-    // Time constants used throughout the worker to avoid repeated literal conversions.
     private static final long MINUTE_MS = 60_000L;
     private static final long HOUR_MS = 60L * MINUTE_MS;
     private static final long DAY_MS = 24L * HOUR_MS;
@@ -97,7 +96,6 @@ public class DailyAggregationWorker extends Worker {
 
             runCommunicationAggregation(ctx, db, now, yesterday, today);
 
-            // Calcula el riesgo del último día cerrado (ayer)
             computeBurnoutRiskForClosedDay(db, prefs, yesterday);
 
             long durationMs = System.currentTimeMillis() - start;
@@ -119,8 +117,6 @@ public class DailyAggregationWorker extends Worker {
             return Result.failure();
         }
     }
-
-    // ===================== MAIN ORCHESTRATION HELPERS =====================
 
     private void ensureDailyRows(BurnoutDatabase db, int yesterday, int today, int tomorrow) {
         db.userActivityDao().insertDailyMetricsIfMissing(new DailyMetricsEntity(yesterday, 0L, 0, 0L, 0, 0, 0, 0, 0L));
@@ -203,8 +199,6 @@ public class DailyAggregationWorker extends Worker {
             Log.e(TAG_COMM, "Comm aggregation failed: " + ex.getMessage(), ex);
         }
     }
-
-    // ===================== USAGE CAPTURE =====================
 
     private static class UsageWindow {
         long start;
@@ -293,8 +287,6 @@ public class DailyAggregationWorker extends Worker {
         Log.d(TAG, "Usage insert: inserted=" + toInsert.size()
                 + " todayCount=" + db.usageDao().getUsageEventCountByDate(today));
     }
-
-    // ===================== FOREGROUND AGGREGATION =====================
 
     private static class ForegroundAggResult {
         long foregroundMs;
@@ -419,8 +411,6 @@ public class DailyAggregationWorker extends Worker {
 
         return out;
     }
-
-    // ===================== SCREEN / UNLOCK / NIGHT AGGREGATION =====================
 
     private static class ScreenAggResult {
         long screenMsDeltaPrev;
@@ -559,8 +549,6 @@ public class DailyAggregationWorker extends Worker {
         return out;
     }
 
-    // ===================== NOTIFICATION AGGREGATION =====================
-
     private static class NotificationAggResult {
         int[] notifByHourToday = new int[24];
         int[] notifByHourPrev = new int[24];
@@ -612,8 +600,6 @@ public class DailyAggregationWorker extends Worker {
 
         return out;
     }
-
-    // ===================== DAILY / HOURLY PERSISTENCE =====================
 
     private void saveDailyMetrics(BurnoutDatabase db,
                                   int yesterday,
@@ -721,8 +707,6 @@ public class DailyAggregationWorker extends Worker {
                 + " deletedHourlyComm=" + delHourlyComm
                 + " deletedRisk=" + delRisk);
     }
-
-    // ===================== HOURLY HELPERS =====================
 
     private void persistHourly(BurnoutDatabase db,
                                int epochDay,
@@ -850,8 +834,6 @@ public class DailyAggregationWorker extends Worker {
         long e = Math.min(aEnd, bEnd);
         return Math.max(0L, e - s);
     }
-
-    // ===================== COMMUNICATION METRICS =====================
 
     private boolean hasPermission(Context ctx, String perm) {
         return ContextCompat.checkSelfPermission(ctx, perm) == PackageManager.PERMISSION_GRANTED;
@@ -1070,8 +1052,6 @@ public class DailyAggregationWorker extends Worker {
         }
     }
 
-    // ===================== APP REGISTRY HELPERS =====================
-
     private long resolveAppId(BurnoutDatabase db, Context ctx, String pkg) {
         if (pkg == null || pkg.trim().isEmpty()) return -1L;
 
@@ -1143,8 +1123,6 @@ public class DailyAggregationWorker extends Worker {
         if (pkg == null) return false;
         return PKG_SELF.equals(pkg) || PKG_LAUNCHER.equals(pkg);
     }
-
-    // ===================== Burnout Engine HELPERS =====================
 
     private void computeBurnoutRiskForClosedDay(BurnoutDatabase db,
                                                 SharedPreferences prefs,

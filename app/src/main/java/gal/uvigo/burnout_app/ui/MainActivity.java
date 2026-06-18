@@ -323,7 +323,7 @@ public class MainActivity extends BaseActivity {
 
         List<BarEntry> entries = new ArrayList<>(8);
         for (int i = 0; i < 8; i++) {
-            float minutes = bucketsMs[i] / 60000f;
+            float minutes = bucketsMs[i] / (float) TimeKey.MILLIS_PER_MINUTE;
             entries.add(new BarEntry(i, minutes));
         }
 

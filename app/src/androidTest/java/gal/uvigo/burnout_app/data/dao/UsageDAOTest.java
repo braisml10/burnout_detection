@@ -168,7 +168,7 @@ public class UsageDAOTest {
             assertEquals(2, cursor.getCount());
 
             int categoryIndex = cursor.getColumnIndexOrThrow("category");
-            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("totalMs");
 
             cursor.moveToFirst();
             String category1 = cursor.getString(categoryIndex);
@@ -220,10 +220,10 @@ public class UsageDAOTest {
             assertNotNull(cursor);
             assertEquals(2, cursor.getCount());
 
-            int appIdIndex = cursor.getColumnIndexOrThrow("app_id");
+            int appIdIndex = cursor.getColumnIndexOrThrow("appId");
             int nameIndex = cursor.getColumnIndexOrThrow("name");
-            int packageIndex = cursor.getColumnIndexOrThrow("package_name");
-            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+            int packageIndex = cursor.getColumnIndexOrThrow("packageName");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("totalMs");
 
             cursor.moveToFirst();
             assertEquals(instagramId, cursor.getLong(appIdIndex));
@@ -267,7 +267,7 @@ public class UsageDAOTest {
             assertNotNull(cursor);
             cursor.moveToFirst();
 
-            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("totalMs");
             assertEquals(1500L, cursor.getLong(totalMsIndex));
         } finally {
             cursor.close();
@@ -298,7 +298,7 @@ public class UsageDAOTest {
             assertNotNull(cursor);
             cursor.moveToFirst();
 
-            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("totalMs");
             assertEquals(300L, cursor.getLong(totalMsIndex));
         } finally {
             cursor.close();

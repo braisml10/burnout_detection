@@ -923,7 +923,7 @@ public class DailyAggregationWorker extends Worker {
             if (c == null) return 0L;
 
             int iCat = c.getColumnIndexOrThrow("category");
-            int iMs = c.getColumnIndexOrThrow("total_ms");
+            int iMs = c.getColumnIndexOrThrow("totalMs");
 
             while (c.moveToNext()) {
                 String cat = c.getString(iCat);

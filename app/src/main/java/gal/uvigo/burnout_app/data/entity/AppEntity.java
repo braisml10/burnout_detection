@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey;
 
 @Entity(
         tableName = "app",
-        indices = {@Index(value = {"package_name"}, unique = true)}
+        indices = {@Index(value = {"packageName"}, unique = true)}
 )
 public class AppEntity {
 

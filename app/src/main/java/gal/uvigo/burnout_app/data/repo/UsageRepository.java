@@ -28,7 +28,7 @@ public class UsageRepository {
         Cursor cursor = usageDao.getCategoryTotalsMsForDayCursor(date);
         try {
             int categoryIndex = cursor.getColumnIndexOrThrow("category");
-            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("totalMs");
 
             while (cursor.moveToNext()) {
                 String category = cursor.getString(categoryIndex);
@@ -57,7 +57,7 @@ public class UsageRepository {
         Cursor cursor = usageDao.getTotalForegroundMsForDayCursor(date);
         try {
             if (cursor.moveToFirst()) {
-                int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+                int totalMsIndex = cursor.getColumnIndexOrThrow("totalMs");
                 if (!cursor.isNull(totalMsIndex)) {
                     total = cursor.getLong(totalMsIndex);
                 }
@@ -90,10 +90,10 @@ public class UsageRepository {
 
         Cursor cursor = usageDao.getTopAppsForDayCursor(date, limit);
         try {
-            int appIdIndex = cursor.getColumnIndexOrThrow("app_id");
+            int appIdIndex = cursor.getColumnIndexOrThrow("appId");
             int nameIndex = cursor.getColumnIndexOrThrow("name");
-            int packageNameIndex = cursor.getColumnIndexOrThrow("package_name");
-            int totalMsIndex = cursor.getColumnIndexOrThrow("total_ms");
+            int packageNameIndex = cursor.getColumnIndexOrThrow("packageName");
+            int totalMsIndex = cursor.getColumnIndexOrThrow("totalMs");
 
             while (cursor.moveToNext()) {
                 long appId = cursor.getLong(appIdIndex);

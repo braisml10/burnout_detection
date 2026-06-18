@@ -6,7 +6,7 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 @Entity(tableName = "app_usage_event",
-        indices = {@Index(value = {"app_id", "event_type", "timestamp"}, unique = true)}
+        indices = {@Index(value = {"appId", "event_type", "timestamp"}, unique = true)}
 )
 public class AppUsageEventEntity {
 

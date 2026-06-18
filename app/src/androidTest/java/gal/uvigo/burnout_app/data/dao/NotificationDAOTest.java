@@ -158,7 +158,7 @@ public class NotificationDAOTest {
             assertNotNull(cursor);
             assertEquals(2, cursor.getCount());
 
-            int appIdIndex = cursor.getColumnIndexOrThrow("app_id");
+            int appIdIndex = cursor.getColumnIndexOrThrow("appId");
             int countIndex = cursor.getColumnIndexOrThrow("c");
 
             cursor.moveToFirst();

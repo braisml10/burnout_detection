@@ -2,7 +2,7 @@ package gal.uvigo.burnout_app.data.entity;
 
 import androidx.room.Entity;
 
-@Entity(tableName = "daily_app_metric", primaryKeys = {"date", "app_id"})
+@Entity(tableName = "daily_app_metric", primaryKeys = {"date", "appId"})
 public class DailyAppMetricsEntity {
     public int date;
     public long appId;

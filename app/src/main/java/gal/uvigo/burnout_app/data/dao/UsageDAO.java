@@ -67,7 +67,7 @@ public interface UsageDAO {
                     "    WHEN a.category IS NULL OR TRIM(a.category) = '' THEN 'OTHER' " +
                     "    ELSE UPPER(a.category) " +
                     "  END AS category, " +
-                    "  SUM(dam.foregroundMs) AS total_ms " +
+                    "  SUM(dam.foregroundMs) AS totalMs " +
                     "FROM daily_app_metric AS dam " +
                     "JOIN app AS a ON dam.appId = a.appId " +
                     "WHERE dam.date = :date " +
@@ -77,25 +77,25 @@ public interface UsageDAO {
     Cursor getCategoryTotalsMsForDayCursor(int date);
 
     @Query(
-            "SELECT dam.appId AS app_id, " +
+            "SELECT dam.appId AS appId, " +
                     "CASE " +
                     "  WHEN a.name IS NULL OR TRIM(a.name) = '' THEN a.packageName " +
                     "  ELSE a.name " +
                     "END AS name, " +
-                    "a.packageName AS package_name, " +
-                    "SUM(dam.foregroundMs) AS total_ms " +
+                    "a.packageName AS packageName, " +
+                    "SUM(dam.foregroundMs) AS totalMs " +
                     "FROM daily_app_metric dam " +
                     "JOIN app a ON a.appId = dam.appId " +
                     "WHERE dam.date = :date " +
                     "  AND a.isIgnored = 0 " +
                     "GROUP BY dam.appId " +
-                    "ORDER BY total_ms DESC " +
+                    "ORDER BY totalMs DESC " +
                     "LIMIT :limit"
     )
     Cursor getTopAppsForDayCursor(int date, int limit);
 
     @Query(
-            "SELECT SUM(d.foregroundMs) AS total_ms " +
+            "SELECT SUM(d.foregroundMs) AS totalMs " +
                     "FROM daily_app_metric d " +
                     "INNER JOIN app a ON d.appId = a.appId " +
                     "WHERE d.date = :date AND a.isIgnored = 0"

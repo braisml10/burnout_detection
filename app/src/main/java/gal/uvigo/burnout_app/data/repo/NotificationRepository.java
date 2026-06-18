@@ -78,7 +78,7 @@ public class NotificationRepository {
 
         Cursor cursor = notificationDao.getTopNotificationAppsCursor(date, limit);
         try {
-            int appIdIndex = cursor.getColumnIndexOrThrow("app_id");
+            int appIdIndex = cursor.getColumnIndexOrThrow("appId");
             int countIndex = cursor.getColumnIndexOrThrow("c");
 
             while (cursor.moveToNext()) {

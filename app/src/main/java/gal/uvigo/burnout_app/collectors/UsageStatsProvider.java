@@ -31,20 +31,6 @@ public class UsageStatsProvider {
         }
     }
 
-    public static class RawUsageEvent {
-        public final String pkg;
-        public final int type;
-        public final long ts;
-        public final int date;
-
-        public RawUsageEvent(String pkg, int type, long ts, int date) {
-            this.pkg = pkg;
-            this.type = type;
-            this.ts = ts;
-            this.date = date;
-        }
-    }
-
     public static boolean hasUsageAccess(Context ctx) {
         AppOpsManager appOps = (AppOpsManager) ctx.getSystemService(Context.APP_OPS_SERVICE);
         if (appOps == null) return false;
@@ -91,15 +77,15 @@ public class UsageStatsProvider {
     }
 
     // Compatibility wrapper for callers that only need foreground/background app events.
-    public static List<RawUsageEvent> collectFgBgEvents(Context ctx, long start, long end) {
+    public static List<RawEvent> collectFgBgEvents(Context ctx, long start, long end) {
         List<RawEvent> all = collectEvents(ctx, start, end);
-        ArrayList<RawUsageEvent> fgBg = new ArrayList<>();
+        ArrayList<RawEvent> fgBg = new ArrayList<>();
 
         for (RawEvent r : all) {
             if (r.pkg == null) continue;
             if (!isForegroundBackgroundEventType(r.type)) continue;
 
-            fgBg.add(new RawUsageEvent(r.pkg, r.type, r.ts, r.date));
+            fgBg.add(new RawEvent(r.pkg, r.type, r.ts, r.date));
         }
 
         Log.d(TAG, "collectFgBgEvents: start=" + start + " end=" + end + " -> " + fgBg.size());

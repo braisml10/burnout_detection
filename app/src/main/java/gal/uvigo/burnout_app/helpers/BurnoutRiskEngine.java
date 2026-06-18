@@ -167,12 +167,22 @@ public class BurnoutRiskEngine {
 
     // ===================== INDEXES =====================
 
-    private double fragmentationIndex(DailyMetricsEntity day) {
-        double screenHours = safeHours(day.screenMs);
-        if (screenHours <= 0.0) return 0.0;
+    public static double fragmentationIndex(DailyMetricsEntity day) {
+        if (day == null) {
+            return 0.0;
+        }
 
-        double sessionsPerHour = safeLong(day.sessionCount) / screenHours;
-        double switchesPerHour = safeLong(day.appSwitchCount) / screenHours;
+        double screenHours = Math.max(0L, day.screenMs) / 3_600_000.0;
+
+        if (screenHours <= 0.0) {
+            return 0.0;
+        }
+
+        double sessionsPerHour =
+                Math.max(0, day.sessionCount) / screenHours;
+
+        double switchesPerHour =
+                Math.max(0, day.appSwitchCount) / screenHours;
 
         return (sessionsPerHour + switchesPerHour) / 2.0;
     }
@@ -203,8 +213,9 @@ public class BurnoutRiskEngine {
         return sum / days.size();
     }
 
-    private double avgFragmentationIndex(List<DailyMetricsEntity> days) {
+    public static double avgFragmentationIndex(List<DailyMetricsEntity> days) {
         if (days == null || days.isEmpty()) return 0.0;
+
         double sum = 0.0;
         for (DailyMetricsEntity d : days) sum += fragmentationIndex(d);
         return sum / days.size();
@@ -265,14 +276,6 @@ public class BurnoutRiskEngine {
         double sum = 0.0;
         for (double v : values) sum += v;
         return sum / values.length;
-    }
-
-    private double safeHours(long millis) {
-        return millis <= 0 ? 0.0 : (millis / 3600000.0);
-    }
-
-    private long safeLong(int value) {
-        return Math.max(value, 0);
     }
 
     private long safeLong(long value) {

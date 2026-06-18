@@ -161,15 +161,4 @@ public class MultitaskActivity extends BaseActivity {
         ChartHelper.setupDefaultLeftAxis(c.getAxisLeft(), 0f, 5f);
     }
 
-    private String prettyName(String s) {
-        if (s == null) return getString(R.string.common_no_data);
-        s = s.trim();
-        if (s.isEmpty()) return getString(R.string.common_no_data);
-
-        if (s.contains(".") && !s.contains(" ")) {
-            String[] parts = s.split("\\.");
-            return parts[parts.length - 1];
-        }
-        return s;
-    }
 }

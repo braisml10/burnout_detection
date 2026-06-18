@@ -18,6 +18,7 @@ import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.base.BaseActivity;
 import gal.uvigo.burnout_app.data.entity.UserProfileEntity;
 import gal.uvigo.burnout_app.helpers.SessionManager;
+import gal.uvigo.burnout_app.helpers.UiTextUtils;
 import gal.uvigo.burnout_app.viewmodel.ProfileViewModel;
 
 public class ProfileActivity extends BaseActivity {
@@ -104,7 +105,7 @@ public class ProfileActivity extends BaseActivity {
         String fullName = (firstName + " " + lastName).trim();
         tvFullName.setText(fullName);
 
-        tvAvatar.setText(getInitials(firstName, lastName));
+        tvAvatar.setText(UiTextUtils.getInitials(firstName, lastName));
     }
 
     private void showEditProfileDialog() {
@@ -177,17 +178,6 @@ public class ProfileActivity extends BaseActivity {
         dialog.show();
     }
 
-    private String getInitials(String firstName, String lastName) {
-        String firstInitial = firstName != null && !firstName.isEmpty()
-                ? firstName.substring(0, 1).toUpperCase()
-                : "";
-
-        String lastInitial = lastName != null && !lastName.isEmpty()
-                ? lastName.substring(0, 1).toUpperCase()
-                : "";
-
-        return firstInitial + lastInitial;
-    }
 
     private String safe(String value) {
         return value == null ? "" : value;

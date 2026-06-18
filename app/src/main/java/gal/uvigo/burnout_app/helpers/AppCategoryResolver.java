@@ -3,6 +3,7 @@ package gal.uvigo.burnout_app.helpers;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 
 import java.util.Locale;
 
@@ -23,7 +24,10 @@ public class AppCategoryResolver {
         try {
             PackageManager pm = ctx.getPackageManager();
             ApplicationInfo ai = pm.getApplicationInfo(packageName, 0);
-            int c = ai.category;
+            int c = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                c = ai.category;
+            }
 
             if (c == ApplicationInfo.CATEGORY_SOCIAL) {
                 return SOCIAL;
@@ -73,9 +77,8 @@ public class AppCategoryResolver {
     private static String mapByPackageName(String pkg) {
         String p = pkg.toLowerCase(Locale.ROOT);
 
-        if (isNoisePackage(p)) return OTHER;
+        if (AppPackageFilter.isNoisePackage(p)) return OTHER;
 
-        // Mensajería
         if (containsAny(p,
                 "whatsapp",
                 "telegram",
@@ -93,7 +96,6 @@ public class AppCategoryResolver {
             return MESSAGING;
         }
 
-        // Social (⚠️ quito "x.")
         if (containsAny(p,
                 "instagram",
                 "facebook",
@@ -110,7 +112,6 @@ public class AppCategoryResolver {
             return SOCIAL;
         }
 
-        // Entretenimiento
         if (containsAny(p,
                 "netflix",
                 "primevideo",
@@ -132,7 +133,6 @@ public class AppCategoryResolver {
             return ENTERTAINMENT;
         }
 
-        // Trabajo / Productividad
         if (containsAny(p,
                 "microsoft",
                 "office",
@@ -160,27 +160,6 @@ public class AppCategoryResolver {
 
         return OTHER;
     }
-
-    private static boolean isNoisePackage(String p) {
-        if (p == null) return true;
-
-        if (p.contains("launcher")) return true;
-        if (p.contains("quickstep")) return true;
-
-        if (p.equals("com.android.systemui")) return true;
-        if (p.contains("permissioncontroller")) return true;
-        if (p.equals("com.android.settings")) return true;
-
-        if (p.contains("dynamite")) return true;
-        if (p.contains("googlequicksearchbox")) return true;
-        if (p.contains("tachyon")) return true;
-        if (p.startsWith("com.google.android.gms")) return true;
-
-        if (p.startsWith("com.sec.android.app.launcher")) return true;
-
-        return false;
-    }
-
 
     private static boolean containsAny(String haystack, String... needles) {
         if (haystack == null) return false;

@@ -17,6 +17,7 @@ import gal.uvigo.burnout_app.data.db.BurnoutDatabase;
 import gal.uvigo.burnout_app.data.entity.BurnoutRiskEntity;
 import gal.uvigo.burnout_app.data.entity.DailyMetricsEntity;
 import gal.uvigo.burnout_app.data.repo.BurnoutRiskRepository;
+import gal.uvigo.burnout_app.helpers.BurnoutRiskEngine;
 import gal.uvigo.burnout_app.helpers.TimeKey;
 
 public class BurnoutRiskViewModel extends AndroidViewModel {
@@ -113,8 +114,8 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
         double todayScreenHours = todayMetrics != null ? millisToHours(todayMetrics.screenMs) : 0.0;
         double baselineScreenHours = avgScreenHours(baselineDays);
 
-        double todayFragmentation = todayMetrics != null ? fragmentationIndex(todayMetrics) : 0.0;
-        double baselineFragmentation = avgFragmentationIndex(baselineDays);
+        double todayFragmentation = todayMetrics != null ? BurnoutRiskEngine.fragmentationIndex(todayMetrics) : 0.0;
+        double baselineFragmentation = BurnoutRiskEngine.avgFragmentationIndex(baselineDays);
 
         long todayNightMs = todayMetrics != null ? Math.max(0L, todayMetrics.nightMs) : 0L;
         long baselineNightMs = avgNightMs(baselineDays);
@@ -186,28 +187,6 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
         if (trendScore >= 2.0) return TREND_INCREASING;
         if (trendScore >= 1.0) return TREND_STABLE;
         return TREND_DECREASING;
-    }
-
-    private double fragmentationIndex(DailyMetricsEntity day) {
-        if (day == null) return 0.0;
-
-        double screenHours = millisToHours(day.screenMs);
-        if (screenHours <= 0.0) return 0.0;
-
-        double sessionsPerHour = Math.max(0, day.sessionCount) / screenHours;
-        double switchesPerHour = Math.max(0, day.appSwitchCount) / screenHours;
-
-        return (sessionsPerHour + switchesPerHour) / 2.0;
-    }
-
-    private double avgFragmentationIndex(List<DailyMetricsEntity> days) {
-        if (days == null || days.isEmpty()) return 0.0;
-
-        double sum = 0.0;
-        for (DailyMetricsEntity day : days) {
-            sum += fragmentationIndex(day);
-        }
-        return sum / days.size();
     }
 
     private double avgScreenHours(List<DailyMetricsEntity> days) {

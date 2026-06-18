@@ -26,6 +26,7 @@ import gal.uvigo.burnout_app.data.entity.DailyMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.HourlyCommMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.HourlyMetricsEntity;
 import gal.uvigo.burnout_app.helpers.AppCategoryResolver;
+import gal.uvigo.burnout_app.helpers.AppPackageFilter;
 import gal.uvigo.burnout_app.helpers.BurnoutRiskEngine;
 import gal.uvigo.burnout_app.helpers.RetentionPolicy;
 import gal.uvigo.burnout_app.helpers.TimeKey;
@@ -332,7 +333,7 @@ public class DailyAggregationWorker extends Worker {
                 }
 
                 String toPkg = safePkg(db, e.appId);
-                if (!isNoisePackage(toPkg)) {
+                if(!AppPackageFilter.isNoisePackage(toPkg)) {
                     if (lastRealFgAppId == null) {
                         lastRealFgAppId = e.appId;
                         lastRealFgTs = e.timestamp;
@@ -796,27 +797,6 @@ public class DailyAggregationWorker extends Worker {
         } catch (Exception ex) {
             return "appId=" + appId;
         }
-    }
-
-    private boolean isNoisePackage(String pkg) {
-        if (pkg == null) return true;
-
-        if (pkg.equals(selfPackageName)) return true;
-
-        if (pkg.contains("launcher")) return true;
-        if (pkg.contains("quickstep")) return true;
-
-        if (pkg.equals("com.android.systemui")) return true;
-
-        if (pkg.startsWith("com.android.")) return true;
-
-        if (pkg.startsWith("com.google.android.gms")) return true;
-        if (pkg.contains("dynamite")) return true;
-
-        if (pkg.contains("tachyon")) return true;
-        if (pkg.contains("googlequicksearchbox")) return true;
-
-        return false;
     }
 
     private long atLocalHourMs(int epochDay, int hour, int minute) {

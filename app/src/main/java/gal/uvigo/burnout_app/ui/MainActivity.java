@@ -19,6 +19,7 @@ import gal.uvigo.burnout_app.data.entity.HourlyMetricsEntity;
 import gal.uvigo.burnout_app.helpers.ChartHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.helpers.TimeKey;
+import gal.uvigo.burnout_app.helpers.UiTextUtils;
 import gal.uvigo.burnout_app.viewmodel.DashboardViewModel;
 import gal.uvigo.burnout_app.viewmodel.ProfileViewModel;
 
@@ -90,7 +91,7 @@ public class MainActivity extends BaseActivity {
 
             String firstName = userProfile.name != null ? userProfile.name : "";
             String lastName = userProfile.surname != null ? userProfile.surname : "";
-            String initials = getInitials(firstName, lastName);
+            String initials = UiTextUtils.getInitials(firstName, lastName);
 
             if (tvAvatarMain != null) {
                 tvAvatarMain.setText(initials);
@@ -395,17 +396,4 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    private String getInitials(String firstName, String lastName) {
-        String initials = "";
-
-        if (firstName != null && !firstName.trim().isEmpty()) {
-            initials += firstName.trim().substring(0, 1).toUpperCase();
-        }
-
-        if (lastName != null && !lastName.trim().isEmpty()) {
-            initials += lastName.trim().substring(0, 1).toUpperCase();
-        }
-
-        return initials;
-    }
 }

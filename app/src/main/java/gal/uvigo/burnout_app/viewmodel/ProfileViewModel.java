@@ -85,30 +85,6 @@ public class ProfileViewModel extends AndroidViewModel {
         return isPasswordInputValid(newPassword, confirmPassword);
     }
 
-    public void updateUserProfile(UserProfileEntity currentUserProfile,
-                                  String firstName,
-                                  String lastName,
-                                  String email,
-                                  String newPassword) {
-
-        if (currentUserProfile == null) return;
-
-        String finalPassword = currentUserProfile.passwordHash;
-        if (!TextUtils.isEmpty(newPassword)) {
-            finalPassword = PasswordUtils.hashPassword(newPassword);
-        }
-
-        UserProfileEntity updatedUserProfile = new UserProfileEntity(
-                firstName.trim(),
-                lastName.trim(),
-                email.trim(),
-                finalPassword
-        );
-        updatedUserProfile.id = currentUserProfile.id;
-
-        userProfileRepository.upsertUserProfile(updatedUserProfile);
-    }
-
     public void updateUserProfileWithPasswordCheck(UserProfileEntity currentUserProfile,
                                                    String firstName,
                                                    String lastName,

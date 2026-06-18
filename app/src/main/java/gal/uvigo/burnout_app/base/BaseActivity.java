@@ -93,4 +93,5 @@ public abstract class BaseActivity extends AppCompatActivity {
     protected void onDayChanged(int selectedDay) {
         // Default vacío para Activities sin selector de día.
     }
+
 }

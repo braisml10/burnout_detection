@@ -9,24 +9,24 @@ public class DailyCommMetricsEntity {
     @PrimaryKey
     public int date;
 
-    public int calls_count; //nº de llamadas
-    public int messages_count; // nº de SMS recibidos + notificaciones de apps de mensajería
+    public int callsCount;
+    public int messagesCount;
 
-    public long total_comm_ms;
-    public long voice_ms;
-    public long text_ms;
+    public long totalCommMs;
+    public long voiceMs;
+    public long textMs;
 
     public DailyCommMetricsEntity(int date,
-                                  int calls_count,
-                                  int messages_count,
-                                  long total_comm_ms,
-                                  long voice_ms,
-                                  long text_ms) {
+                                  int callsCount,
+                                  int messagesCount,
+                                  long totalCommMs,
+                                  long voiceMs,
+                                  long textMs) {
         this.date = date;
-        this.calls_count = calls_count;
-        this.messages_count = messages_count;
-        this.total_comm_ms = total_comm_ms;
-        this.voice_ms = voice_ms;
-        this.text_ms = text_ms;
+        this.callsCount = callsCount;
+        this.messagesCount = messagesCount;
+        this.totalCommMs = totalCommMs;
+        this.voiceMs = voiceMs;
+        this.textMs = textMs;
     }
 }

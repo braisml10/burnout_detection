@@ -3,7 +3,9 @@ package gal.uvigo.burnout_app.helpers;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
-public class PasswordUtils {
+public final class PasswordUtils {
+    private PasswordUtils() {
+    }
 
     public static String hashPassword(String password) {
         try {
@@ -18,6 +20,7 @@ public class PasswordUtils {
             }
 
             return sb.toString();
+
         } catch (Exception e) {
             throw new RuntimeException("Error hashing password", e);
         }

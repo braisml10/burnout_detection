@@ -53,8 +53,8 @@ public class UserProfileDAOTest {
 
         assertNotNull(result);
         assertEquals(1, result.id);
-        assertEquals("Brais", result.nombre);
-        assertEquals("Mondragón", result.apellidos);
+        assertEquals("Brais", result.name);
+        assertEquals("Mondragón", result.surname);
         assertEquals("brais@email.com", result.email);
         assertEquals("hash123", result.passwordHash);
     }
@@ -82,8 +82,8 @@ public class UserProfileDAOTest {
         UserProfileEntity result = dao.getUserProfile();
 
         assertNotNull(result);
-        assertEquals("New", result.nombre);
-        assertEquals("User", result.apellidos);
+        assertEquals("New", result.name);
+        assertEquals("User", result.surname);
         assertEquals("new@email.com", result.email);
         assertEquals("newhash", result.passwordHash);
     }
@@ -99,7 +99,7 @@ public class UserProfileDAOTest {
 
         dao.upsertUserProfile(profile);
 
-        profile.nombre = "Updated";
+        profile.name = "Updated";
         profile.email = "updated@email.com";
 
         dao.updateUserProfile(profile);
@@ -107,7 +107,7 @@ public class UserProfileDAOTest {
         UserProfileEntity result = dao.getUserProfile();
 
         assertNotNull(result);
-        assertEquals("Updated", result.nombre);
+        assertEquals("Updated", result.name);
         assertEquals("updated@email.com", result.email);
     }
 

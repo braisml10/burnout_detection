@@ -126,16 +126,16 @@ public class DashboardViewModel extends AndroidViewModel {
     private UiState buildUiState() {
 
         long screenTimeMs =
-                (lastDailyMetrics != null) ? lastDailyMetrics.screen_ms : 0L;
+                (lastDailyMetrics != null) ? lastDailyMetrics.screenMs : 0L;
 
         int notificationCount =
-                (lastDailyMetrics != null) ? lastDailyMetrics.notification_count : 0;
+                (lastDailyMetrics != null) ? lastDailyMetrics.notificationCount : 0;
 
         int appSwitchCount =
-                (lastDailyMetrics != null) ? lastDailyMetrics.app_switch_count : 0;
+                (lastDailyMetrics != null) ? lastDailyMetrics.appSwitchCount : 0;
 
         int callsCount =
-                (lastCommunicationMetrics != null) ? lastCommunicationMetrics.calls_count : 0;
+                (lastCommunicationMetrics != null) ? lastCommunicationMetrics.callsCount : 0;
 
         double riskScore =
                 (lastBurnoutRisk != null) ? lastBurnoutRisk.riskScore : 0.0;
@@ -151,7 +151,7 @@ public class DashboardViewModel extends AndroidViewModel {
 
     private static String formatScreenTime(long ms) {
 
-        long totalMinutes = ms / 60000L;
+        long totalMinutes = ms / TimeKey.MILLIS_PER_MINUTE;
         long hours = totalMinutes / 60L;
         long minutes = totalMinutes % 60L;
 

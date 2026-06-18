@@ -60,11 +60,13 @@ public class DailyAggregationWorker extends Worker {
     private static final long FG_DEBOUNCE_MS = 500L;
     private static final long COMM_YESTERDAY_GRACE_MS = 2L * HOUR_MS;
 
-    private static final String PKG_SELF = "com.example.burnout_app";
     private static final String PKG_LAUNCHER = "com.android.launcher";
+
+    private final String selfPackageName;
 
     public DailyAggregationWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
+        selfPackageName = context.getApplicationContext().getPackageName();
     }
 
     @NonNull
@@ -319,29 +321,29 @@ public class DailyAggregationWorker extends Worker {
 
         for (AppUsageEventEntity e : eventsToday) {
 
-            if (e.event_type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+            if (e.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
 
                 if (currentFgAppId != null
-                        && currentFgAppId.equals(e.app_id)
+                        && currentFgAppId.equals(e.appId)
                         && lastFgTs > 0
                         && (e.timestamp - lastFgTs) < FG_DEBOUNCE_MS) {
                     lastFgTs = e.timestamp;
                     continue;
                 }
 
-                String toPkg = safePkg(db, e.app_id);
+                String toPkg = safePkg(db, e.appId);
                 if (!isNoisePackage(toPkg)) {
                     if (lastRealFgAppId == null) {
-                        lastRealFgAppId = e.app_id;
+                        lastRealFgAppId = e.appId;
                         lastRealFgTs = e.timestamp;
-                    } else if (!lastRealFgAppId.equals(e.app_id)) {
+                    } else if (!lastRealFgAppId.equals(e.appId)) {
 
                         if (lastSwitchTs <= 0 || (e.timestamp - lastSwitchTs) >= FG_DEBOUNCE_MS) {
                             out.appSwitchCount++;
                             lastSwitchTs = e.timestamp;
 
                             int h = hourOfTsLocal(e.timestamp);
-                            if (h >= 0 && h <= 23) {
+                            if (h >= 0 && h <= TimeKey.MAX_HOUR_OF_DAY) {
                                 out.switchByHour[h]++;
                             }
 
@@ -352,7 +354,7 @@ public class DailyAggregationWorker extends Worker {
                             }
                         }
 
-                        lastRealFgAppId = e.app_id;
+                        lastRealFgAppId = e.appId;
                         lastRealFgTs = e.timestamp;
                     } else {
                         lastRealFgTs = e.timestamp;
@@ -366,16 +368,16 @@ public class DailyAggregationWorker extends Worker {
                 }
 
                 out.fgSessionCount++;
-                out.openCountByApp.put(e.app_id, out.openCountByApp.getOrDefault(e.app_id, 0) + 1);
+                out.openCountByApp.put(e.appId, out.openCountByApp.getOrDefault(e.appId, 0) + 1);
 
-                currentFgAppId = e.app_id;
+                currentFgAppId = e.appId;
                 openFgTs = e.timestamp;
                 lastFgTs = e.timestamp;
 
-            } else if (e.event_type == UsageEvents.Event.MOVE_TO_BACKGROUND) {
+            } else if (e.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND) {
 
                 if (currentFgAppId != null
-                        && e.app_id == currentFgAppId
+                        && e.appId == currentFgAppId
                         && openFgTs > 0
                         && e.timestamp > openFgTs) {
 
@@ -511,7 +513,7 @@ public class DailyAggregationWorker extends Worker {
 
                     int h = hourOfTsLocal(r.ts);
                     int d = TimeKey.epochDayLocal(r.ts);
-                    if (h >= 0 && h <= 23) {
+                    if (h >= 0 && h <= TimeKey.MAX_HOUR_OF_DAY) {
                         if (d == today) out.unlockByHourToday[h]++;
                         else if (d == yesterday) out.unlockByHourPrev[h]++;
                     }
@@ -568,7 +570,7 @@ public class DailyAggregationWorker extends Worker {
                 while (cToday.moveToNext()) {
                     int h = cToday.getInt(iHour);
                     int cnt = cToday.getInt(iC);
-                    if (h >= 0 && h <= 23) {
+                    if (h >= 0 && h <= TimeKey.MAX_HOUR_OF_DAY) {
                         out.notifByHourToday[h] = cnt;
                     }
                 }
@@ -586,7 +588,7 @@ public class DailyAggregationWorker extends Worker {
                 while (cPrev.moveToNext()) {
                     int h = cPrev.getInt(iHour);
                     int cnt = cPrev.getInt(iC);
-                    if (h >= 0 && h <= 23) {
+                    if (h >= 0 && h <= TimeKey.MAX_HOUR_OF_DAY) {
                         out.notifByHourPrev[h] = cnt;
                     }
                 }
@@ -615,30 +617,30 @@ public class DailyAggregationWorker extends Worker {
 
         if (yesterdayMetrics != null) {
             if (screenResult.screenMsDeltaPrev > 0) {
-                yesterdayMetrics.screen_ms = Math.max(0L, yesterdayMetrics.screen_ms + screenResult.screenMsDeltaPrev);
+                yesterdayMetrics.screenMs = Math.max(0L, yesterdayMetrics.screenMs + screenResult.screenMsDeltaPrev);
             }
-            yesterdayMetrics.notification_count = Math.max(0, notifResult.notifTotalPrev);
+            yesterdayMetrics.notificationCount = Math.max(0, notifResult.notifTotalPrev);
             db.userActivityDao().upsertDailyMetrics(yesterdayMetrics);
         }
 
         if (todayMetrics != null) {
-            todayMetrics.screen_ms = Math.max(0L, todayMetrics.screen_ms + screenResult.screenMsDeltaToday);
+            todayMetrics.screenMs = Math.max(0L, todayMetrics.screenMs + screenResult.screenMsDeltaToday);
 
-            todayMetrics.unlock_count = Math.max(0, todayMetrics.unlock_count + screenResult.unlockDelta);
-            todayMetrics.session_count = todayMetrics.unlock_count;
+            todayMetrics.unlockCount = Math.max(0, todayMetrics.unlockCount + screenResult.unlockDelta);
+            todayMetrics.sessionCount = todayMetrics.unlockCount;
 
-            todayMetrics.foreground_ms = fgResult.foregroundMs;
-            todayMetrics.unique_apps_count = fgResult.uniqueAppsWithRealFg;
-            todayMetrics.app_switch_count = fgResult.appSwitchCount;
+            todayMetrics.foregroundMs = fgResult.foregroundMs;
+            todayMetrics.uniqueAppsCount = fgResult.uniqueAppsWithRealFg;
+            todayMetrics.appSwitchCount = fgResult.appSwitchCount;
 
-            todayMetrics.night_ms = Math.max(0L, todayMetrics.night_ms + screenResult.nightDeltaToday);
-            todayMetrics.notification_count = Math.max(0, notifResult.notifTotalToday);
+            todayMetrics.nightMs = Math.max(0L, todayMetrics.nightMs + screenResult.nightDeltaToday);
+            todayMetrics.notificationCount = Math.max(0, notifResult.notifTotalToday);
 
             db.userActivityDao().upsertDailyMetrics(todayMetrics);
         }
 
         if (screenResult.nightDeltaTomorrow > 0 && tomorrowMetrics != null) {
-            tomorrowMetrics.night_ms = Math.max(0L, tomorrowMetrics.night_ms + screenResult.nightDeltaTomorrow);
+            tomorrowMetrics.nightMs = Math.max(0L, tomorrowMetrics.nightMs + screenResult.nightDeltaTomorrow);
             db.userActivityDao().upsertDailyMetrics(tomorrowMetrics);
         }
     }
@@ -720,7 +722,7 @@ public class DailyAggregationWorker extends Worker {
 
             if (existing != null) {
                 for (HourlyMetricsEntity h : existing) {
-                    if (h != null && h.hour >= 0 && h.hour <= 23) {
+                    if (h != null && h.hour >= 0 && h.hour <= TimeKey.MAX_HOUR_OF_DAY) {
                         byHour[h.hour] = h;
                     }
                 }
@@ -731,11 +733,11 @@ public class DailyAggregationWorker extends Worker {
             for (int h = 0; h < 24; h++) {
                 HourlyMetricsEntity cur = byHour[h];
 
-                long baseScreen = (cur != null) ? cur.screen_ms : 0L;
-                int baseUnlock = (cur != null) ? cur.unlock_count : 0;
-                int baseSwitch = (cur != null) ? cur.app_switch_count : 0;
-                int baseUnique = (cur != null) ? cur.unique_apps_count : 0;
-                int baseNotif = (cur != null) ? cur.notification_count : 0;
+                long baseScreen = (cur != null) ? cur.screenMs : 0L;
+                int baseUnlock = (cur != null) ? cur.unlockCount : 0;
+                int baseSwitch = (cur != null) ? cur.appSwitchCount : 0;
+                int baseUnique = (cur != null) ? cur.uniqueAppsCount : 0;
+                int baseNotif = (cur != null) ? cur.notificationCount : 0;
 
                 long addScreen = (screenMsByHour != null && screenMsByHour.length == 24) ? screenMsByHour[h] : 0L;
                 int addUnlock = (unlockByHour != null && unlockByHour.length == 24) ? unlockByHour[h] : 0;
@@ -799,7 +801,7 @@ public class DailyAggregationWorker extends Worker {
     private boolean isNoisePackage(String pkg) {
         if (pkg == null) return true;
 
-        if (pkg.equals(PKG_SELF)) return true;
+        if (pkg.equals(selfPackageName)) return true;
 
         if (pkg.contains("launcher")) return true;
         if (pkg.contains("quickstep")) return true;
@@ -886,7 +888,7 @@ public class DailyAggregationWorker extends Worker {
                         out.callsDurationMs += durMs;
 
                         int h = TimeKey.hourOfDayLocal(ts);
-                        if (h >= 0 && h <= 23) {
+                        if (h >= 0 && h <= TimeKey.MAX_HOUR_OF_DAY) {
                             out.callsByHour[h]++;
                             out.callsDurationByHourMs[h] += durMs;
                         }
@@ -916,7 +918,7 @@ public class DailyAggregationWorker extends Worker {
                         out.smsTotal++;
 
                         int h = TimeKey.hourOfDayLocal(ts);
-                        if (h >= 0 && h <= 23) {
+                        if (h >= 0 && h <= TimeKey.MAX_HOUR_OF_DAY) {
                             out.smsByHour[h]++;
                         }
                     }
@@ -978,7 +980,7 @@ public class DailyAggregationWorker extends Worker {
                             while (c.moveToNext()) {
                                 int h = c.getInt(iHour);
                                 int cnt = c.getInt(iC);
-                                if (h >= 0 && h <= 23) {
+                                if (h >= 0 && h <= TimeKey.MAX_HOUR_OF_DAY) {
                                     msgNotifsByHour[h] = cnt;
                                     msgNotifsTotal += cnt;
                                 }
@@ -1119,9 +1121,9 @@ public class DailyAggregationWorker extends Worker {
                 || t.startsWith("com.google");
     }
 
-    private static boolean shouldIgnorePkg(String pkg) {
+    private boolean shouldIgnorePkg(String pkg) {
         if (pkg == null) return false;
-        return PKG_SELF.equals(pkg) || PKG_LAUNCHER.equals(pkg);
+        return selfPackageName.equals(pkg) || PKG_LAUNCHER.equals(pkg);
     }
 
     private void computeBurnoutRiskForClosedDay(BurnoutDatabase db,
@@ -1155,7 +1157,7 @@ public class DailyAggregationWorker extends Worker {
                     targetDay,
                     targetMetrics,
                     baselineDays,
-                    targetMetrics.notification_count,
+                    targetMetrics.notificationCount,
                     0.0
             );
 

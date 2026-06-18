@@ -17,6 +17,7 @@ import gal.uvigo.burnout_app.data.db.BurnoutDatabase;
 import gal.uvigo.burnout_app.data.entity.BurnoutRiskEntity;
 import gal.uvigo.burnout_app.data.entity.DailyMetricsEntity;
 import gal.uvigo.burnout_app.data.repo.BurnoutRiskRepository;
+import gal.uvigo.burnout_app.helpers.TimeKey;
 
 public class BurnoutRiskViewModel extends AndroidViewModel {
 
@@ -109,16 +110,16 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
         state.driver3Type = drivers.size() > 2 ? drivers.get(2).type : DRIVER_NONE;
         state.driver3Level = drivers.size() > 2 ? drivers.get(2).level : LEVEL_NONE;
 
-        double todayScreenHours = todayMetrics != null ? millisToHours(todayMetrics.screen_ms) : 0.0;
+        double todayScreenHours = todayMetrics != null ? millisToHours(todayMetrics.screenMs) : 0.0;
         double baselineScreenHours = avgScreenHours(baselineDays);
 
         double todayFragmentation = todayMetrics != null ? fragmentationIndex(todayMetrics) : 0.0;
         double baselineFragmentation = avgFragmentationIndex(baselineDays);
 
-        long todayNightMs = todayMetrics != null ? Math.max(0L, todayMetrics.night_ms) : 0L;
+        long todayNightMs = todayMetrics != null ? Math.max(0L, todayMetrics.nightMs) : 0L;
         long baselineNightMs = avgNightMs(baselineDays);
 
-        int todayNotificationCount = todayMetrics != null ? Math.max(0, todayMetrics.notification_count) : 0;
+        int todayNotificationCount = todayMetrics != null ? Math.max(0, todayMetrics.notificationCount) : 0;
         double baselineNotificationCount = avgNotificationCount(baselineDays);
 
         state.fragmentation = new DimensionUi();
@@ -128,8 +129,8 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
 
         state.nightUse = new DimensionUi();
         state.nightUse.level = levelFromScore(burnoutRisk.nightUseScore);
-        state.nightUse.valueMinutes = todayNightMs / 60000L;
-        state.nightUse.baselineMinutes = baselineNightMs / 60000L;
+        state.nightUse.valueMinutes = todayNightMs / TimeKey.MILLIS_PER_MINUTE;
+        state.nightUse.baselineMinutes = baselineNightMs / TimeKey.MILLIS_PER_MINUTE;
 
         state.notifications = new DimensionUi();
         state.notifications.level = levelFromScore(burnoutRisk.notificationPressureScore);
@@ -190,11 +191,11 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
     private double fragmentationIndex(DailyMetricsEntity day) {
         if (day == null) return 0.0;
 
-        double screenHours = millisToHours(day.screen_ms);
+        double screenHours = millisToHours(day.screenMs);
         if (screenHours <= 0.0) return 0.0;
 
-        double sessionsPerHour = Math.max(0, day.session_count) / screenHours;
-        double switchesPerHour = Math.max(0, day.app_switch_count) / screenHours;
+        double sessionsPerHour = Math.max(0, day.sessionCount) / screenHours;
+        double switchesPerHour = Math.max(0, day.appSwitchCount) / screenHours;
 
         return (sessionsPerHour + switchesPerHour) / 2.0;
     }
@@ -214,7 +215,7 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
 
         double sum = 0.0;
         for (DailyMetricsEntity day : days) {
-            sum += millisToHours(day.screen_ms);
+            sum += millisToHours(day.screenMs);
         }
         return sum / days.size();
     }
@@ -224,7 +225,7 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
 
         long sum = 0L;
         for (DailyMetricsEntity day : days) {
-            sum += Math.max(0L, day.night_ms);
+            sum += Math.max(0L, day.nightMs);
         }
         return sum / days.size();
     }
@@ -234,7 +235,7 @@ public class BurnoutRiskViewModel extends AndroidViewModel {
 
         double sum = 0.0;
         for (DailyMetricsEntity day : days) {
-            sum += Math.max(0, day.notification_count);
+            sum += Math.max(0, day.notificationCount);
         }
         return sum / days.size();
     }

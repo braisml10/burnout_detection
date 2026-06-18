@@ -6,29 +6,29 @@ import androidx.room.PrimaryKey;
 @Entity(tableName = "daily_metrics")
 public class DailyMetricsEntity {
     @PrimaryKey
-    public int date; // epochDay (TimeKey)
+    public int date;
 
-    public long screen_ms;
-    public int unlock_count;
+    public long screenMs;
+    public int unlockCount;
 
-    public long foreground_ms;
-    public int app_switch_count;
-    public int unique_apps_count;
-    public int session_count;
+    public long foregroundMs;
+    public int appSwitchCount;
+    public int uniqueAppsCount;
+    public int sessionCount;
 
-    public int notification_count;
+    public int notificationCount;
 
-    public long night_ms;
+    public long nightMs;
 
-    public DailyMetricsEntity(int date, long screen_ms, int unlock_count, long foreground_ms, int app_switch_count, int unique_apps_count, int session_count, int notification_count, long night_ms) {
+    public DailyMetricsEntity(int date, long screenMs, int unlockCount, long foregroundMs, int appSwitchCount, int uniqueAppsCount, int sessionCount, int notificationCount, long nightMs) {
         this.date = date;
-        this.screen_ms = screen_ms;
-        this.unlock_count = unlock_count;
-        this.foreground_ms = foreground_ms;
-        this.app_switch_count = app_switch_count;
-        this.unique_apps_count = unique_apps_count;
-        this.session_count = session_count;
-        this.notification_count = notification_count;
-        this.night_ms = night_ms;
+        this.screenMs = screenMs;
+        this.unlockCount = unlockCount;
+        this.foregroundMs = foregroundMs;
+        this.appSwitchCount = appSwitchCount;
+        this.uniqueAppsCount = uniqueAppsCount;
+        this.sessionCount = sessionCount;
+        this.notificationCount = notificationCount;
+        this.nightMs = nightMs;
     }
 }

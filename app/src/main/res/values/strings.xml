@@ -21,6 +21,7 @@
     <string name="common_save">Guardar</string>
     <string name="common_cancel">Cancelar</string>
     <string name="common_ok">OK</string>
+    <string name="common_sys">Sistema</string>
 
     <!-- LANGUAGE -->
     <string name="language_spanish">Español</string>

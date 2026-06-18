@@ -17,28 +17,28 @@ import java.util.List;
 public interface UsageDAO {
 
     // ===================== APPS =====================
-    @Query("SELECT app_id FROM app WHERE package_name = :pkg LIMIT 1")
+    @Query("SELECT appId FROM app WHERE packageName = :pkg LIMIT 1")
     Long getAppIdByPackageName(String pkg);
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     long insertApp(AppEntity app);
 
-    @Query("SELECT category FROM app WHERE app_id = :appId LIMIT 1")
+    @Query("SELECT category FROM app WHERE appId = :appId LIMIT 1")
     String getAppCategoryByAppId(long appId);
 
-    @Query("SELECT name FROM app WHERE app_id = :appId LIMIT 1")
+    @Query("SELECT name FROM app WHERE appId = :appId LIMIT 1")
     String getAppNameByAppId(long appId);
 
-    @Query("SELECT package_name FROM app WHERE app_id = :appId LIMIT 1")
+    @Query("SELECT packageName FROM app WHERE appId = :appId LIMIT 1")
     String getAppPackageNameByAppId(long appId);
 
-    @Query("UPDATE app SET category = :category WHERE app_id = :appId")
+    @Query("UPDATE app SET category = :category WHERE appId = :appId")
     int updateAppCategoryByAppId(long appId, String category);
 
-    @Query("UPDATE app SET name = :name WHERE app_id = :appId")
+    @Query("UPDATE app SET name = :name WHERE appId = :appId")
     int updateAppNameByAppId(long appId, String name);
 
-    @Query("UPDATE app SET is_ignored = :ignored WHERE app_id = :appId")
+    @Query("UPDATE app SET isIgnored = :ignored WHERE appId = :appId")
     int updateAppIgnoredByAppId(long appId, boolean ignored);
 
     // ===================== APP USAGE EVENTS =====================
@@ -67,38 +67,38 @@ public interface UsageDAO {
                     "    WHEN a.category IS NULL OR TRIM(a.category) = '' THEN 'OTHER' " +
                     "    ELSE UPPER(a.category) " +
                     "  END AS category, " +
-                    "  SUM(dam.foreground_ms) AS total_ms " +
+                    "  SUM(dam.foregroundMs) AS total_ms " +
                     "FROM daily_app_metric AS dam " +
-                    "JOIN app AS a ON dam.app_id = a.app_id " +
+                    "JOIN app AS a ON dam.appId = a.appId " +
                     "WHERE dam.date = :date " +
-                    "  AND a.is_ignored = 0 " +
+                    "  AND a.isIgnored = 0 " +
                     "GROUP BY category"
     )
     Cursor getCategoryTotalsMsForDayCursor(int date);
 
     @Query(
-            "SELECT dam.app_id AS app_id, " +
+            "SELECT dam.appId AS app_id, " +
                     "CASE " +
-                    "  WHEN a.name IS NULL OR TRIM(a.name) = '' THEN a.package_name " +
+                    "  WHEN a.name IS NULL OR TRIM(a.name) = '' THEN a.packageName " +
                     "  ELSE a.name " +
                     "END AS name, " +
-                    "a.package_name AS package_name, " +
-                    "SUM(dam.foreground_ms) AS total_ms " +
+                    "a.packageName AS package_name, " +
+                    "SUM(dam.foregroundMs) AS total_ms " +
                     "FROM daily_app_metric dam " +
-                    "JOIN app a ON a.app_id = dam.app_id " +
+                    "JOIN app a ON a.appId = dam.appId " +
                     "WHERE dam.date = :date " +
-                    "  AND a.is_ignored = 0 " +
-                    "GROUP BY dam.app_id " +
+                    "  AND a.isIgnored = 0 " +
+                    "GROUP BY dam.appId " +
                     "ORDER BY total_ms DESC " +
                     "LIMIT :limit"
     )
     Cursor getTopAppsForDayCursor(int date, int limit);
 
     @Query(
-            "SELECT SUM(d.foreground_ms) AS total_ms " +
+            "SELECT SUM(d.foregroundMs) AS total_ms " +
                     "FROM daily_app_metric d " +
-                    "INNER JOIN app a ON d.app_id = a.app_id " +
-                    "WHERE d.date = :date AND a.is_ignored = 0"
+                    "INNER JOIN app a ON d.appId = a.appId " +
+                    "WHERE d.date = :date AND a.isIgnored = 0"
     )
     Cursor getTotalForegroundMsForDayCursor(int date);
 }

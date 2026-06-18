@@ -31,7 +31,7 @@ public interface NotificationDAO {
     Cursor getNotificationCountByHourCursor(int date);
 
     // ===================== NOTIFICATION AGGREGATIONS =====================
-    @Query("SELECT app_id, COUNT(*) AS c FROM notification_event WHERE date = :date GROUP BY app_id ORDER BY c DESC LIMIT :limit")
+    @Query("SELECT appId, COUNT(*) AS c FROM notification_event WHERE date = :date GROUP BY appId ORDER BY c DESC LIMIT :limit")
     Cursor getTopNotificationAppsCursor(int date, int limit);
 
     @Query(
@@ -42,9 +42,9 @@ public interface NotificationDAO {
                     "  END AS app_category, " +
                     "  COUNT(*) AS c " +
                     "FROM notification_event ne " +
-                    "JOIN app a ON ne.app_id = a.app_id " +
+                    "JOIN app a ON ne.appId = a.appId " +
                     "WHERE ne.date = :date " +
-                    "  AND a.is_ignored = 0 " +
+                    "  AND a.isIgnored = 0 " +
                     "GROUP BY " +
                     "  CASE " +
                     "    WHEN a.category IS NULL OR TRIM(a.category) = '' THEN 'OTHER' " +
@@ -54,12 +54,12 @@ public interface NotificationDAO {
     )
     Cursor getNotificationCountByAppCategoryCursor(int date);
 
-    @Query("SELECT COUNT(*) FROM notification_event WHERE date = :epochDay AND app_id IN (" +
-            "SELECT app_id FROM app WHERE category = 'MESSAGING')")
+    @Query("SELECT COUNT(*) FROM notification_event WHERE date = :epochDay AND appId IN (" +
+            "SELECT appId FROM app WHERE category = 'MESSAGING')")
     int getMessagingNotificationCountByDate(int epochDay);
 
     @Query("SELECT hour, COUNT(*) AS c FROM notification_event " +
-            "WHERE date = :epochDay AND app_id IN (SELECT app_id FROM app WHERE category = 'MESSAGING') " +
+            "WHERE date = :epochDay AND appId IN (SELECT appId FROM app WHERE category = 'MESSAGING') " +
             "GROUP BY hour " +
             "ORDER BY hour")
     Cursor getMessagingNotificationCountByHourCursor(int epochDay);

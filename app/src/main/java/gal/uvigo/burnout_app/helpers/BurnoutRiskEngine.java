@@ -35,7 +35,7 @@ public class BurnoutRiskEngine {
         double avgNotificationPressure7d = avgNotificationPressure(baselineDays);
         double avgTrendRef7d = avgTrendReference(baselineDays);
 
-        double todayScreenMs = safeLong(today.screen_ms);
+        double todayScreenMs = safeLong(today.screenMs);
         double todayFragmentation = fragmentationIndex(today);
         double todayNightRatio = nightRatio(today);
         double todayNotificationPressure = notificationPressure(notificationCount, reactiveOpenRatio);
@@ -168,19 +168,19 @@ public class BurnoutRiskEngine {
     // ===================== INDEXES =====================
 
     private double fragmentationIndex(DailyMetricsEntity day) {
-        double screenHours = safeHours(day.screen_ms);
+        double screenHours = safeHours(day.screenMs);
         if (screenHours <= 0.0) return 0.0;
 
-        double sessionsPerHour = safeLong(day.session_count) / screenHours;
-        double switchesPerHour = safeLong(day.app_switch_count) / screenHours;
+        double sessionsPerHour = safeLong(day.sessionCount) / screenHours;
+        double switchesPerHour = safeLong(day.appSwitchCount) / screenHours;
 
         return (sessionsPerHour + switchesPerHour) / 2.0;
     }
 
     private double nightRatio(DailyMetricsEntity day) {
-        double screenMs = safeLong(day.screen_ms);
+        double screenMs = safeLong(day.screenMs);
         if (screenMs <= 0.0) return 0.0;
-        return safeLong(day.night_ms) / screenMs;
+        return safeLong(day.nightMs) / screenMs;
     }
 
     private double notificationPressure(int notificationCount, double reactiveOpenRatio) {
@@ -199,7 +199,7 @@ public class BurnoutRiskEngine {
     private double avgScreenMs(List<DailyMetricsEntity> days) {
         if (days == null || days.isEmpty()) return 0.0;
         double sum = 0.0;
-        for (DailyMetricsEntity d : days) sum += safeLong(d.screen_ms);
+        for (DailyMetricsEntity d : days) sum += safeLong(d.screenMs);
         return sum / days.size();
     }
 
@@ -222,7 +222,7 @@ public class BurnoutRiskEngine {
 
         double sum = 0.0;
         for (DailyMetricsEntity d : days) {
-            int notificationCount = d.notification_count;
+            int notificationCount = d.notificationCount;
             sum += notificationPressure(notificationCount, 0.0);
         }
         return sum / days.size();
@@ -241,10 +241,10 @@ public class BurnoutRiskEngine {
 
         for (DailyMetricsEntity d : days) {
             double idx = mean(
-                    ratio(safeLong(d.screen_ms), avgScreen),
+                    ratio(safeLong(d.screenMs), avgScreen),
                     ratio(fragmentationIndex(d), avgFrag),
                     ratio(nightRatio(d), avgNight),
-                    ratio(notificationPressure(d.notification_count, 0.0), avgNotif)
+                    ratio(notificationPressure(d.notificationCount, 0.0), avgNotif)
             );
             sum += idx;
             count++;

@@ -46,11 +46,6 @@ public class UsageRepository {
         ensureCategory(out, "WORK");
         ensureCategory(out, "OTHER");
 
-        long total = 0L;
-        for (Long value : out.values()) {
-            total += value;
-        }
-
         return out;
     }
 

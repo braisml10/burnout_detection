@@ -1,25 +1,22 @@
 package gal.uvigo.burnout_app.ui;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
-
-import gal.uvigo.burnout_app.R;
-import gal.uvigo.burnout_app.helpers.LanguageHelper;
-import gal.uvigo.burnout_app.helpers.SessionManager;
-import gal.uvigo.burnout_app.viewmodel.OnboardingViewModel;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
-public class RegisterActivity extends AppCompatActivity {
+import gal.uvigo.burnout_app.R;
+import gal.uvigo.burnout_app.base.BaseActivity;
+import gal.uvigo.burnout_app.helpers.SessionManager;
+import gal.uvigo.burnout_app.viewmodel.OnboardingViewModel;
+
+public class RegisterActivity extends BaseActivity {
 
     private ImageButton btnBack;
     private TextInputEditText etNombre;
@@ -31,14 +28,6 @@ public class RegisterActivity extends AppCompatActivity {
     private TextView tvGoLogin;
 
     private OnboardingViewModel onboardingViewModel;
-
-    @Override
-    protected void attachBaseContext(Context newBase) {
-        SharedPreferences prefs =
-                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
-        String langCode = prefs.getString("selected_language", "es");
-        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

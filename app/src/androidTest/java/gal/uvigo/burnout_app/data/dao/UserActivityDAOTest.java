@@ -62,14 +62,14 @@ public class UserActivityDAOTest {
 
         assertNotNull(result);
         assertEquals(20520, result.date);
-        assertEquals(3600000L, result.screen_ms);
-        assertEquals(15, result.unlock_count);
-        assertEquals(2800000L, result.foreground_ms);
-        assertEquals(42, result.app_switch_count);
-        assertEquals(12, result.unique_apps_count);
-        assertEquals(8, result.session_count);
-        assertEquals(25, result.notification_count);
-        assertEquals(600000L, result.night_ms);
+        assertEquals(3600000L, result.screenMs);
+        assertEquals(15, result.unlockCount);
+        assertEquals(2800000L, result.foregroundMs);
+        assertEquals(42, result.appSwitchCount);
+        assertEquals(12, result.uniqueAppsCount);
+        assertEquals(8, result.sessionCount);
+        assertEquals(25, result.notificationCount);
+        assertEquals(600000L, result.nightMs);
     }
 
     @Test
@@ -92,9 +92,9 @@ public class UserActivityDAOTest {
         assertEquals(10, result.get(1).hour);
         assertEquals(15, result.get(2).hour);
 
-        assertEquals(300000L, result.get(0).screen_ms);
-        assertEquals(120000L, result.get(1).screen_ms);
-        assertEquals(60000L, result.get(2).screen_ms);
+        assertEquals(300000L, result.get(0).screenMs);
+        assertEquals(120000L, result.get(1).screenMs);
+        assertEquals(60000L, result.get(2).screenMs);
     }
 
     @Test

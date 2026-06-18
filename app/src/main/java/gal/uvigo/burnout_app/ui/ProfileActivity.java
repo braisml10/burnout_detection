@@ -1,9 +1,7 @@
 package gal.uvigo.burnout_app.ui;
 
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,18 +10,17 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
-
-import gal.uvigo.burnout_app.R;
-import gal.uvigo.burnout_app.data.entity.UserProfileEntity;
-import gal.uvigo.burnout_app.helpers.LanguageHelper;
-import gal.uvigo.burnout_app.helpers.SessionManager;
-import gal.uvigo.burnout_app.viewmodel.ProfileViewModel;
 
 import com.google.android.material.button.MaterialButton;
 
-public class ProfileActivity extends AppCompatActivity {
+import gal.uvigo.burnout_app.R;
+import gal.uvigo.burnout_app.base.BaseActivity;
+import gal.uvigo.burnout_app.data.entity.UserProfileEntity;
+import gal.uvigo.burnout_app.helpers.SessionManager;
+import gal.uvigo.burnout_app.viewmodel.ProfileViewModel;
+
+public class ProfileActivity extends BaseActivity {
 
     private TextView tvAvatar;
     private TextView tvFullName;
@@ -38,13 +35,6 @@ public class ProfileActivity extends AppCompatActivity {
     private ProfileViewModel profileViewModel;
     private UserProfileEntity currentUserProfile;
 
-    @Override
-    protected void attachBaseContext(Context newBase) {
-        SharedPreferences prefs =
-                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
-        String langCode = prefs.getString("selected_language", "es");
-        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,8 +93,8 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void bindProfile(UserProfileEntity userProfile) {
-        String firstName = safe(userProfile.nombre);
-        String lastName = safe(userProfile.apellidos);
+        String firstName = safe(userProfile.name);
+        String lastName = safe(userProfile.surname);
         String email = safe(userProfile.email);
 
         tvNombre.setText(firstName);
@@ -132,8 +122,8 @@ public class ProfileActivity extends AppCompatActivity {
         EditText etNewPassword = dialogView.findViewById(R.id.etNewPassword);
         EditText etConfirmPassword = dialogView.findViewById(R.id.etConfirmPassword);
 
-        etNombre.setText(safe(currentUserProfile.nombre));
-        etApellidos.setText(safe(currentUserProfile.apellidos));
+        etNombre.setText(safe(currentUserProfile.name));
+        etApellidos.setText(safe(currentUserProfile.surname));
         etEmail.setText(safe(currentUserProfile.email));
 
         AlertDialog dialog = new AlertDialog.Builder(this)

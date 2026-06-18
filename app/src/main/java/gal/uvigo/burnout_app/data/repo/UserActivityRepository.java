@@ -9,6 +9,7 @@ import gal.uvigo.burnout_app.data.dao.UserActivityDAO;
 import gal.uvigo.burnout_app.data.db.BurnoutDatabase;
 import gal.uvigo.burnout_app.data.entity.DailyMetricsEntity;
 import gal.uvigo.burnout_app.data.entity.HourlyMetricsEntity;
+import gal.uvigo.burnout_app.helpers.TimeKey;
 
 import java.util.List;
 
@@ -45,7 +46,7 @@ public class UserActivityRepository {
                 int hour = cursor.getInt(hourIndex);
                 int count = cursor.getInt(countIndex);
 
-                if (hour >= 0 && hour <= 23) {
+                if (hour >= TimeKey.MIN_HOUR_OF_DAY && hour <= TimeKey.MAX_HOUR_OF_DAY) {
                     out[hour] = count;
                 }
             }

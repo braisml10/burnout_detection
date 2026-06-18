@@ -225,7 +225,7 @@
                         app:layout_constraintTop_toBottomOf="@id/iconBg1" />
 
                     <TextView
-                        android:id="@+id/value1"
+                        android:id="@+id/tvScreenTimeValue"
                         android:layout_width="0dp"
                         android:layout_height="0dp"
                         android:ellipsize="end"
@@ -310,7 +310,7 @@
                         app:layout_constraintTop_toBottomOf="@id/iconBg2" />
 
                     <TextView
-                        android:id="@+id/value2"
+                        android:id="@+id/tvNotificationValue"
                         android:layout_width="0dp"
                         android:layout_height="0dp"
                         android:ellipsize="end"
@@ -395,7 +395,7 @@
                         app:layout_constraintTop_toBottomOf="@id/iconBg3" />
 
                     <TextView
-                        android:id="@+id/value3"
+                        android:id="@+id/tvMultitaskValue"
                         android:layout_width="0dp"
                         android:layout_height="0dp"
                         android:ellipsize="end"
@@ -480,7 +480,7 @@
                         app:layout_constraintTop_toBottomOf="@id/iconBg4" />
 
                     <TextView
-                        android:id="@+id/value4"
+                        android:id="@+id/tvCommunicationValue"
                         android:layout_width="0dp"
                         android:layout_height="0dp"
                         android:ellipsize="end"

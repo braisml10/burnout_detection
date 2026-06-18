@@ -24,7 +24,7 @@ public interface CommunicationDAO {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsertDailyCommMetrics(DailyCommMetricsEntity row);
 
-    @Query("INSERT OR IGNORE INTO daily_comm_metric(date,calls_count,messages_count,total_comm_ms,voice_ms,text_ms) " +
+    @Query("INSERT OR IGNORE INTO daily_comm_metric(date,callsCount,messagesCount,totalCommMs,voiceMs,textMs) " +
             "VALUES(:epochDay,0,0,0,0,0)")
     void insertDailyCommMetricsIfMissing(int epochDay);
 

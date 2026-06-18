@@ -59,11 +59,11 @@ public class CommunicationDAOTest {
 
         assertNotNull(result);
         assertEquals(20520, result.date);
-        assertEquals(4, result.calls_count);
-        assertEquals(12, result.messages_count);
-        assertEquals(900000L, result.total_comm_ms);
-        assertEquals(300000L, result.voice_ms);
-        assertEquals(600000L, result.text_ms);
+        assertEquals(4, result.callsCount);
+        assertEquals(12, result.messagesCount);
+        assertEquals(900000L, result.totalCommMs);
+        assertEquals(300000L, result.voiceMs);
+        assertEquals(600000L, result.textMs);
     }
 
     @Test
@@ -74,11 +74,11 @@ public class CommunicationDAOTest {
 
         assertNotNull(first);
         assertEquals(20521, first.date);
-        assertEquals(0, first.calls_count);
-        assertEquals(0, first.messages_count);
-        assertEquals(0L, first.total_comm_ms);
-        assertEquals(0L, first.voice_ms);
-        assertEquals(0L, first.text_ms);
+        assertEquals(0, first.callsCount);
+        assertEquals(0, first.messagesCount);
+        assertEquals(0L, first.totalCommMs);
+        assertEquals(0L, first.voiceMs);
+        assertEquals(0L, first.textMs);
 
         dao.insertDailyCommMetricsIfMissing(20521);
 
@@ -86,11 +86,11 @@ public class CommunicationDAOTest {
 
         assertNotNull(second);
         assertEquals(20521, second.date);
-        assertEquals(0, second.calls_count);
-        assertEquals(0, second.messages_count);
-        assertEquals(0L, second.total_comm_ms);
-        assertEquals(0L, second.voice_ms);
-        assertEquals(0L, second.text_ms);
+        assertEquals(0, second.callsCount);
+        assertEquals(0, second.messagesCount);
+        assertEquals(0L, second.totalCommMs);
+        assertEquals(0L, second.voiceMs);
+        assertEquals(0L, second.textMs);
     }
 
     @Test
@@ -131,9 +131,9 @@ public class CommunicationDAOTest {
         assertEquals(14, result.get(1).hour);
         assertEquals(21, result.get(2).hour);
 
-        assertEquals(400L, result.get(0).total_value);
-        assertEquals(100L, result.get(1).total_value);
-        assertEquals(50L, result.get(2).total_value);
+        assertEquals(400L, result.get(0).totalValue);
+        assertEquals(100L, result.get(1).totalValue);
+        assertEquals(50L, result.get(2).totalValue);
     }
 
     @Test

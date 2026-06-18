@@ -9,6 +9,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
+import gal.uvigo.burnout_app.R;
 import gal.uvigo.burnout_app.data.entity.DailyMetricsEntity;
 import gal.uvigo.burnout_app.data.repo.UsageRepository;
 import gal.uvigo.burnout_app.data.repo.UserActivityRepository;
@@ -137,8 +138,8 @@ public class AppsUsageViewModel extends AndroidViewModel {
                 Transformations.switchMap(selectedDay, userActivityRepository::observeDailyMetrics);
 
         uiState = Transformations.map(dailyMetricsSource, dailyMetrics -> {
-            int appSwitchCount = (dailyMetrics != null) ? dailyMetrics.app_switch_count : 0;
-            int uniqueAppsCount = (dailyMetrics != null) ? dailyMetrics.unique_apps_count : 0;
+            int appSwitchCount = (dailyMetrics != null) ? dailyMetrics.appSwitchCount : 0;
+            int uniqueAppsCount = (dailyMetrics != null) ? dailyMetrics.uniqueAppsCount : 0;
 
             return new UiState(
                     String.valueOf(appSwitchCount),
@@ -325,7 +326,7 @@ public class AppsUsageViewModel extends AndroidViewModel {
     }
 
     private static String formatTimeKpi(long ms) {
-        long totalMin = ms / 60000L;
+        long totalMin = ms / TimeKey.MILLIS_PER_MINUTE;
         long hours = totalMin / 60L;
         long minutes = totalMin % 60L;
 
@@ -351,13 +352,13 @@ public class AppsUsageViewModel extends AndroidViewModel {
         return String.format(Locale.ROOT, "%dm", minutes);
     }
 
-    private static String resolveDisplayName(Context context, String rawName) {
+    private String resolveDisplayName(Context context, String rawName) {
         if (rawName == null) return "--";
 
         String value = rawName.trim();
         if (value.isEmpty()) return "--";
 
-        if ("android".equalsIgnoreCase(value)) return "Sistema";
+        if ("android".equalsIgnoreCase(value)) return getApplication().getString(R.string.common_sys);
 
         boolean looksLikePackage = value.contains(".") && !value.contains(" ");
         if (looksLikePackage) {

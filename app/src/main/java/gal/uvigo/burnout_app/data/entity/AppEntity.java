@@ -12,21 +12,21 @@ import androidx.room.PrimaryKey;
 public class AppEntity {
 
     @PrimaryKey(autoGenerate = true)
-    public long app_id;
+    public long appId;
 
     @NonNull
-    public String package_name;
+    public String packageName;
 
     @NonNull
     public String name;
 
     public String category;
-    public boolean is_ignored;
+    public boolean isIgnored;
 
-    public AppEntity(@NonNull String package_name, @NonNull String name, String category, boolean is_ignored) {
-        this.package_name = package_name;
+    public AppEntity(@NonNull String packageName, @NonNull String name, String category, boolean isIgnored) {
+        this.packageName = packageName;
         this.name = name;
         this.category = category;
-        this.is_ignored = is_ignored;
+        this.isIgnored = isIgnored;
     }
 }

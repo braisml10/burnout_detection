@@ -2,7 +2,6 @@ package gal.uvigo.burnout_app.ui;
 
 import android.Manifest;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -13,7 +12,6 @@ import android.util.Log;
 import android.widget.Button;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.work.Constraints;
@@ -21,17 +19,16 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
+import java.util.concurrent.TimeUnit;
+
 import gal.uvigo.burnout_app.R;
+import gal.uvigo.burnout_app.base.BaseActivity;
+import gal.uvigo.burnout_app.collectors.BurnoutNotificationListenerService;
 import gal.uvigo.burnout_app.collectors.UsageStatsProvider;
-import gal.uvigo.burnout_app.helpers.LanguageHelper;
 import gal.uvigo.burnout_app.helpers.SessionManager;
 import gal.uvigo.burnout_app.worker.DailyAggregationWorker;
 
-import java.util.concurrent.TimeUnit;
-
-import gal.uvigo.burnout_app.collectors.BurnoutNotificationListenerService;
-
-public class WelcomeActivity extends AppCompatActivity {
+public class WelcomeActivity extends BaseActivity {
 
     private static final String TAG = "WelcomeActivity";
     private static final String WORK_DAILY_AGG = "daily_aggregation_work";
@@ -50,14 +47,6 @@ public class WelcomeActivity extends AppCompatActivity {
 
     private Button btnLogin;
     private Button btnCreateAccount;
-
-    @Override
-    protected void attachBaseContext(Context newBase) {
-        SharedPreferences prefs =
-                newBase.getSharedPreferences("app_settings", Context.MODE_PRIVATE);
-        String langCode = prefs.getString("selected_language", "es");
-        super.attachBaseContext(LanguageHelper.updateContext(newBase, langCode));
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

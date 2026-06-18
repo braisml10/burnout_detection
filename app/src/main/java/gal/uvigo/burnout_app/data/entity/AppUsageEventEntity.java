@@ -11,19 +11,19 @@ import androidx.room.PrimaryKey;
 public class AppUsageEventEntity {
 
     @PrimaryKey(autoGenerate = true)
-    public long usage_id;
+    public long usageId;
     @NonNull
-    public long app_id;
+    public long appId;
     @NonNull
-    public int event_type;
+    public int eventType;
     @NonNull
     public long timestamp;
     public String source;
     public int date;
 
-    public AppUsageEventEntity(long app_id, int event_type, long timestamp, String source, int date) {
-        this.app_id = app_id;
-        this.event_type = event_type;
+    public AppUsageEventEntity(long appId, int eventType, long timestamp, String source, int date) {
+        this.appId = appId;
+        this.eventType = eventType;
         this.timestamp = timestamp;
         this.source = source;
         this.date = date;

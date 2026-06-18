@@ -9,8 +9,12 @@ import java.util.Locale;
 import gal.uvigo.burnout_app.R;
 
 public final class TimeKey {
-    private TimeKey() {
-    }
+        public static final long MILLIS_PER_MINUTE = 60000L;
+        public static final int MIN_HOUR_OF_DAY = 0;
+        public static final int MAX_HOUR_OF_DAY = 23;
+
+        private TimeKey() {
+        }
 
     public static int epochDayLocal(long timestampMs) {
         Calendar cal = Calendar.getInstance();
@@ -125,6 +129,6 @@ public final class TimeKey {
 
     public static long minutesFromMs(long ms) {
         if (ms <= 0L) return 0L;
-        return ms / 60000L;
+        return ms / MILLIS_PER_MINUTE;
     }
 }

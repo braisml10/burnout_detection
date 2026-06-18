@@ -65,11 +65,11 @@ public class DailyDetailViewModel extends AndroidViewModel {
         );
 
         uiState = Transformations.map(dailyMetrics, metrics -> {
-            long screenTimeMs = (metrics != null) ? metrics.screen_ms : 0L;
-            int unlockCount = (metrics != null) ? metrics.unlock_count : 0;
-            long nightTimeMs = (metrics != null) ? metrics.night_ms : 0L;
+            long screenTimeMs = (metrics != null) ? metrics.screenMs : 0L;
+            int unlockCount = (metrics != null) ? metrics.unlockCount : 0;
+            long nightTimeMs = (metrics != null) ? metrics.nightMs : 0L;
 
-            long nightMinutes = nightTimeMs / 60000L;
+            long nightMinutes = nightTimeMs / TimeKey.MILLIS_PER_MINUTE;
 
             return new UiState(
                     formatScreenTime(screenTimeMs),
@@ -97,7 +97,7 @@ public class DailyDetailViewModel extends AndroidViewModel {
 
                 int hour = hourlyRow.hour;
                 if (hour >= DAY_START_HOUR && hour <= DAY_END_HOUR) {
-                    out[hour - DAY_START_HOUR] = (int) (hourlyRow.screen_ms / 60000L);
+                    out[hour - DAY_START_HOUR] = (int) (hourlyRow.screenMs / TimeKey.MILLIS_PER_MINUTE);
                 }
             }
 
@@ -147,10 +147,10 @@ public class DailyDetailViewModel extends AndroidViewModel {
             for (HourlyMetricsEntity hourlyRow : cachedPreviousDayHourlyMetrics) {
                 if (hourlyRow == null) continue;
 
-                if (hourlyRow.hour == 22) {
-                    out[0] = (int) (hourlyRow.screen_ms / 60000L);
-                } else if (hourlyRow.hour == 23) {
-                    out[1] = (int) (hourlyRow.screen_ms / 60000L);
+                if (hourlyRow.hour == TimeKey.MAX_HOUR_OF_DAY - 1) {
+                    out[0] = (int) (hourlyRow.screenMs / TimeKey.MILLIS_PER_MINUTE);
+                } else if (hourlyRow.hour == TimeKey.MAX_HOUR_OF_DAY) {
+                    out[1] = (int) (hourlyRow.screenMs / TimeKey.MILLIS_PER_MINUTE);
                 }
             }
         }
@@ -161,7 +161,7 @@ public class DailyDetailViewModel extends AndroidViewModel {
 
                 int hour = hourlyRow.hour;
                 if (hour >= 0 && hour <= NIGHT_END_HOUR) {
-                    out[2 + hour] = (int) (hourlyRow.screen_ms / 60000L);
+                    out[2 + hour] = (int) (hourlyRow.screenMs / TimeKey.MILLIS_PER_MINUTE);
                 }
             }
         }
@@ -170,7 +170,7 @@ public class DailyDetailViewModel extends AndroidViewModel {
     }
 
     private static String formatScreenTime(long ms) {
-        long totalMinutes = ms / 60000L;
+        long totalMinutes = ms / TimeKey.MILLIS_PER_MINUTE;
         long hours = totalMinutes / 60L;
         long minutes = totalMinutes % 60L;
 

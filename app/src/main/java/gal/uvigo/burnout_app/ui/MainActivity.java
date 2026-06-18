@@ -88,8 +88,8 @@ public class MainActivity extends BaseActivity {
         profileViewModel.observeUserProfile().observe(this, userProfile -> {
             if (userProfile == null) return;
 
-            String firstName = userProfile.nombre != null ? userProfile.nombre : "";
-            String lastName = userProfile.apellidos != null ? userProfile.apellidos : "";
+            String firstName = userProfile.name != null ? userProfile.name : "";
+            String lastName = userProfile.surname != null ? userProfile.surname : "";
             String initials = getInitials(firstName, lastName);
 
             if (tvAvatarMain != null) {
@@ -152,21 +152,25 @@ public class MainActivity extends BaseActivity {
                 TimeKey.dateLabelFromTimestamp(System.currentTimeMillis())
         ));
 
-        TextView value1 = findViewById(R.id.value1);
-        TextView value2 = findViewById(R.id.value2);
-        TextView value3 = findViewById(R.id.value3);
-        TextView value4 = findViewById(R.id.value4);
+        TextView tvScreenTimeValue = findViewById(R.id.tvScreenTimeValue);
+
+        TextView tvNotificationValue = findViewById(R.id.tvNotificationValue);
+
+        TextView tvMultitaskValue = findViewById(R.id.tvMultitaskValue);
+
+        TextView tvCommunicationValue = findViewById(R.id.tvCommunicationValue);
+
         TextView tvBurnoutRiskScore = findViewById(R.id.tvBurnoutRiskScore);
 
         DashboardViewModel dashboardViewModel = new ViewModelProvider(this).get(DashboardViewModel.class);
         dashboardViewModel.getUiState().observe(this, uiState -> {
             if (uiState == null) return;
 
-            if (value1 != null) value1.setText(uiState.screenTime);
-            if (value2 != null) value2.setText(uiState.notifications);
-            if (value3 != null) value3.setText(uiState.multitask);
+            if (tvScreenTimeValue != null) tvScreenTimeValue.setText(uiState.screenTime);
+            if (tvNotificationValue != null) tvNotificationValue.setText(uiState.notifications);
+            if (tvMultitaskValue != null) tvMultitaskValue.setText(uiState.multitask);
 
-            if (value4 != null) {
+            if (tvCommunicationValue != null) {
                 int calls = 0;
                 try {
                     calls = Integer.parseInt(uiState.communication.trim());
@@ -178,7 +182,7 @@ public class MainActivity extends BaseActivity {
                         calls,
                         calls
                 );
-                value4.setText(callsText);
+                tvCommunicationValue.setText(callsText);
             }
 
             if (tvBurnoutRiskScore != null) {
@@ -297,10 +301,10 @@ public class MainActivity extends BaseActivity {
             if (hourlyMetric == null) continue;
 
             int hour = hourlyMetric.hour;
-            if (hour < 0 || hour > 23) continue;
+            if (hour < TimeKey.MIN_HOUR_OF_DAY || hour > TimeKey.MAX_HOUR_OF_DAY) continue;
 
             int bucket = hour / 3;
-            bucketsMs[bucket] += hourlyMetric.screen_ms;
+            bucketsMs[bucket] += hourlyMetric.screenMs;
         }
 
         return bucketsMs;

@@ -32,7 +32,7 @@ public interface UserActivityDAO {
     @Query("DELETE FROM daily_metrics WHERE date < :cutoffDate")
     int deleteDailyMetricsOlderThanDate(int cutoffDate);
 
-    @Query("SELECT notification_count FROM daily_metrics WHERE date = :date LIMIT 1")
+    @Query("SELECT notificationCount FROM daily_metrics WHERE date = :date LIMIT 1")
     Integer getNotificationCountByDate(int date);
 
     // ===================== HOURLY METRICS =====================
@@ -49,16 +49,16 @@ public interface UserActivityDAO {
     int deleteHourlyMetricsOlderThanDate(int cutoffDate);
 
     @Query("SELECT hour AS hour, " +
-            "app_switch_count AS switches " +
+            "appSwitchCount AS switches " +
             "FROM hourly_metric " +
             "WHERE date = :date " +
             "ORDER BY hour ASC")
     Cursor getAppSwitchCountByHourCursor(int date);
 
-    @Query("SELECT hour, notification_count AS notifs FROM hourly_metric WHERE date = :date ORDER BY hour")
+    @Query("SELECT hour, notificationCount AS notifs FROM hourly_metric WHERE date = :date ORDER BY hour")
     Cursor getNotificationCountByHourCursor(int date);
 
-    @Query("SELECT COUNT(*) FROM hourly_metric WHERE date = :date AND screen_ms > 0")
+    @Query("SELECT COUNT(*) FROM hourly_metric WHERE date = :date AND screenMs > 0")
     int getActiveHourCountByDate(int date);
 
     // ===================== Burnout Risk =====================

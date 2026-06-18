@@ -7,15 +7,16 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import gal.uvigo.burnout_app.data.entity.DailyCommMetricsEntity;
-import gal.uvigo.burnout_app.data.entity.HourlyCommMetricsEntity;
-import gal.uvigo.burnout_app.data.repo.CommunicationRepository;
-import gal.uvigo.burnout_app.helpers.TimeKey;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import gal.uvigo.burnout_app.R;
+import gal.uvigo.burnout_app.data.entity.DailyCommMetricsEntity;
+import gal.uvigo.burnout_app.data.entity.HourlyCommMetricsEntity;
+import gal.uvigo.burnout_app.data.repo.CommunicationRepository;
+import gal.uvigo.burnout_app.helpers.TimeKey;
 
 public class CommunicationViewModel extends AndroidViewModel {
 
@@ -74,15 +75,15 @@ public class CommunicationViewModel extends AndroidViewModel {
         ioExecutor.execute(() -> {
             DailyCommMetricsEntity dailyCommMetrics = communicationRepository.getDailyCommMetrics(date);
 
-            int callsCount = (dailyCommMetrics != null) ? dailyCommMetrics.calls_count : 0;
-            int messagesCount = (dailyCommMetrics != null) ? dailyCommMetrics.messages_count : 0;
+            int callsCount = (dailyCommMetrics != null) ? dailyCommMetrics.callsCount : 0;
+            int messagesCount = (dailyCommMetrics != null) ? dailyCommMetrics.messagesCount : 0;
 
-            long voiceDayMs = (dailyCommMetrics != null) ? Math.max(0L, dailyCommMetrics.voice_ms) : 0L;
-            long textDayMs = (dailyCommMetrics != null) ? Math.max(0L, dailyCommMetrics.text_ms) : 0L;
+            long voiceDayMs = (dailyCommMetrics != null) ? Math.max(0L, dailyCommMetrics.voiceMs) : 0L;
+            long textDayMs = (dailyCommMetrics != null) ? Math.max(0L, dailyCommMetrics.textMs) : 0L;
 
             long totalDayMs;
             if (dailyCommMetrics != null) {
-                totalDayMs = Math.max(0L, dailyCommMetrics.total_comm_ms);
+                totalDayMs = Math.max(0L, dailyCommMetrics.totalCommMs);
                 if (totalDayMs <= 0L) {
                     totalDayMs = voiceDayMs + textDayMs;
                 }
@@ -93,7 +94,7 @@ public class CommunicationViewModel extends AndroidViewModel {
             String dominantChannel = "—";
             long maxChannelMs = Math.max(voiceDayMs, textDayMs);
             if (maxChannelMs > 0L) {
-                dominantChannel = (voiceDayMs >= textDayMs) ? "Voz" : "Texto";
+                dominantChannel = (voiceDayMs >= textDayMs) ? getApplication().getString(R.string.communications_channel_voice) : getApplication().getString(R.string.communications_channel_text);
             }
 
             long[] totalByHour = new long[24];
@@ -110,15 +111,15 @@ public class CommunicationViewModel extends AndroidViewModel {
                 if (hourlyRow == null) continue;
 
                 int hour = hourlyRow.hour;
-                if (hour < 0 || hour > 23) continue;
+                if (hour < 0 || hour > TimeKey.MAX_HOUR_OF_DAY) continue;
 
-                long voiceValue = Math.max(0L, hourlyRow.voice_value);
-                long textValue = Math.max(0L, hourlyRow.text_value);
+                long voiceValue = Math.max(0L, hourlyRow.voiceValue);
+                long textValue = Math.max(0L, hourlyRow.textValue);
 
                 voiceByHour[hour] = voiceValue;
                 textByHour[hour] = textValue;
 
-                long totalValue = Math.max(0L, hourlyRow.total_value);
+                long totalValue = Math.max(0L, hourlyRow.totalValue);
                 if (totalValue <= 0L) {
                     totalValue = voiceValue + textValue;
                 }
